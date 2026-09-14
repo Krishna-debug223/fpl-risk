@@ -1,0 +1,25 @@
+{
+  "name": "fpl-risk",
+  "version": "1.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "model:check": "tsc --target ES2022 --module commonjs --moduleResolution node --strict --esModuleInterop --skipLibCheck --outDir .model-check scripts/model-validation.ts lib/risk.ts lib/types.ts && node .model-check/scripts/model-validation.js"
+  },
+  "dependencies": {
+    "next": "16.3.3",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "@vercel/analytics": "2.0.1",
+    "@vercel/speed-insights": "2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.9.2"
+  }
+}
