@@ -1,0 +1,163 @@
+.wrap {
+  background: #37003c;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-family: var(--font-app-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.bar {
+  width: min(1520px, 96vw);
+  min-height: 58px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.home {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #fff;
+  text-decoration: none;
+  flex: 0 0 auto;
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: #fff;
+  color: #37003c;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .08em;
+}
+
+.homeCopy strong,
+.homeCopy small {
+  display: block;
+}
+
+.homeCopy strong {
+  font-size: 11px;
+  letter-spacing: .1em;
+}
+
+.homeCopy small {
+  margin-top: 1px;
+  color: #00ff87;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar {
+  display: none;
+}
+
+.nav a,
+.utility,
+.signIn {
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.nav a {
+  padding: 8px 11px;
+  border-radius: 999px;
+  color: rgba(255,255,255,.78);
+  font-size: 10px;
+  font-weight: 900;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.nav a:hover,
+.nav a:focus-visible,
+.nav .active {
+  background: rgba(255,255,255,.11);
+  color: #fff;
+  outline: none;
+}
+
+.actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
+.utility {
+  color: rgba(255,255,255,.68);
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.utility:hover,
+.utility:focus-visible {
+  color: #fff;
+  outline: none;
+}
+
+.signIn {
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: #00ff87;
+  color: #1c1a1d;
+  font-size: 10px;
+  font-weight: 950;
+}
+
+.signIn:hover,
+.signIn:focus-visible {
+  background: #5bffb0;
+  outline: none;
+}
+
+@media (max-width: 980px) {
+  .bar {
+    width: min(100% - 24px, 1520px);
+    gap: 12px;
+  }
+
+  .utility {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .bar {
+    min-height: 56px;
+  }
+
+  .homeCopy {
+    display: none;
+  }
+
+  .nav {
+    flex: 1;
+  }
+
+  .nav a {
+    padding-inline: 9px;
+  }
+
+  .actions {
+    margin-left: 0;
+  }
+
+  .signIn {
+    padding-inline: 11px;
+  }
+}
