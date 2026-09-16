@@ -1,0 +1,350 @@
+.pitchShell {
+  border: 1px solid #dcd7df;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgba(55, 0, 60, 0.08);
+}
+
+.pitch {
+  position: relative;
+  min-height: 690px;
+  padding: 34px 24px;
+  background: #0f7a4c;
+  overflow: hidden;
+}
+
+.pitch::before {
+  content: "";
+  position: absolute;
+  inset: 22px;
+  border: 2px solid rgba(255, 255, 255, 0.52);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.halfway {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  top: 50%;
+  border-top: 2px solid rgba(255, 255, 255, 0.46);
+}
+
+.centreCircle {
+  position: absolute;
+  width: 118px;
+  height: 118px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(255, 255, 255, 0.46);
+  border-radius: 50%;
+}
+
+.box {
+  position: absolute;
+  left: 50%;
+  width: 250px;
+  height: 86px;
+  transform: translateX(-50%);
+  border: 2px solid rgba(255, 255, 255, 0.42);
+}
+
+.topBox { top: 22px; border-top: 0; }
+.bottomBox { bottom: 22px; border-bottom: 0; }
+
+.formation {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: repeat(4, 1fr);
+  align-items: center;
+  min-height: 622px;
+}
+
+.line {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(10px, 2vw, 28px);
+  min-height: 145px;
+}
+
+.tileWrap {
+  position: relative;
+  width: min(150px, 16vw);
+  min-width: 112px;
+}
+
+.playerTile {
+  width: 100%;
+  min-height: 118px;
+  cursor: pointer;
+  color: #241c25;
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 16px;
+  padding: 11px 9px 12px;
+  box-shadow: 0 8px 22px rgba(15, 57, 40, 0.2);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.playerTile:hover,
+.playerTile:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 13px 26px rgba(15, 57, 40, 0.28);
+  outline: none;
+  border-color: #00ff87;
+}
+
+.selectedWrap .playerTile,
+.selectedTile {
+  border: 2px solid #00ff87;
+  box-shadow: 0 0 0 3px #37003c, 0 15px 28px rgba(13, 43, 31, 0.28);
+}
+
+.badges {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  gap: 4px;
+}
+
+.captain,
+.vice {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.captain { color: #37003c; background: #00ff87; }
+.vice { color: #ffffff; background: #37003c; }
+
+.shirt {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 7px;
+  border-radius: 12px 12px 17px 17px;
+  color: #00ff87;
+  background: #37003c;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.playerTile strong {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+
+.playerTile small {
+  display: block;
+  margin-top: 3px;
+  color: #766d78;
+  font-size: 9px;
+}
+
+.points {
+  display: block;
+  margin-top: 7px;
+  color: #37003c;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.points em {
+  font-size: 8px;
+  font-style: normal;
+  letter-spacing: 0.06em;
+}
+
+.selectState {
+  display: block;
+  margin-top: 6px;
+  color: #5c5360;
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.inspectButton {
+  position: absolute;
+  right: 8px;
+  bottom: -11px;
+  z-index: 4;
+  cursor: pointer;
+  color: #37003c;
+  background: #ffffff;
+  border: 1px solid #d8d0dc;
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.inspectButton:hover,
+.inspectButton:focus-visible {
+  outline: none;
+  border-color: #37003c;
+}
+
+.benchSection {
+  padding: 18px 20px 22px;
+  background: #f7f5f8;
+  border-top: 1px solid #e1dce4;
+}
+
+.benchHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.benchHeading span {
+  color: #37003c;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+
+.benchHeading small {
+  color: #8b838d;
+  font-size: 10px;
+}
+
+.benchRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.benchRow .tileWrap {
+  width: 100%;
+  min-width: 0;
+}
+
+.compact .pitch {
+  min-height: 540px;
+}
+
+.compact .formation {
+  min-height: 472px;
+}
+
+.compact .line {
+  min-height: 110px;
+}
+
+.compact .playerTile {
+  min-height: 102px;
+}
+
+@media (max-width: 900px) {
+  .pitch {
+    min-height: 650px;
+    padding-inline: 10px;
+  }
+
+  .formation {
+    min-height: 590px;
+  }
+
+  .line {
+    gap: 7px;
+  }
+
+  .tileWrap {
+    width: min(132px, 19vw);
+    min-width: 90px;
+  }
+
+  .playerTile {
+    min-height: 106px;
+    padding: 9px 6px;
+  }
+
+  .shirt {
+    width: 36px;
+    height: 36px;
+    font-size: 8px;
+  }
+
+  .playerTile strong { font-size: 10px; }
+  .playerTile small { font-size: 8px; }
+  .points { font-size: 13px; }
+}
+
+@media (max-width: 620px) {
+  .pitchShell {
+    border-radius: 18px;
+  }
+
+  .pitch {
+    min-height: 590px;
+    padding: 24px 4px;
+  }
+
+  .pitch::before {
+    inset: 14px 8px;
+  }
+
+  .halfway { left: 8px; right: 8px; }
+  .topBox { top: 14px; }
+  .bottomBox { bottom: 14px; }
+
+  .formation {
+    min-height: 540px;
+  }
+
+  .line {
+    min-height: 128px;
+    gap: 3px;
+  }
+
+  .tileWrap {
+    width: min(104px, 23vw);
+    min-width: 74px;
+  }
+
+  .playerTile {
+    min-height: 96px;
+    border-radius: 12px;
+    padding: 7px 4px 8px;
+  }
+
+  .shirt {
+    width: 31px;
+    height: 31px;
+    margin-bottom: 5px;
+  }
+
+  .playerTile strong { font-size: 9px; }
+  .playerTile small { font-size: 7px; }
+  .points { margin-top: 5px; font-size: 11px; }
+  .selectState { display: none; }
+  .badges { top: 5px; left: 5px; }
+  .captain, .vice { width: 18px; height: 18px; font-size: 8px; }
+  .inspectButton { right: 3px; padding: 4px 6px; font-size: 7px; }
+
+  .benchSection { padding: 14px 8px 18px; }
+  .benchRow { gap: 6px; }
+  .benchHeading small { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playerTile { transition: none; }
+}
