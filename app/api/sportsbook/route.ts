@@ -6,7 +6,24 @@ import type { FplFixture, FplTeam } from "@/lib/types";
 
 export const revalidate = 300;
 
+const disabledPayload = () => ({
+  available: false,
+  provider: "none" as const,
+  sourceLabel: "Sportsbook market prior",
+  fetchedAt: new Date().toISOString(),
+  configuredWeight: 0,
+  calibrationStatus: "disabled-until-calibrated" as const,
+  fixtures: [],
+  note: "Sportsbook integration is intentionally disabled for this release; the base FPL Risk model remains active.",
+});
+
 export async function GET() {
+  if (process.env.SPORTSBOOK_ENABLED !== "true") {
+    return NextResponse.json(disabledPayload(), {
+      headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+    });
+  }
+
   try {
     const [bootstrap, fixtures] = await Promise.all([
       fplFetch<{ teams: FplTeam[] }>("/bootstrap-static/", 300),
@@ -17,15 +34,6 @@ export async function GET() {
       headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
     });
   } catch {
-    return NextResponse.json({
-      available: false,
-      provider: "none",
-      sourceLabel: "Sportsbook market prior",
-      fetchedAt: new Date().toISOString(),
-      configuredWeight: 0,
-      calibrationStatus: "disabled-until-calibrated",
-      fixtures: [],
-      note: "Sportsbook feed unavailable; the base model remains active.",
-    });
+    return NextResponse.json(disabledPayload());
   }
 }
