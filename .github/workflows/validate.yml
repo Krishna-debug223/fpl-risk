@@ -42,11 +42,16 @@ jobs:
           BACKTEST_END_GW: 38
         run: npm run backtest
 
-      - name: Upload backtest report
+      - name: Calibrate sportsbook team-market prior
+        env:
+          BACKTEST_SEASON: 2025-26
+        run: npm run sportsbook:calibrate
+
+      - name: Upload validation reports
         uses: actions/upload-artifact@v4
         with:
-          name: backtest-v12-2025-26
-          path: reports/backtest-*.json
+          name: model-validation-reports
+          path: reports/*.json
           if-no-files-found: error
 
       - name: Production build
