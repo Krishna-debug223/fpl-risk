@@ -1,18 +1,24 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import MetallicButton from "./ui/metallic-button";
 import styles from "./PlannerShortcut.module.css";
 
 export default function PlannerShortcut() {
   const pathname = usePathname();
+  const router = useRouter();
   if (pathname.startsWith("/planner")) return null;
 
   return (
-    <Link className={styles.shortcut} href="/planner" aria-label="Open the 8-Gameweek Path Planner">
-      <span>8-GW</span>
-      <strong>Path Planner</strong>
-      <i>→</i>
-    </Link>
+    <div className={styles.shortcut}>
+      <MetallicButton
+        label="8-GW Path Planner"
+        compact
+        baseColor="#37003c"
+        sheenColor="#f7f1ff"
+        accentColor="#00ff87"
+        onClick={() => router.push("/planner")}
+      />
+    </div>
   );
 }
