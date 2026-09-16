@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, Manrope, Space_Grotesk } from "next/font/google";
 import SiteAnalytics from "@/components/SiteAnalytics";
 import FplVisualEnhancer from "@/components/FplVisualEnhancer";
+import PlannerShortcut from "@/components/PlannerShortcut";
 import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 import "./frontdesks-ui-fixes.css";
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" className={`${manrope.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
       <body>
         {children}
+        <PlannerShortcut />
         <FplVisualEnhancer />
         <SiteAnalytics />
       </body>
