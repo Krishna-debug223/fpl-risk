@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BrandMark from "./BrandMark";
 import styles from "./DashboardHomeNav.module.css";
 
 const LEDGER_URL = "https://fpl-ledger-azure.vercel.app/";
@@ -8,7 +9,7 @@ export default function DashboardHomeNav() {
     <div className={styles.wrap}>
       <div className={styles.bar}>
         <Link href="/dashboard" className={styles.home} aria-label="FPL Risk home dashboard">
-          <span className={styles.mark}>FR</span>
+          <BrandMark className={styles.mark} />
           <span className={styles.homeCopy}>
             <strong>FPL RISK</strong>
             <small>Home</small>
