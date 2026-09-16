@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import SiteAnalytics from "@/components/SiteAnalytics";
+import FplVisualEnhancer from "@/components/FplVisualEnhancer";
 import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 import "./frontdesks-ui-fixes.css";
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         {children}
+        <FplVisualEnhancer />
         <SiteAnalytics />
       </body>
     </html>
