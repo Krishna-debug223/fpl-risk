@@ -19,3 +19,32 @@
     white-space: nowrap;
   }
 }
+
+/* Risk and confidence use opposite semantics: low risk is good, low confidence is not.
+   Keep the existing confidence colors untouched and override only risk badges. */
+[class*="riskBadge"][class*="low"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #0b6f46 !important;
+  background: #dcf7e8 !important;
+}
+
+[class*="riskBadge"][class*="low"]::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  background: #12a765;
+  border-radius: 50%;
+}
+
+[class*="riskBadge"][class*="medium"] {
+  color: #8b6100 !important;
+  background: #fff2d2 !important;
+}
+
+[class*="riskBadge"][class*="high"] {
+  color: #9d2d39 !important;
+  background: #ffe2e5 !important;
+}

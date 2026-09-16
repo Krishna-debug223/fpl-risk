@@ -11,12 +11,15 @@ import {
   type Recommendation,
 } from "./risk";
 
-export const MODEL_VERSION = "1.2.0-beta.1";
+export const MODEL_VERSION = "1.2.0-beta.2";
 export { assessChips, positionName };
 export type { ChipAdvice, HistoricalProfileMap, ModelConfidence, Recommendation };
 
 export type MarketProjection = Omit<Projection, "components"> & {
-  components: Projection["components"] & { sportsbookMarket: number };
+  components: Projection["components"] & {
+    fixtureDifficulty: number;
+    sportsbookMarket: number;
+  };
   sportsbook: {
     applied: boolean;
     fixturesUsed: number;
@@ -101,6 +104,26 @@ function marketFactor(player: FplPlayer, projection: Projection, index: number, 
   return { factor: clamp(positionFactor, 0.94, 1.06), weight: effectiveWeight, fixtures: signals.length };
 }
 
+/**
+ * Make the FPL fixture-difficulty signal visible in the scoring breakdown.
+ * The core model already uses FDR inside its fixture context, so this isolates
+ * the approximate portion of projected points attributable to that FDR
+ * adjustment without applying it a second time. FDR 1/2 is positive, FDR 3
+ * is neutral, and FDR 4/5 is negative.
+ */
+function fixtureDifficultyComponent(projection: Projection) {
+  return projection.fixtureMeans.reduce((total, mean, index) => {
+    const context = projection.fixtureContexts[index];
+    if (!context || !(mean > 0)) return total;
+    const fdrFactor = clamp(context.fdrFactor || 1, 0.9, 1.1);
+    if (Math.abs(fdrFactor - 1) < 1e-9) return total;
+    const neutralMean = mean / fdrFactor;
+    const isolatedEffect = mean - neutralMean;
+    const cap = Math.max(0.15, mean * 0.12);
+    return total + clamp(isolatedEffect, -cap, cap);
+  }, 0);
+}
+
 function confidenceFromQuality(quality: number): ModelConfidence {
   if (quality >= 75) return "High";
   if (quality >= 50) return "Medium";
@@ -120,6 +143,7 @@ export function projectPlayer(
   const adjustments = base.fixtureMeans.map((mean, index) => marketFactor(player, base, index, sportsbook));
   const adjustedFixtureMeans = base.fixtureMeans.map((mean, index) => mean * (adjustments[index]?.factor ?? 1));
   const expected = adjustedFixtureMeans.reduce((sum, value) => sum + value, 0);
+  const fixtureDifficulty = fixtureDifficultyComponent(base);
   const sportsbookMarket = expected - base.expected;
   const fixturesUsed = adjustments.reduce((sum, item) => sum + item.fixtures, 0);
   const effectiveWeight = adjustments.length ? average(adjustments.map((item) => item.weight)) : 0;
@@ -133,7 +157,7 @@ export function projectPlayer(
     risk: cv < 0.46 ? "Low" : cv < 0.63 ? "Medium" : "High",
     dataQuality,
     confidence: confidenceFromQuality(dataQuality),
-    components: { ...base.components, sportsbookMarket },
+    components: { ...base.components, fixtureDifficulty, sportsbookMarket },
     sportsbook: {
       applied: fixturesUsed > 0 && effectiveWeight > 0,
       fixturesUsed,
