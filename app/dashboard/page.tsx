@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import DashboardHomeNav from "@/components/DashboardHomeNav";
 import LiveRefreshV12 from "@/components/LiveRefreshV12";
 
 export const metadata: Metadata = {
@@ -8,5 +9,10 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardPage() {
-  return <LiveRefreshV12 />;
+  return (
+    <>
+      <DashboardHomeNav />
+      <LiveRefreshV12 />
+    </>
+  );
 }
