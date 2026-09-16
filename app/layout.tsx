@@ -1,9 +1,23 @@
 import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import SiteAnalytics from "@/components/SiteAnalytics";
 import FplVisualEnhancer from "@/components/FplVisualEnhancer";
 import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 import "./frontdesks-ui-fixes.css";
+import "./geist-typography.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 const siteUrl = getSiteUrl();
 
@@ -34,7 +48,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         {children}
         <FplVisualEnhancer />
