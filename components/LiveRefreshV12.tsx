@@ -406,7 +406,7 @@ export default function LiveRefreshV12() {
       {tab === "team" && (
         <div className={styles.page} role="tabpanel" aria-label="My Team">
           <div className={styles.pageHeading}>
-            <div><span className={styles.eyebrow}>MY TEAM</span><h1>Your squad, without the clutter.</h1><p>Squad shape, projections, chip guidance and the model's recommended move live here — separate from the rest of the app.</p></div>
+            <div><span className={styles.eyebrow}>MY TEAM</span><h1>Your squad, in one focused workspace.</h1><p>Squad shape, projections, chip guidance and the model's recommended move live here — separate from the rest of the app.</p></div>
             {manager && <div className={styles.managerBadge}><strong>{manager.teamName}</strong><span>{money(manager.bank)} bank</span></div>}
           </div>
 
