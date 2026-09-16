@@ -51,19 +51,14 @@ export default function SignInPanel() {
 
       if (mode === "reset") {
         const redirectTo = `${window.location.origin}/auth/callback?next=/reset-password`;
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-          redirectTo,
-        });
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
         if (resetError) throw resetError;
         setMessage("Password reset link sent. Open the email on this device, then choose a new password.");
         return;
       }
 
       if (mode === "signin") {
-        const { error: authError } = await supabase.auth.signInWithPassword({
-          email: normalizedEmail,
-          password,
-        });
+        const { error: authError } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
         if (authError) throw authError;
         router.push("/account");
         router.refresh();
@@ -108,20 +103,27 @@ export default function SignInPanel() {
           <span>FR</span>
           <div><strong>FPL RISK</strong><small>Decision analytics</small></div>
         </Link>
-        <Link href="/pricing" className={styles.pricing}>Pricing</Link>
+        <nav className={styles.topNav}>
+          <Link href="/dashboard">Dashboard</Link>
+          <Link href="/planner">8-GW Planner</Link>
+          <Link href="/pricing">Pricing</Link>
+        </nav>
       </header>
 
       <section className={styles.layout}>
         <div className={styles.copy}>
-          <p className={styles.eyebrow}>OPTIONAL ACCOUNT</p>
-          <h1>Save your setup.<br />Keep the product free.</h1>
-          <p>FPL Risk does not require an account. Sign in only if you want your Team ID and planning defaults saved to your account for future sessions.</p>
+          <p className={styles.eyebrow}>WELCOME TO FPL RISK</p>
+          <h1>Save your setup.<br />Or jump straight in.</h1>
+          <p>Sign in if you want your Team ID and planning defaults saved across sessions. You never need an account to use the live model, Transfer Lab, Player Market or Path Planner.</p>
           <ul>
             <li><i>✓</i><span>All current FPL Risk tools remain available without signing in.</span></li>
             <li><i>✓</i><span>Your account stores only the preferences you choose to save.</span></li>
             <li><i>✓</i><span>Signing in never requires your official FPL password.</span></li>
           </ul>
-          <Link href="/" className={styles.guest}>Don&apos;t sign in — continue as guest →</Link>
+          <div className={styles.guestActions}>
+            <Link href="/dashboard" className={styles.guest}>Don&apos;t sign in — continue as guest →</Link>
+            <Link href="/pricing" className={styles.secondaryLink}>View pricing</Link>
+          </div>
         </div>
 
         <div className={styles.card}>
@@ -140,22 +142,16 @@ export default function SignInPanel() {
               <label htmlFor="auth-password">Password</label>
               <input id="auth-password" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8+ characters" minLength={8} required />
             </>}
-            {mode === "signin" && (
-              <button className={styles.resetLink} type="button" onClick={() => switchMode("reset")}>Forgot password?</button>
-            )}
-            {mode === "reset" && (
-              <button className={styles.resetLink} type="button" onClick={() => switchMode("signin")}>← Back to sign in</button>
-            )}
-            <button type="submit" disabled={busy || !configured}>
-              {busy ? "Working…" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create free account" : "Send reset link"}
-            </button>
+            {mode === "signin" && <button className={styles.resetLink} type="button" onClick={() => switchMode("reset")}>Forgot password?</button>}
+            {mode === "reset" && <button className={styles.resetLink} type="button" onClick={() => switchMode("signin")}>← Back to sign in</button>}
+            <button type="submit" disabled={busy || !configured}>{busy ? "Working…" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create free account" : "Send reset link"}</button>
           </form>
 
           {!configured && <div className={styles.configNotice}><strong>Account backend setup required.</strong><span>The account experience is deployed, but authentication stays disabled until the production Supabase project URL and publishable key are connected.</span></div>}
           {error && <div className={styles.error}>{error}</div>}
           {message && <div className={styles.success}>{message}</div>}
           <div className={styles.legal}>By creating an account, you agree to the <Link href="/terms">Terms</Link> and acknowledge the <Link href="/privacy">Privacy Policy</Link>.</div>
-          <Link href="/" className={styles.mobileGuest}>Continue without signing in</Link>
+          <Link href="/dashboard" className={styles.mobileGuest}>Continue without signing in</Link>
         </div>
       </section>
     </main>
