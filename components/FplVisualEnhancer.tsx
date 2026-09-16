@@ -13,17 +13,28 @@ export default function FplVisualEnhancer() {
   useEffect(() => {
     const enhanceProjectionCards = () => {
       document.querySelectorAll<HTMLElement>('[class*="projectionCard"]').forEach((card) => {
-        if (card.dataset.playerVisualEnhanced === "jersey") return;
-
         const frame = card.querySelector<HTMLElement>('[class*="teamBubble"]');
         if (!frame) return;
 
-        const teamCode = (frame.textContent ?? "FPL").trim().toUpperCase();
+        // React can re-render the card after hydration. Only skip when the actual
+        // jersey node is still present, otherwise rebuild it from the live team code.
+        if (
+          card.dataset.playerVisualEnhanced === "jersey" &&
+          frame.querySelector(`.${styles.kitShirt}`)
+        ) {
+          return;
+        }
+
+        const teamCode = (frame.textContent ?? frame.getAttribute("data-team") ?? "FPL")
+          .trim()
+          .toUpperCase();
+
         card.dataset.playerVisualEnhanced = "jersey";
         card.classList.add(styles.visualCard);
         frame.classList.add(styles.kitFrame);
+        frame.setAttribute("data-team", teamCode);
+        frame.setAttribute("aria-label", `${teamCode} current team jersey`);
         frame.textContent = "";
-        frame.setAttribute("aria-label", `${teamCode} home jersey`);
 
         const shirt = document.createElement("span");
         shirt.className = styles.kitShirt;
@@ -41,10 +52,20 @@ export default function FplVisualEnhancer() {
     };
 
     enhanceProjectionCards();
+
     const observer = new MutationObserver(enhanceProjectionCards);
     observer.observe(document.body, { childList: true, subtree: true });
 
-    return () => observer.disconnect();
+    // Keep a short hydration safety-net so the jersey is restored even if React
+    // replaces the projection cards without producing a useful mutation shape.
+    const retry = window.setInterval(enhanceProjectionCards, 400);
+    const stopRetry = window.setTimeout(() => window.clearInterval(retry), 10000);
+
+    return () => {
+      observer.disconnect();
+      window.clearInterval(retry);
+      window.clearTimeout(stopRetry);
+    };
   }, []);
 
   return <span className={styles.mount} aria-hidden="true" />;
