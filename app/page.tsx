@@ -1,5 +1,5 @@
-import DashboardApp from "@/components/DashboardApp";
+import LiveRefresh from "@/components/LiveRefresh";
 
 export default function Home() {
-  return <DashboardApp />;
+  return <LiveRefresh />;
 }
