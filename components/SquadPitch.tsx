@@ -23,6 +23,8 @@ type Props = {
 };
 
 const positionLabel = (type: number) => ["", "GK", "DEF", "MID", "FWD"][type] ?? "";
+const playerPhotoUrl = (code: number) =>
+  `https://resources.premierleague.com/premierleague/photos/players/250x250/p${code}.png`;
 
 function PlayerTile({
   item,
@@ -40,6 +42,8 @@ function PlayerTile({
   onInspect?: (item: SquadPitchPlayer) => void;
 }) {
   const fixture = item.one.fixtureLabels[0] ?? "BLANK";
+  const fallback = team?.short_name ?? positionLabel(item.player.element_type);
+
   return (
     <div className={`${styles.tileWrap} ${selected ? styles.selectedWrap : ""}`}>
       <button
@@ -49,18 +53,42 @@ function PlayerTile({
         aria-pressed={mode === "transfer" ? selected : undefined}
         aria-label={`${mode === "transfer" ? selected ? "Deselect" : "Select" : "Open"} ${item.player.web_name}`}
       >
+        <span className={styles.playerVisual} aria-hidden="true">
+          <span className={styles.photoFallback}>{fallback}</span>
+          <img
+            src={playerPhotoUrl(item.player.code)}
+            alt=""
+            loading="lazy"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+        </span>
+
         <span className={styles.badges}>
           {item.pick.is_captain && <b className={styles.captain}>C</b>}
           {item.pick.is_vice_captain && <b className={styles.vice}>V</b>}
         </span>
-        <span className={styles.shirt}>{team?.short_name ?? positionLabel(item.player.element_type)}</span>
-        <strong>{item.player.web_name}</strong>
-        <small>{fixture}</small>
+
         <span className={styles.points}>{item.one.expected.toFixed(1)} <em>xPts</em></span>
-        {mode === "transfer" && <span className={styles.selectState}>{selected ? "Selected" : "Transfer out"}</span>}
+
+        <span className={styles.playerPlate}>
+          <strong>{item.player.web_name}</strong>
+          <small>{fixture}</small>
+        </span>
+
+        {mode === "transfer" && (
+          <span className={styles.selectState}>{selected ? "Selected" : "Transfer out"}</span>
+        )}
       </button>
+
       {onInspect && (
-        <button type="button" className={styles.inspectButton} onClick={() => onInspect(item)} aria-label={`Why ${item.player.web_name} projects this way`}>
+        <button
+          type="button"
+          className={styles.inspectButton}
+          onClick={() => onInspect(item)}
+          aria-label={`Why ${item.player.web_name} projects this way`}
+        >
           Why?
         </button>
       )}
@@ -109,7 +137,10 @@ export default function SquadPitch({
       </div>
 
       <div className={styles.benchSection}>
-        <div className={styles.benchHeading}><span>BENCH</span><small>Order from your imported FPL squad</small></div>
+        <div className={styles.benchHeading}>
+          <span>SUBSTITUTES</span>
+          <small>Bench order from your imported FPL squad</small>
+        </div>
         <div className={styles.benchRow}>
           {bench.map((item) => (
             <PlayerTile
