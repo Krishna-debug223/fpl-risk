@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import SiteAnalytics from "@/components/SiteAnalytics";
 import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
+import "./frontdesks-ui-fixes.css";
 
 const siteUrl = getSiteUrl();
 
