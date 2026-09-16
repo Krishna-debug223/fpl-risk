@@ -37,9 +37,8 @@ type Evaluation = {
 };
 
 const SEASON = process.env.BACKTEST_SEASON ?? "2025-26";
-const VAastavSeason = SEASON;
-const footballDataCode = SEASON === "2025-26" ? "2526" : SEASON === "2024-25" ? "2425" : SEASON === "2023-24" ? "2324" : null;
-if (!footballDataCode) throw new Error(`No Football-Data URL mapping configured for ${SEASON}`);
+const VAASTAV_BASE = `https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/${SEASON}`;
+const ODDS_MIRROR = "https://raw.githubusercontent.com/AnishKhetani/premier-league-data/main/data/processed/results_with_odds.csv";
 
 function parseCsv(text: string): CsvRow[] {
   const rows: string[][] = [];
@@ -62,14 +61,23 @@ function parseCsv(text: string): CsvRow[] {
   }
   if (field.length || row.length) { row.push(field); rows.push(row); }
   if (rows.length < 2) return [];
-  const headers = rows[0].map((header) => header.trim());
+  const headers = rows[0].map((header) => header.replace(/^\uFEFF/, "").trim());
   return rows.slice(1).map((values) => Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""])));
 }
 
 async function fetchCsv(url: string) {
-  const response = await fetch(url, { headers: { "User-Agent": "FPL-Risk-Sportsbook-Calibration/1.0" } });
-  if (!response.ok) throw new Error(`Calibration source returned ${response.status}: ${url}`);
-  return parseCsv(await response.text());
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "FPL-Risk-Sportsbook-Calibration/1.0", Accept: "text/csv,*/*" },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`Calibration source returned ${response.status}: ${url}`);
+    return parseCsv(await response.text());
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 const num = (value: string | undefined, fallback = 0) => {
@@ -115,6 +123,7 @@ function fplMatches(rows: CsvRow[]): Match[] {
     bucket.push(row);
     grouped.set(fixture, bucket);
   });
+
   const output: Match[] = [];
   grouped.forEach((fixtureRows, fixture) => {
     const homeRows = fixtureRows.filter((row) => ["true", "1"].includes(col(row, "was_home").toLowerCase()));
@@ -138,15 +147,18 @@ function fplMatches(rows: CsvRow[]): Match[] {
 }
 
 function oddsRows(rows: CsvRow[]): Odds[] {
-  return rows.map((row) => ({
-    home: col(row, "HomeTeam"),
-    away: col(row, "AwayTeam"),
-    homePrice: num(col(row, "AvgH", "B365H", "PSH")),
-    drawPrice: num(col(row, "AvgD", "B365D", "PSD")),
-    awayPrice: num(col(row, "AvgA", "B365A", "PSA")),
-    over25: num(col(row, "Avg>2.5", "B365>2.5", "P>2.5")),
-    under25: num(col(row, "Avg<2.5", "B365<2.5", "P<2.5")),
-  })).filter((row) => row.home && row.away && row.homePrice > 1 && row.drawPrice > 1 && row.awayPrice > 1 && row.over25 > 1 && row.under25 > 1);
+  return rows
+    .filter((row) => col(row, "season") === SEASON)
+    .map((row) => ({
+      home: col(row, "home_team"),
+      away: col(row, "away_team"),
+      homePrice: num(col(row, "market_avg_1x2_home_close", "market_avg_1x2_home", "bet365_1x2_home_close", "bet365_1x2_home", "pinnacle_1x2_home_close", "pinnacle_1x2_home")),
+      drawPrice: num(col(row, "market_avg_1x2_draw_close", "market_avg_1x2_draw", "bet365_1x2_draw_close", "bet365_1x2_draw", "pinnacle_1x2_draw_close", "pinnacle_1x2_draw")),
+      awayPrice: num(col(row, "market_avg_1x2_away_close", "market_avg_1x2_away", "bet365_1x2_away_close", "bet365_1x2_away", "pinnacle_1x2_away_close", "pinnacle_1x2_away")),
+      over25: num(col(row, "market_avg_over25_close", "market_avg_over25", "bet365_over25_close", "bet365_over25", "pinnacle_over25_close", "pinnacle_over25")),
+      under25: num(col(row, "market_avg_under25_close", "market_avg_under25", "bet365_under25_close", "bet365_under25", "pinnacle_under25_close", "pinnacle_under25")),
+    }))
+    .filter((row) => row.home && row.away && row.homePrice > 1 && row.drawPrice > 1 && row.awayPrice > 1 && row.over25 > 1 && row.under25 > 1);
 }
 
 function sportsbookExpectedGoals(odds: Odds) {
@@ -224,12 +236,12 @@ function evaluate(records: Array<{ actualHome: number; actualAway: number; baseH
 }
 
 async function main() {
-  const [fplRows, footballDataRows] = await Promise.all([
-    fetchCsv(`https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/${VAastavSeason}/gws/merged_gw.csv`),
-    fetchCsv(`https://www.football-data.co.uk/mmz4281/${footballDataCode}/E0.csv`),
+  const [fplRows, historicalOddsRows] = await Promise.all([
+    fetchCsv(`${VAASTAV_BASE}/gws/merged_gw.csv`),
+    fetchCsv(ODDS_MIRROR),
   ]);
   const matches = fplMatches(fplRows);
-  const odds = oddsRows(footballDataRows);
+  const odds = oddsRows(historicalOddsRows);
   const oddsMap = new Map(odds.map((row) => [`${alias(row.home)}::${alias(row.away)}`, row]));
   const records: Array<{ actualHome: number; actualAway: number; baseHome: number; baseAway: number; marketHome: number; marketAway: number }> = [];
 
@@ -242,7 +254,14 @@ async function main() {
     const prior = matches.filter((candidate) => candidate.gw < match.gw);
     if (!prior.length) return;
     const base = baseExpectedGoals(match, prior);
-    records.push({ actualHome: match.homeGoals, actualAway: match.awayGoals, baseHome: base.home, baseAway: base.away, marketHome: market.home, marketAway: market.away });
+    records.push({
+      actualHome: match.homeGoals,
+      actualAway: match.awayGoals,
+      baseHome: base.home,
+      baseAway: base.away,
+      marketHome: market.home,
+      marketAway: market.away,
+    });
   });
 
   if (records.length < 100) throw new Error(`Only matched ${records.length} historical fixtures to sportsbook odds; calibration would be unreliable.`);
@@ -259,15 +278,27 @@ async function main() {
     matchedFixtures: records.length,
     sources: {
       fpl: "vaastav/Fantasy-Premier-League merged_gw.csv",
-      sportsbook: "Football-Data.co.uk Premier League match/total-goal odds",
+      sportsbook: "football-data.co.uk odds, accessed through AnishKhetani/premier-league-data processed GitHub mirror",
     },
     methodology: "Walk-forward team xG baseline; pre-match/closing 1X2 and O/U 2.5 odds are de-vigged, converted to market expected goals, then blended at candidate weights. Weight is selected by lowest Poisson NLL, with clean-sheet Brier as tie-breaker. No target-match result or target-match xG is used in the baseline forecast.",
-    baseline,
-    results: results.map((result) => ({ ...result, goalRmse: Number(result.goalRmse.toFixed(6)), poissonNll: Number(result.poissonNll.toFixed(6)), cleanSheetBrier: Number(result.cleanSheetBrier.toFixed(6)) })),
+    baseline: {
+      ...baseline,
+      goalRmse: Number(baseline.goalRmse.toFixed(6)),
+      poissonNll: Number(baseline.poissonNll.toFixed(6)),
+      cleanSheetBrier: Number(baseline.cleanSheetBrier.toFixed(6)),
+    },
+    results: results.map((result) => ({
+      ...result,
+      goalRmse: Number(result.goalRmse.toFixed(6)),
+      poissonNll: Number(result.poissonNll.toFixed(6)),
+      cleanSheetBrier: Number(result.cleanSheetBrier.toFixed(6)),
+    })),
     bestMeasuredWeight: best.weight,
     recommendedWeight,
     relativePoissonNllImprovement: Number((nllImprovement * 100).toFixed(4)),
-    note: recommendedWeight === 0 ? "The historical sportsbook blend did not clear the minimum improvement threshold, so live market influence should remain disabled." : `Use ${recommendedWeight.toFixed(3)} as the evidence-based team-market prior weight before quality scaling; keep the production cap in place.`,
+    note: recommendedWeight === 0
+      ? "The historical sportsbook blend did not clear the minimum improvement threshold, so live market influence should remain disabled."
+      : `Use ${recommendedWeight.toFixed(3)} as the evidence-based team-market prior weight before quality scaling; keep the production cap in place.`,
   };
 
   const path = resolve(`reports/sportsbook-calibration-${SEASON}.json`);
