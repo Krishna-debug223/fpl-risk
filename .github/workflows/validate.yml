@@ -13,7 +13,7 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,12 +35,19 @@ jobs:
       - name: Model v1.2 invariants
         run: npm run model:check:v12
 
-      - name: Walk-forward backtest smoke test
+      - name: Full walk-forward backtest
         env:
           BACKTEST_SEASON: 2025-26
           BACKTEST_START_GW: 4
-          BACKTEST_END_GW: 5
+          BACKTEST_END_GW: 38
         run: npm run backtest
+
+      - name: Upload backtest report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-v12-2025-26
+          path: reports/backtest-*.json
+          if-no-files-found: error
 
       - name: Production build
         run: npm run build
