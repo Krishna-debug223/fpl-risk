@@ -17,7 +17,7 @@ import {
   type Recommendation,
 } from "@/lib/risk-v12";
 
-type Tab = "overview" | "transfer" | "market" | "model";
+type Tab = "overview" | "transfer" | "team" | "market" | "model";
 type ProjectionRow = {
   player: FplPlayer;
   one: MarketProjection;
@@ -30,6 +30,13 @@ type MarketSort = "one" | "three" | "five" | "value" | "price" | "risk" | "owner
 
 const money = (value: number | null | undefined) => value == null ? "—" : `£${(value / 10).toFixed(1)}m`;
 const riskRank: Record<MarketProjection["risk"], number> = { Low: 1, Medium: 2, High: 3 };
+const tabLabels: Record<Tab, string> = {
+  overview: "Overview",
+  transfer: "Transfer Lab",
+  team: "My Team",
+  market: "Player Market",
+  model: "Model",
+};
 
 function availabilityLabel(player: FplPlayer) {
   if (["u", "n"].includes(player.status)) return "Unavailable";
@@ -316,10 +323,16 @@ export default function LiveRefreshV12() {
           <span className={styles.brandMark}>FR</span>
           <span><strong>FPL RISK</strong><small>Decision analytics</small></span>
         </button>
-        <nav className={styles.nav} aria-label="Primary navigation">
-          {(["overview", "transfer", "market", "model"] as Tab[]).map((item) => (
-            <button key={item} className={tab === item ? styles.activeNav : ""} onClick={() => setTab(item)}>
-              {item === "overview" ? "Overview" : item === "transfer" ? "Transfer Lab" : item === "market" ? "Player Market" : "Model"}
+        <nav className={styles.nav} aria-label="Primary navigation" role="tablist">
+          {(["overview", "transfer", "team", "market", "model"] as Tab[]).map((item) => (
+            <button
+              key={item}
+              className={tab === item ? styles.activeNav : ""}
+              onClick={() => setTab(item)}
+              role="tab"
+              aria-selected={tab === item}
+            >
+              {tabLabels[item]}
             </button>
           ))}
         </nav>
@@ -329,7 +342,7 @@ export default function LiveRefreshV12() {
       {feedError && <div className={styles.errorBanner}>{feedError}</div>}
 
       {tab === "overview" && (
-        <div className={styles.page}>
+        <div className={styles.page} role="tabpanel" aria-label="Overview">
           <section className={styles.hero}>
             <div className={styles.heroCopy}>
               <span className={styles.eyebrow}>LIVE FPL DECISION ENGINE</span>
@@ -350,6 +363,7 @@ export default function LiveRefreshV12() {
                 <button disabled={loadingTeam}>{loadingTeam ? "Loading…" : manager ? "Reload" : "Analyze"}</button>
               </div>
               {teamError && <small className={styles.formError}>{teamError}</small>}
+              {manager && <button type="button" className={styles.textButton} onClick={() => setTab("team")}>Open My Team →</button>}
             </form>
           </section>
 
@@ -377,10 +391,35 @@ export default function LiveRefreshV12() {
             <p className={styles.railHint}>The rail drifts both directions · pauses on hover · respects reduced-motion settings</p>
           </section>
 
-          {manager ? (
+          <section className={styles.modelSnapshot}>
+            <div className={styles.sectionTitle}><div><span className={styles.eyebrow}>MODEL SNAPSHOT</span><h2>What the engine is reading</h2></div><button onClick={() => setTab("model")}>How the model works →</button></div>
+            <div className={styles.snapshotGrid}>
+              <div><span>PLAYER ROLE</span><strong>Expected minutes</strong><p>Starts, historical role and current availability set the playing-time foundation.</p></div>
+              <div><span>UNDERLYING</span><strong>xG + xA</strong><p>Player attacking rates are sample-size shrunk rather than extrapolated from short-term points.</p></div>
+              <div><span>FIXTURE</span><strong>Team + opponent</strong><p>Home/away strength, xG/xGA, recent form, Elo and FDR shape each fixture context.</p></div>
+              <div><span>MARKET PRIOR</span><strong>{sportsbook?.available ? sportsbook.configuredWeight > 0 ? "Sportsbook active" : "Feed connected" : "Optional"}</strong><p>{sportsbook?.note ?? "The sportsbook layer fails open: no market data means the core model is unchanged."}</p></div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {tab === "team" && (
+        <div className={styles.page} role="tabpanel" aria-label="My Team">
+          <div className={styles.pageHeading}>
+            <div><span className={styles.eyebrow}>MY TEAM</span><h1>Your squad, in one focused workspace.</h1><p>Squad shape, projections, chip guidance and the model's recommended move live here — separate from the rest of the app.</p></div>
+            {manager && <div className={styles.managerBadge}><strong>{manager.teamName}</strong><span>{money(manager.bank)} bank</span></div>}
+          </div>
+
+          {!manager ? (
+            <section className={styles.loadPanel}>
+              <span className={styles.eyebrow}>LOAD YOUR TEAM</span><h2>Import your 15-player squad</h2><p>Your public Team ID is enough. No password or FPL login is required.</p>
+              <form className={styles.importRow} onSubmit={importTeam}><input value={teamId} onChange={(event) => setTeamId(event.target.value)} placeholder="FPL Team ID" inputMode="numeric" /><button disabled={loadingTeam}>{loadingTeam ? "Loading…" : "Load team"}</button></form>
+              {teamError && <small className={styles.formError}>{teamError}</small>}
+            </section>
+          ) : (
             <>
               <section className={styles.summarySection}>
-                <div className={styles.sectionTitle}><div><span className={styles.eyebrow}>YOUR TEAM</span><h2>{manager.teamName}</h2><p>{manager.managerName} · imported from the public FPL API</p></div><button onClick={() => setTab("transfer")}>Open Transfer Lab →</button></div>
+                <div className={styles.sectionTitle}><div><span className={styles.eyebrow}>TEAM SNAPSHOT</span><h2>{manager.teamName}</h2><p>{manager.managerName} · imported from the public FPL API</p></div><button onClick={() => setTab("transfer")}>Open Transfer Lab →</button></div>
                 <div className={styles.summaryGrid}>
                   <div><span>PROJECTED GW</span><strong>{teamOneGw.toFixed(1)}</strong><small>includes current captain multiplier</small></div>
                   <div><span>STARTING XI · 5GW</span><strong>{teamFiveGw.toFixed(1)}</strong><small>pre-transfer expectation</small></div>
@@ -437,31 +476,12 @@ export default function LiveRefreshV12() {
                 <div className={styles.signalGrid}>{riskNotes.map((note) => <article className={`${styles.signalCard} ${styles[note.tone]}`} key={note.title}><span>{note.tone === "warn" ? "WATCH" : note.tone === "good" ? "POSITIVE" : "MODEL NOTE"}</span><h3>{note.title}</h3><p>{note.detail}</p></article>)}</div>
               </section>
             </>
-          ) : (
-            <section className={styles.explainerSection}>
-              <div className={styles.sectionTitle}><div><span className={styles.eyebrow}>FROM SQUAD TO DECISION</span><h2>More than a projection leaderboard</h2><p>FPL Risk connects the player model to the choices a manager actually has to make.</p></div></div>
-              <div className={styles.explainerGrid}>
-                <article><b>01</b><h3>Import the real squad</h3><p>See your starting XI and bench in a pitch layout with selling prices, captaincy and fixtures.</p></article>
-                <article><b>02</b><h3>Compare legal moves</h3><p>Budget, position, club limits, hits and availability are enforced before a recommendation is ranked.</p></article>
-                <article><b>03</b><h3>Understand the why</h3><p>Every projection exposes minutes, attack, clean sheet, bonus, discipline and market-prior effects.</p></article>
-              </div>
-            </section>
           )}
-
-          <section className={styles.modelSnapshot}>
-            <div className={styles.sectionTitle}><div><span className={styles.eyebrow}>MODEL SNAPSHOT</span><h2>What the engine is reading</h2></div><button onClick={() => setTab("model")}>How the model works →</button></div>
-            <div className={styles.snapshotGrid}>
-              <div><span>PLAYER ROLE</span><strong>Expected minutes</strong><p>Starts, historical role and current availability set the playing-time foundation.</p></div>
-              <div><span>UNDERLYING</span><strong>xG + xA</strong><p>Player attacking rates are sample-size shrunk rather than extrapolated from short-term points.</p></div>
-              <div><span>FIXTURE</span><strong>Team + opponent</strong><p>Home/away strength, xG/xGA, recent form, Elo and FDR shape each fixture context.</p></div>
-              <div><span>MARKET PRIOR</span><strong>{sportsbook?.available ? sportsbook.configuredWeight > 0 ? "Sportsbook active" : "Feed connected" : "Optional"}</strong><p>{sportsbook?.note ?? "The sportsbook layer fails open: no market data means the core model is unchanged."}</p></div>
-            </div>
-          </section>
         </div>
       )}
 
       {tab === "transfer" && (
-        <div className={styles.page}>
+        <div className={styles.page} role="tabpanel" aria-label="Transfer Lab">
           <div className={styles.pageHeading}>
             <div><span className={styles.eyebrow}>TRANSFER LAB</span><h1>Choose players directly from the pitch.</h1><p>The optimizer evaluates your selected outs together, so shared budget and club constraints stay legal across the whole transfer plan.</p></div>
             {manager && <div className={styles.managerBadge}><strong>{manager.teamName}</strong><span>{money(manager.bank)} bank</span></div>}
@@ -520,7 +540,7 @@ export default function LiveRefreshV12() {
       )}
 
       {tab === "market" && (
-        <div className={styles.page}>
+        <div className={styles.page} role="tabpanel" aria-label="Player Market">
           <div className={styles.pageHeading}><div><span className={styles.eyebrow}>PLAYER MARKET</span><h1>Every projectable player.</h1><p>Search, filter and sort the full live player pool. Every row exposes the model's reasoning.</p></div><div className={styles.marketCount}><strong>{marketRows.length}</strong><span>players shown</span></div></div>
           <section className={styles.marketControls}>
             <input value={marketQuery} onChange={(event) => setMarketQuery(event.target.value)} placeholder="Search player" aria-label="Search player" />
@@ -550,7 +570,7 @@ export default function LiveRefreshV12() {
       )}
 
       {tab === "model" && (
-        <div className={styles.page}>
+        <div className={styles.page} role="tabpanel" aria-label="Model">
           <div className={styles.pageHeading}><div><span className={styles.eyebrow}>MODEL TRANSPARENCY</span><h1>Risk Model {MODEL_VERSION}</h1><p>The number is not a black box. FPL Risk builds expected points from role, rates, fixtures, uncertainty and an optional external market prior.</p></div></div>
 
           <section className={styles.modelFlow}>
