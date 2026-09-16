@@ -9,14 +9,14 @@ export default function PlannerShortcut() {
   const pathname = usePathname();
   const router = useRouter();
   const isPlanner = pathname.startsWith("/planner");
-  const isStandalone = ["/pricing", "/sign-in", "/reset-password", "/account", "/privacy", "/terms"].some((path) => pathname.startsWith(path));
+  const isStandalone = pathname === "/" || ["/pricing", "/sign-in", "/reset-password", "/account", "/privacy", "/terms"].some((path) => pathname.startsWith(path));
   if (isStandalone) return null;
 
   return (
     <div className={styles.dock}>
       <div className={styles.launchLinks}>
         <Link href="/pricing">Pricing</Link>
-        <Link href="/sign-in">Sign in</Link>
+        <Link href="/">Sign in</Link>
       </div>
       {!isPlanner && (
         <div className={styles.shortcut}>
