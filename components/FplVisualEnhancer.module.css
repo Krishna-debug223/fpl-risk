@@ -8,29 +8,87 @@
   overflow: hidden;
 }
 
-.photoFrame.photoFrame {
+.kitFrame.kitFrame {
   position: relative;
   display: grid;
-  place-items: end center;
-  width: 76px;
-  height: 76px;
-  overflow: hidden;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  overflow: visible;
   color: #37003c;
-  background: #f1edf3;
-  border: 1px solid #e0d8e2;
-  border-radius: 19px;
-  box-shadow: inset 0 -8px 0 rgba(55, 0, 60, 0.035);
+  background: radial-gradient(circle at 50% 72%, #f2edf4 0 42%, rgba(242, 237, 244, 0) 43%);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
-.playerPhoto {
-  position: absolute;
+.kitShirt {
+  position: relative;
   z-index: 2;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center bottom;
-  filter: drop-shadow(0 5px 7px rgba(55, 0, 60, 0.12));
+  display: grid;
+  place-items: center;
+  width: 47px;
+  height: 57px;
+  color: var(--kit-text, #ffffff);
+  background: var(--kit-body, #37003c);
+  border: 1px solid rgba(20, 22, 28, 0.18);
+  border-radius: 8px 8px 11px 11px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 9px 17px rgba(55, 0, 60, 0.14);
+}
+
+.kitShirt::before,
+.kitShirt::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 4px;
+  width: 22px;
+  height: 30px;
+  background: var(--kit-sleeve, #37003c);
+  border: 1px solid rgba(20, 22, 28, 0.14);
+}
+
+.kitShirt::before {
+  left: -15px;
+  border-radius: 9px 3px 7px 8px;
+  transform: rotate(18deg) skewY(-6deg);
+}
+
+.kitShirt::after {
+  right: -15px;
+  border-radius: 3px 9px 8px 7px;
+  transform: rotate(-18deg) skewY(6deg);
+}
+
+.kitCollar {
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  width: 15px;
+  height: 7px;
+  transform: translateX(-50%);
+  background: #f7f7f7;
+  border: 2px solid var(--kit-trim, #ffffff);
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+}
+
+.kitShirt > b {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  min-height: 18px;
+  padding: 1px 4px;
+  color: var(--kit-text, #ffffff);
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.24);
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: 0.05em;
 }
 
 @media (max-width: 700px) {
@@ -38,10 +96,28 @@
     width: 300px;
   }
 
-  .photoFrame.photoFrame {
-    width: 68px;
-    height: 68px;
-    border-radius: 17px;
+  .kitFrame.kitFrame {
+    width: 72px;
+    height: 72px;
+  }
+
+  .kitShirt {
+    width: 42px;
+    height: 51px;
+  }
+
+  .kitShirt::before,
+  .kitShirt::after {
+    width: 20px;
+    height: 27px;
+  }
+
+  .kitShirt::before {
+    left: -13px;
+  }
+
+  .kitShirt::after {
+    right: -13px;
   }
 }
 
