@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./AccountPanel.module.css";
 
@@ -26,6 +26,13 @@ export default function AccountPanel({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (initialTeamId) window.localStorage.setItem("fpl-risk-team-id", initialTeamId);
+    else window.localStorage.removeItem("fpl-risk-team-id");
+    window.localStorage.setItem("fpl-risk-free-transfers", String(initialFreeTransfers));
+    window.localStorage.setItem("fpl-risk-strategy-mode", initialStrategyMode);
+  }, [initialFreeTransfers, initialStrategyMode, initialTeamId]);
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -112,6 +119,7 @@ export default function AccountPanel({
 
           <div className={styles.side}>
             <article><span>WHAT IS SAVED</span><h3>Small by design.</h3><p>Your login email is managed by the account provider. FPL Risk stores the Team ID and planning defaults above in account metadata. Your official FPL password is never requested or stored.</p></article>
+            <article><span>CROSS-DEVICE SYNC</span><h3>Your saved defaults follow the account.</h3><p>After you sign in on another browser, opening this account page copies the saved Team ID and planner defaults into that browser for the rest of the FPL Risk experience.</p><Link href="/planner">Open 8-GW Planner →</Link></article>
             <article><span>GUEST MODE</span><h3>Signing in stays optional.</h3><p>Signing out does not block the model. You can continue using projections, Transfer Lab, Player Market and the Path Planner as a guest.</p><Link href="/">Open dashboard →</Link></article>
             <button className={styles.signOut} type="button" onClick={signOut} disabled={busy}>Sign out</button>
           </div>
