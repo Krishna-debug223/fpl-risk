@@ -68,6 +68,16 @@ const midfielder = player({ id: 1, code: 101, team: 1, element_type: 3 });
 const base = baseProjectPlayer(midfielder, fixtures, teams, 1);
 const noMarket = projectPlayer(midfielder, fixtures, teams, 1, undefined, null);
 assert(Math.abs(base.expected - noMarket.expected) < 1e-10, "no sportsbook payload must leave the base model unchanged");
+assert(noMarket.components.fixtureDifficulty > 0, "an easy FDR 1/2 fixture should expose a positive fixture-difficulty component");
+
+const neutralFixtures = fixtures.map((fixture) => fixture.id === 10 ? { ...fixture, team_h_difficulty: 3 } : fixture);
+const neutralFixtureProjection = projectPlayer(midfielder, neutralFixtures, teams, 1, undefined, null);
+assert(Math.abs(neutralFixtureProjection.components.fixtureDifficulty) < 1e-10, "an FDR 3 fixture should expose a neutral fixture-difficulty component");
+
+const hardFixtures = fixtures.map((fixture) => fixture.id === 10 ? { ...fixture, team_h_difficulty: 5 } : fixture);
+const hardFixtureProjection = projectPlayer(midfielder, hardFixtures, teams, 1, undefined, null);
+assert(hardFixtureProjection.components.fixtureDifficulty < 0, "an FDR 4/5 fixture should expose a negative fixture-difficulty component");
+assert(noMarket.expected > hardFixtureProjection.expected, "making the same fixture materially harder must not increase the projection");
 
 const zeroWeight: SportsbookPayload = {
   available: true,
@@ -144,4 +154,4 @@ const resultingPlayers = [...resultingIds].map((id) => universe.find((item) => i
 const clubOneCount = resultingPlayers.filter((item) => item.team === 1).length;
 assert(clubOneCount <= 3, "joint optimizer must enforce the maximum-three-per-club rule across the resulting squad");
 
-console.log("Model v1.2 checks passed: sportsbook fail-open/zero-weight invariance, bounded market influence, directional attack/clean-sheet response, and joint-transfer legality.");
+console.log("Model v1.2 checks passed: fixture-component directionality, sportsbook fail-open/zero-weight invariance, bounded market influence, directional attack/clean-sheet response, and joint-transfer legality.");
