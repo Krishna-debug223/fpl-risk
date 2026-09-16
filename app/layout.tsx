@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Inter, Inter_Tight } from "next/font/google";
+import { IBM_Plex_Mono, Manrope, Space_Grotesk } from "next/font/google";
 import SiteAnalytics from "@/components/SiteAnalytics";
 import FplVisualEnhancer from "@/components/FplVisualEnhancer";
 import { getSiteUrl } from "@/lib/site-url";
@@ -7,15 +7,16 @@ import "./globals.css";
 import "./frontdesks-ui-fixes.css";
 import "./geist-typography.css";
 
-const inter = Inter({
+const manrope = Manrope({
   variable: "--font-app-sans",
   subsets: ["latin"],
   display: "swap",
 });
 
-const interTight = Inter_Tight({
+const spaceGrotesk = Space_Grotesk({
   variable: "--font-app-display",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -55,7 +56,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${interTight.variable} ${ibmPlexMono.variable}`}>
+    <html lang="en" className={`${manrope.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
       <body>
         {children}
         <FplVisualEnhancer />
