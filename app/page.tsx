@@ -1,5 +1,5 @@
-import LiveRefresh from "@/components/LiveRefresh";
+import LiveRefreshV12 from "@/components/LiveRefreshV12";
 
 export default function Home() {
-  return <LiveRefresh />;
+  return <LiveRefreshV12 />;
 }
