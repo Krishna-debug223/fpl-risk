@@ -1,0 +1,21 @@
+/* Responsive guardrails for the Frontdesks-inspired shell.
+   The primary FPL workspace navigation must remain real, visible tabs at every width. */
+@media (max-width: 1180px) {
+  nav[role="tablist"][aria-label="Primary navigation"] {
+    display: flex !important;
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  nav[role="tablist"][aria-label="Primary navigation"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  nav[role="tablist"][aria-label="Primary navigation"] > button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
