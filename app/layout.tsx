@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Mono, Inter, Inter_Tight } from "next/font/google";
 import SiteAnalytics from "@/components/SiteAnalytics";
 import FplVisualEnhancer from "@/components/FplVisualEnhancer";
 import { getSiteUrl } from "@/lib/site-url";
@@ -7,15 +7,22 @@ import "./globals.css";
 import "./frontdesks-ui-fixes.css";
 import "./geist-typography.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-app-sans",
   subsets: ["latin"],
   display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const interTight = Inter_Tight({
+  variable: "--font-app-display",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-app-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -48,7 +55,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${interTight.variable} ${ibmPlexMono.variable}`}>
       <body>
         {children}
         <FplVisualEnhancer />
