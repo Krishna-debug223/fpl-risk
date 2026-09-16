@@ -65,7 +65,7 @@ export default function LiveRefreshV12() {
   const [marketQuery, setMarketQuery] = useState("");
   const [marketPosition, setMarketPosition] = useState(0);
   const [marketTeam, setMarketTeam] = useState(0);
-  const [marketMaxPrice, setMarketMaxPrice] = useState(150);
+  const [marketMaxPrice, setMarketMaxPrice] = useState<number | null>(null);
   const [marketSort, setMarketSort] = useState<MarketSort>("five");
 
   useEffect(() => {
@@ -107,6 +107,17 @@ export default function LiveRefreshV12() {
   const teams = bootstrap?.teams ?? [];
   const events = bootstrap?.events ?? [];
   const historicalProfiles = history?.players;
+  const marketPriceFloor = useMemo(() => {
+    if (!players.length) return 40;
+    const liveMinimum = Math.min(...players.map((player) => player.now_cost));
+    return Math.max(0, Math.floor(liveMinimum / 5) * 5);
+  }, [players]);
+  const marketPriceCeiling = useMemo(() => {
+    if (!players.length) return 150;
+    const liveMaximum = Math.max(...players.map((player) => player.now_cost));
+    return Math.max(150, Math.ceil(liveMaximum / 5) * 5);
+  }, [players]);
+  const effectiveMarketMaxPrice = marketMaxPrice ?? marketPriceCeiling;
   const teamMap = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const playerMap = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
 
@@ -229,7 +240,7 @@ export default function LiveRefreshV12() {
       if (query && !`${player.web_name} ${player.first_name} ${player.second_name}`.toLowerCase().includes(query)) return false;
       if (marketPosition && player.element_type !== marketPosition) return false;
       if (marketTeam && player.team !== marketTeam) return false;
-      if (player.now_cost > marketMaxPrice) return false;
+      if (player.now_cost > effectiveMarketMaxPrice) return false;
       return true;
     });
     return filtered.sort((a, b) => {
@@ -241,7 +252,7 @@ export default function LiveRefreshV12() {
       if (marketSort === "risk") return riskRank[a.five.risk] - riskRank[b.five.risk];
       return Number.parseFloat(b.player.selected_by_percent || "0") - Number.parseFloat(a.player.selected_by_percent || "0");
     });
-  }, [marketMaxPrice, marketPosition, marketQuery, marketSort, marketTeam, projectableMarket]);
+  }, [effectiveMarketMaxPrice, marketPosition, marketQuery, marketSort, marketTeam, projectableMarket]);
 
   const riskNotes = useMemo(() => {
     if (!manager) return [];
@@ -515,7 +526,7 @@ export default function LiveRefreshV12() {
             <input value={marketQuery} onChange={(event) => setMarketQuery(event.target.value)} placeholder="Search player" aria-label="Search player" />
             <select value={marketPosition} onChange={(event) => setMarketPosition(Number(event.target.value))} aria-label="Position"><option value={0}>All positions</option><option value={1}>Goalkeepers</option><option value={2}>Defenders</option><option value={3}>Midfielders</option><option value={4}>Forwards</option></select>
             <select value={marketTeam} onChange={(event) => setMarketTeam(Number(event.target.value))} aria-label="Club"><option value={0}>All clubs</option>{teams.map((team) => <option value={team.id} key={team.id}>{team.name}</option>)}</select>
-            <label>Max price <strong>{money(marketMaxPrice)}</strong><input type="range" min={40} max={150} value={marketMaxPrice} onChange={(event) => setMarketMaxPrice(Number(event.target.value))} /></label>
+            <label>Max price <strong>{money(effectiveMarketMaxPrice)}</strong><input type="range" min={marketPriceFloor} max={marketPriceCeiling} step={1} value={effectiveMarketMaxPrice} onChange={(event) => setMarketMaxPrice(Number(event.target.value))} /></label>
             <select value={marketSort} onChange={(event) => setMarketSort(event.target.value as MarketSort)} aria-label="Sort player market"><option value="five">Sort: 5GW xPts</option><option value="one">Sort: 1GW xPts</option><option value="three">Sort: 3GW xPts</option><option value="value">Sort: Value</option><option value="price">Sort: Price</option><option value="risk">Sort: Lowest risk</option><option value="ownership">Sort: Ownership</option></select>
           </section>
           <section className={styles.marketTable}>
