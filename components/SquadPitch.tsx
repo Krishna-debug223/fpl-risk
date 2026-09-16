@@ -1,7 +1,9 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import type { FplPlayer, FplTeam, ManagerPick } from "@/lib/types";
 import type { MarketProjection } from "@/lib/risk-v12";
+import { getClubKitVars } from "@/lib/club-kits";
 import styles from "./SquadPitch.module.css";
 
 export type SquadPitchPlayer = {
@@ -23,8 +25,6 @@ type Props = {
 };
 
 const positionLabel = (type: number) => ["", "GK", "DEF", "MID", "FWD"][type] ?? "";
-const playerPhotoUrl = (code: number) =>
-  `https://resources.premierleague.com/premierleague/photos/players/250x250/p${code}.png`;
 
 function PlayerTile({
   item,
@@ -42,7 +42,8 @@ function PlayerTile({
   onInspect?: (item: SquadPitchPlayer) => void;
 }) {
   const fixture = item.one.fixtureLabels[0] ?? "BLANK";
-  const fallback = team?.short_name ?? positionLabel(item.player.element_type);
+  const teamCode = team?.short_name ?? positionLabel(item.player.element_type);
+  const kitStyle = getClubKitVars(teamCode) as CSSProperties;
 
   return (
     <div className={`${styles.tileWrap} ${selected ? styles.selectedWrap : ""}`}>
@@ -54,15 +55,10 @@ function PlayerTile({
         aria-label={`${mode === "transfer" ? selected ? "Deselect" : "Select" : "Open"} ${item.player.web_name}`}
       >
         <span className={styles.playerVisual} aria-hidden="true">
-          <span className={styles.photoFallback}>{fallback}</span>
-          <img
-            src={playerPhotoUrl(item.player.code)}
-            alt=""
-            loading="lazy"
-            onError={(event) => {
-              event.currentTarget.style.display = "none";
-            }}
-          />
+          <span className={styles.kitShirt} style={kitStyle}>
+            <span className={styles.kitCollar} />
+            <b>{teamCode}</b>
+          </span>
         </span>
 
         <span className={styles.badges}>
