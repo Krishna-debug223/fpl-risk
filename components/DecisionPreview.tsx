@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FplPlayer } from "@/lib/types";
 import type { MarketProjection } from "@/lib/risk-v12";
+import BrandMark from "./BrandMark";
 import styles from "./DecisionPreview.module.css";
 
 type Row = {
@@ -48,18 +49,19 @@ export default function DecisionPreview({
   const trigger = useRef<HTMLButtonElement>(null);
   const row = rows.find((r) => r.player.id === selected) ?? rows[0];
   const forecast = row?.[horizon];
+
   useEffect(() => {
-    if (expanded) {
-      dialog.current?.showModal();
-      const previous = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = previous;
-        dialog.current?.close();
-        trigger.current?.focus();
-      };
-    }
+    if (!expanded) return;
+    dialog.current?.showModal();
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+      dialog.current?.close();
+      trigger.current?.focus();
+    };
   }, [expanded]);
+
   const close = () => setExpanded(false);
   const tabs = (prefix: string) => (
     <div className={styles.tabs} role="tablist" aria-label={`${prefix} views`}>
@@ -90,6 +92,7 @@ export default function DecisionPreview({
       ))}
     </div>
   );
+
   const content = (prefix: string) => (
     <div
       key={view}
@@ -97,9 +100,10 @@ export default function DecisionPreview({
       role="tabpanel"
       id={`${prefix}-content`}
       aria-labelledby={`${prefix}-${view}`}
+      aria-busy={!row}
     >
       {!row ? (
-        <div className={styles.empty}>Your live forecast is loading…</div>
+        <div className={styles.empty} aria-label="Loading forecast data">—</div>
       ) : view === "forecast" ? (
         <>
           <div className={styles.playerHeading}>
@@ -214,6 +218,7 @@ export default function DecisionPreview({
       )}
     </div>
   );
+
   return (
     <>
       <div className={styles.stage}>
@@ -227,13 +232,13 @@ export default function DecisionPreview({
         </div>
         <div className={styles.preview}>
           <header>
-            <span className={styles.mark}>FR</span>
+            <BrandMark className={styles.mark} />
             <div>
               <strong>Your decision desk</strong>
               <small>{gameweek} · FPL Risk</small>
             </div>
-            <span className={styles.live}>
-              <i /> {row ? "LIVE DATA" : "SYNCING"}
+            <span className={styles.live} aria-busy={!row}>
+              <i /> {row ? "Live data" : "—"}
             </span>
           </header>
           {tabs("preview")}
@@ -262,73 +267,76 @@ export default function DecisionPreview({
           <span className={styles.signal}>◎</span>
           <div>
             <small>MODEL CONFIDENCE</small>
-            <strong>{row ? `${row.one.dataQuality} / 100` : "Loading…"}</strong>
+            <strong>{row ? `${row.one.dataQuality} / 100` : "—"}</strong>
             <small>Click to explore the inputs ↗</small>
           </div>
         </button>
       </div>
-      <dialog
-        ref={dialog}
-        className={styles.dialog}
-        onCancel={close}
-        onClick={(e) => {
-          if (e.target === dialog.current) close();
-        }}
-        aria-labelledby="desk-title"
-      >
-        <button
-          className={styles.close}
-          onClick={close}
-          aria-label="Close decision desk"
+
+      {expanded && (
+        <dialog
+          ref={dialog}
+          className={styles.dialog}
+          onCancel={close}
+          onClick={(e) => {
+            if (e.target === dialog.current) close();
+          }}
+          aria-labelledby="desk-title"
         >
-          ×
-        </button>
-        <div className={styles.dialogMain}>
-          <span className={styles.eyebrow}>THE DECISION DESK</span>
-          <h2 id="desk-title">
-            The detail behind <em>your next move.</em>
-          </h2>
-          {tabs("desk")}
-          {content("desk")}
-        </div>
-        <aside className={styles.sidebar}>
-          <span className={styles.eyebrow}>ONE PLAYER. THE FULL PICTURE.</span>
-          <div className={styles.sideStats}>
-            <div>
-              <strong>{row?.one.expected.toFixed(1) ?? "—"}</strong>
-              <span>next GW xPts</span>
-            </div>
-            <div>
-              <strong>{row?.one.dataQuality ?? "—"}</strong>
-              <span>data quality / 100</span>
-            </div>
+          <button
+            className={styles.close}
+            onClick={close}
+            aria-label="Close decision desk"
+          >
+            ×
+          </button>
+          <div className={styles.dialogMain}>
+            <span className={styles.eyebrow}>THE DECISION DESK</span>
+            <h2 id="desk-title">
+              The detail behind <em>your next move.</em>
+            </h2>
+            {tabs("desk")}
+            {content("desk")}
           </div>
-          <ul>
-            <li>Switch between forecast, fixtures and scoring inputs.</li>
-            <li>Compare 1, 3 and 5 gameweek horizons.</li>
-            <li>Use the same projections as Transfer Lab.</li>
-          </ul>
-          <button
-            disabled={!row}
-            onClick={() => {
-              close();
-              if (row) onWhy(row);
-            }}
-          >
-            Full player breakdown ↗
-          </button>
-          <button
-            className={styles.secondary}
-            onClick={() => {
-              close();
-              onMarket();
-            }}
-          >
-            Explore Player Market →
-          </button>
-          <p>Expected points are forecasts, not guaranteed returns.</p>
-        </aside>
-      </dialog>
+          <aside className={styles.sidebar}>
+            <span className={styles.eyebrow}>ONE PLAYER. THE FULL PICTURE.</span>
+            <div className={styles.sideStats}>
+              <div>
+                <strong>{row?.one.expected.toFixed(1) ?? "—"}</strong>
+                <span>next GW xPts</span>
+              </div>
+              <div>
+                <strong>{row?.one.dataQuality ?? "—"}</strong>
+                <span>data quality / 100</span>
+              </div>
+            </div>
+            <ul>
+              <li>Switch between forecast, fixtures and scoring inputs.</li>
+              <li>Compare 1, 3 and 5 gameweek horizons.</li>
+              <li>Use the same projections as Transfer Lab.</li>
+            </ul>
+            <button
+              disabled={!row}
+              onClick={() => {
+                close();
+                if (row) onWhy(row);
+              }}
+            >
+              Full player breakdown ↗
+            </button>
+            <button
+              className={styles.secondary}
+              onClick={() => {
+                close();
+                onMarket();
+              }}
+            >
+              Explore Player Market →
+            </button>
+            <p>Expected points are forecasts, not guaranteed returns.</p>
+          </aside>
+        </dialog>
+      )}
     </>
   );
 }
