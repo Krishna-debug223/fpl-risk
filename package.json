@@ -13,11 +13,13 @@
     "sportsbook:calibrate": "rm -rf .sportsbook-calibration && tsc --target ES2022 --module commonjs --moduleResolution node --strict --esModuleInterop --skipLibCheck --outDir .sportsbook-calibration scripts/calibrate-sportsbook.ts lib/sportsbook.ts && node .sportsbook-calibration/scripts/calibrate-sportsbook.js"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.57.4",
+    "@vercel/analytics": "2.0.1",
+    "@vercel/speed-insights": "2.0.0",
     "next": "16.3.3",
     "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "@vercel/analytics": "2.0.1",
-    "@vercel/speed-insights": "2.0.0"
+    "react-dom": "19.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
