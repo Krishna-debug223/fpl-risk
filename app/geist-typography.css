@@ -16,32 +16,44 @@ main[class*="shell"] {
   font-family: var(--font-app-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
 
-/* Use a tighter display face for the product's large editorial moments. */
+/* Space Grotesk is intentionally more distinctive than the previous Inter/Geist look. */
 main[class*="shell"] h1,
 main[class*="shell"] h2,
 main[class*="shell"] h3,
 main[class*="shell"] [class*="brand"] strong,
 main[class*="shell"] [class*="managerBadge"] strong,
-main[class*="shell"] [class*="projectionCard"] h3 {
+main[class*="shell"] [class*="projectionCard"] h3,
+main[class*="shell"] [class*="playerPlate"] strong {
   font-family: var(--font-app-display), var(--font-app-sans), ui-sans-serif, system-ui, sans-serif !important;
 }
 
 main[class*="shell"] h1 {
-  font-weight: 620;
-  letter-spacing: -0.05em;
+  font-weight: 500 !important;
+  letter-spacing: -0.038em !important;
+  line-height: 0.96 !important;
 }
 
 main[class*="shell"] h2 {
-  font-weight: 620;
-  letter-spacing: -0.035em;
+  font-weight: 600 !important;
+  letter-spacing: -0.025em !important;
 }
 
-main[class*="shell"] h3 {
-  font-weight: 620;
-  letter-spacing: -0.025em;
+main[class*="shell"] h3,
+main[class*="shell"] [class*="projectionCard"] h3 {
+  font-weight: 600 !important;
+  letter-spacing: -0.018em !important;
 }
 
-/* Dense data views get a technical mono face and tabular figures. */
+main[class*="shell"] p,
+main[class*="shell"] button,
+main[class*="shell"] input,
+main[class*="shell"] select,
+main[class*="shell"] small,
+main[class*="shell"] span {
+  font-family: var(--font-app-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Dense data views keep a technical mono face and tabular figures. */
 [class*="marketTable"] [class*="marketHeader"] > span:not(:nth-child(2)):not(:nth-child(10)),
 [class*="marketTable"] [class*="marketRow"] > span,
 [class*="marketTable"] [class*="marketRow"] > b,
@@ -52,13 +64,13 @@ main[class*="shell"] h3 {
 [class*="componentGrid"] strong,
 [class*="edgeStats"] strong,
 [class*="planSummary"] strong {
-  font-family: var(--font-app-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: var(--font-app-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
   font-variant-numeric: tabular-nums;
 }
 
 [class*="marketTable"] [class*="marketRow"] > span,
 [class*="marketTable"] [class*="marketRow"] > b {
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
 }
 
 [class*="marketTable"] [class*="marketRow"] > div,
