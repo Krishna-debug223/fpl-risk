@@ -1,0 +1,42 @@
+html,
+body {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+main[class*="shell"] {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+/* Dense data views benefit from fixed-width numerals and aligned columns. */
+[class*="marketTable"] [class*="marketHeader"] > span:not(:nth-child(2)):not(:nth-child(10)),
+[class*="marketTable"] [class*="marketRow"] > span,
+[class*="marketTable"] [class*="marketRow"] > b,
+[class*="summaryGrid"] strong,
+[class*="cardBottom"] strong,
+[class*="points"],
+[class*="horizonGrid"] strong,
+[class*="componentGrid"] strong,
+[class*="edgeStats"] strong,
+[class*="planSummary"] strong {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+[class*="marketTable"] [class*="marketRow"] > span,
+[class*="marketTable"] [class*="marketRow"] > b {
+  letter-spacing: -0.025em;
+}
+
+[class*="marketTable"] [class*="marketRow"] > div,
+[class*="marketTable"] [class*="marketRow"] button,
+[class*="marketTable"] [class*="marketHeader"] > span:nth-child(2),
+[class*="marketTable"] [class*="marketHeader"] > span:nth-child(10) {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
