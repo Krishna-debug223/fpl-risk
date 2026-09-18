@@ -40,6 +40,10 @@ export type FplPlayer = {
   defensive_contribution_per_90?: string;
   transfers_in_event: number;
   transfers_out_event: number;
+  /** Live bootstrap fields used by the market tape when available. */
+  event_points?: number;
+  cost_change_event?: number;
+  cost_change_start?: number;
 };
 
 export type FplTeam = {
