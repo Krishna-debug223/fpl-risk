@@ -1528,8 +1528,20 @@ export default function LiveRefreshV12() {
             </label>
           </section>
 
-          <section className={styles.marketTable} aria-label="Player market table">
-            <div className={styles.marketHeader}>
+          <section className={styles.marketTableShell} aria-label="Player market rankings">
+            <div className={styles.marketTableMeta}>
+              <div>
+                <span className={styles.eyebrow}>MARKET RANKING</span>
+                <strong>{marketRows.length} players in view</strong>
+                <small>Click any row to pin a player snapshot. Use Why? to inspect the model inputs.</small>
+              </div>
+              <div className={styles.marketTableLegend} aria-label="Market column guide">
+                <span><i className={styles.legendDot} /> Higher xPts</span>
+                <span><i className={`${styles.legendDot} ${styles.legendDotMuted}`} /> Lower risk</span>
+              </div>
+            </div>
+            <div className={styles.marketTable} aria-label="Player market table">
+              <div className={styles.marketHeader}>
               <span>#</span>
               <span>Player</span>
               <span>Price</span>
@@ -1544,8 +1556,8 @@ export default function LiveRefreshV12() {
               <span>Risk</span>
               <span>Value</span>
               <span>Why</span>
-            </div>
-            {marketRows.map((row, index) => (
+              </div>
+              {marketRows.map((row, index) => (
               <div
                 className={`${styles.marketRow} ${selectedMarketId === row.player.id ? styles.marketRowSelected : ""}`}
                 key={row.player.id}
@@ -1580,7 +1592,8 @@ export default function LiveRefreshV12() {
                 <span>{row.value.toFixed(2)}</span>
                 <button onClick={(event) => { event.stopPropagation(); showWhy(row); }}>Why?</button>
               </div>
-            ))}
+              ))}
+            </div>
           </section>
         </div>
       )}
