@@ -10,6 +10,7 @@ import type {
   FplFixture,
   FplPlayer,
   HistoricalPayload,
+  LivePointsPayload,
   ManagerPayload,
 } from "@/lib/types";
 import type { SportsbookPayload } from "@/lib/sportsbook";
@@ -113,6 +114,7 @@ export default function LiveRefreshV12() {
   const [marketSort, setMarketSort] = useState<MarketSort>("five");
   const [selectedMarketId, setSelectedMarketId] = useState<number | null>(null);
   const [decisionContext, setDecisionContext] = useState<RiskMode>("balanced");
+  const [livePoints, setLivePoints] = useState<Record<number, { points: number; played: boolean }>>({});
 
   useEffect(() => {
     const saved = window.localStorage.getItem("fpl-risk-decision-context") as RiskMode | null;
@@ -177,7 +179,27 @@ export default function LiveRefreshV12() {
   const players = bootstrap?.elements ?? [];
   const teams = bootstrap?.teams ?? [];
   const events = bootstrap?.events ?? [];
+  const liveEventId = events.find((event) => event.is_current)?.id ?? events.find((event) => event.is_next)?.id;
   const historicalProfiles = history?.players;
+
+  useEffect(() => {
+    if (!liveEventId) return;
+    let cancelled = false;
+    const refreshLivePoints = async () => {
+      try {
+        const response = await fetch(`/api/fpl/live/${liveEventId}`, { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json() as LivePointsPayload;
+        if (cancelled) return;
+        setLivePoints(Object.fromEntries(payload.elements.map((player) => [player.id, { points: player.points, played: player.played }])));
+      } catch {
+        // Keep the last successful snapshot; live points are an enhancement to the model view.
+      }
+    };
+    void refreshLivePoints();
+    const interval = window.setInterval(refreshLivePoints, 60 * 1_000);
+    return () => { cancelled = true; window.clearInterval(interval); };
+  }, [liveEventId]);
   const marketPriceFloor = useMemo(() => {
     if (!players.length) return 40;
     const liveMinimum = Math.min(...players.map((player) => player.now_cost));
@@ -1111,8 +1133,10 @@ export default function LiveRefreshV12() {
                     <span className={styles.eyebrow}>SQUAD VIEW</span>
                     <h2>Your actual FPL shape</h2>
                     <p>
-                      Starting XI, bench order, captaincy, next fixture and
-                      model xPts in one place.
+                    Starting XI, bench order, captaincy, next fixture and
+                    model xPts in one place. Actual points appear after each
+                    player logs minutes and refresh automatically during the
+                    Gameweek.
                     </p>
                   </div>
                   <button onClick={() => setTab("transfer")}>
@@ -1125,6 +1149,7 @@ export default function LiveRefreshV12() {
                   mode="inspect"
                   onPlayerClick={showWhy}
                   onInspect={showWhy}
+                  actualPoints={livePoints}
                   compact
                 />
               </section>
@@ -1357,6 +1382,7 @@ export default function LiveRefreshV12() {
                 selectedIds={selectedOut}
                 onPlayerClick={(item) => toggleOutgoing(item.player.id)}
                 onInspect={showWhy}
+                actualPoints={livePoints}
               />
 
               <section className={styles.planSection}>
