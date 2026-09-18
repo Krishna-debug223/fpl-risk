@@ -748,8 +748,8 @@ export default function LiveRefreshV12() {
                   : "Core model active"}
                 </span>
               </div>
-              <div className={styles.overviewTicker} aria-label="Live player price movement">
-                <span className={styles.overviewTickerLabel}>LIVE PRICE TAPE</span>
+              <div className={styles.overviewTicker} aria-label="Live player market signals">
+                <span className={styles.overviewTickerLabel}>LIVE MARKET TAPE</span>
                 <span className={styles.overviewTickerSignal}>
                   <b>↑ RISING</b>
                   <strong>
@@ -763,7 +763,31 @@ export default function LiveRefreshV12() {
                   <strong>
                     {marketSignals.priceFaller
                       ? `${marketSignals.priceFaller.player.web_name} ${signedPriceChange(marketSignals.priceFaller.player.cost_change_event)}`
-                      : "No fall yet"}
+                    : "No fall yet"}
+                  </strong>
+                </span>
+                <span className={styles.overviewTickerSignalNeutral}>
+                  <b>TRANSFER FLOW</b>
+                  <strong>
+                    {marketSignals.transferLeader
+                      ? `${marketSignals.transferLeader.player.web_name} ${signedCompactNumber((marketSignals.transferLeader.player.transfers_in_event ?? 0) - (marketSignals.transferLeader.player.transfers_out_event ?? 0))}`
+                      : "Waiting for feed"}
+                  </strong>
+                </span>
+                <span className={styles.overviewTickerSignalNeutral}>
+                  <b>HAUL PROBABILITY</b>
+                  <strong>
+                    {marketSignals.haulLeader?.one.distribution
+                      ? `${marketSignals.haulLeader.player.web_name} ${Math.round(marketSignals.haulLeader.one.distribution.bands.haul)}%`
+                      : "Waiting for model"}
+                  </strong>
+                </span>
+                <span className={styles.overviewTickerSignalNeutral}>
+                  <b>GW POINTS RANK</b>
+                  <strong>
+                    {marketSignals.gameweekLeader && marketSignals.gameweekRank
+                      ? `#${marketSignals.gameweekRank} ${marketSignals.gameweekLeader.player.web_name} · ${marketSignals.gameweekLeader.player.event_points ?? 0} pts`
+                      : "Waiting for feed"}
                   </strong>
                 </span>
               </div>
