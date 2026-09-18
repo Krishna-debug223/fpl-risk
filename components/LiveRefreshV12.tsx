@@ -1452,7 +1452,8 @@ export default function LiveRefreshV12() {
               <span>1GW</span>
               <span>3GW</span>
               <span>5GW</span>
-              <span>Range</span>
+              <span>1GW range</span>
+              <span>5GW range</span>
               <span>Sharpe</span>
               <span>Bust / haul</span>
               <span>Risk</span>
@@ -1475,6 +1476,7 @@ export default function LiveRefreshV12() {
                 <b>{row.one.expected.toFixed(1)}</b>
                 <b>{row.three.expected.toFixed(1)}</b>
                 <b>{row.five.expected.toFixed(1)}</b>
+                <span>{row.one.distribution ? `${row.one.distribution.p10.toFixed(1)}–${row.one.distribution.p90.toFixed(1)}` : "—"}</span>
                 <span>{row.five.distribution ? `${row.five.distribution.p10.toFixed(1)}–${row.five.distribution.p90.toFixed(1)}` : "—"}</span>
                 <span>{row.five.distribution?.sharpe.toFixed(2) ?? "—"}</span>
                 <span className={styles.bandInline} title="Probability of 0–2 points / 10+ points">
@@ -1771,6 +1773,7 @@ export default function LiveRefreshV12() {
               </div>
             </div>
             <div className={styles.distributionPanel}>
+              <div className={styles.distributionMetric}><span>1 GW RANGE</span><strong>{whyPlayer.one.distribution ? `${whyPlayer.one.distribution.p10.toFixed(1)}–${whyPlayer.one.distribution.p90.toFixed(1)}` : "—"}</strong><small>single-gameweek P10 to P90</small></div>
               <div className={styles.distributionMetric}><span>FLOOR · P10</span><strong>{whyPlayer.five.distribution?.p10.toFixed(1) ?? "—"}</strong><small>10% of simulations land below this</small></div>
               <div className={styles.distributionMetric}><span>MEDIAN</span><strong>{whyPlayer.five.distribution?.median.toFixed(1) ?? "—"}</strong><small>central simulated outcome</small></div>
               <div className={styles.distributionMetric}><span>CEILING · P90</span><strong>{whyPlayer.five.distribution?.p90.toFixed(1) ?? "—"}</strong><small>90% of simulations land below this</small></div>
