@@ -2279,3 +2279,210 @@
     overflow-y: hidden;
   }
 }
+
+/* Market table polish: a calmer shell, clearer hierarchy, and finance-style data density. */
+.marketTableShell {
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid #e4dce9;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(55, 0, 60, 0.045);
+}
+.marketTableMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 19px 22px 17px;
+  border-bottom: 1px solid #ece5ef;
+  background: linear-gradient(180deg, #fff 0%, #fcf9fd 100%);
+}
+.marketTableMeta > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+.marketTableMeta .eyebrow {
+  margin: 0;
+  color: #8d7a96;
+  font-size: 9px;
+}
+.marketTableMeta strong {
+  color: #37003c;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.marketTableMeta small {
+  color: #8b7b95;
+  font-size: 11px;
+}
+.marketTableLegend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 15px;
+  color: #82738c;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.legendDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  background: #00b962;
+  border-radius: 50%;
+}
+.legendDotMuted {
+  background: #c8b8d0;
+}
+.marketTableShell > .marketTable {
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.marketTableShell .marketHeader,
+.marketTableShell .marketRow {
+  grid-template-columns: 44px minmax(225px, 2.1fr) 86px 112px 72px 72px 72px 108px 108px 76px 100px 82px 86px 82px;
+  gap: 11px;
+  padding-left: 22px;
+  padding-right: 22px;
+}
+.marketTableShell .marketHeader {
+  min-height: 49px;
+  color: #8e8095;
+  background: #f5f1f6;
+  border-bottom: 1px solid #e9e1ec;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+.marketTableShell .marketRow {
+  min-height: 76px;
+  border-top: 1px solid #eee8f0;
+  color: #4e4652;
+  font-size: 12px;
+  transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+.marketTableShell .marketRow:nth-child(odd) {
+  background: #fff;
+}
+.marketTableShell .marketRow:nth-child(even) {
+  background: #fdfbfe;
+}
+.marketTableShell .marketRow:hover {
+  background: #f8f4fa;
+  box-shadow: inset 3px 0 0 rgba(0, 169, 91, 0.72);
+}
+.marketTableShell .marketRowSelected,
+.marketTableShell .marketRowSelected:hover {
+  background: #f3edf6;
+  box-shadow: inset 3px 0 0 #00a95b;
+}
+.marketTableShell .marketRow > span:first-child {
+  color: #aaa0ae;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.marketTableShell .marketRow strong {
+  color: #2f2633;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+.marketTableShell .marketRow small {
+  margin-top: 4px;
+  color: #948899;
+  font-size: 10px;
+}
+.marketTableShell .marketRow > span:nth-child(3),
+.marketTableShell .marketRow > span:nth-child(4),
+.marketTableShell .marketRow > span:nth-child(8),
+.marketTableShell .marketRow > span:nth-child(9),
+.marketTableShell .marketRow > span:nth-child(10),
+.marketTableShell .marketRow > span:nth-child(11),
+.marketTableShell .marketRow > span:nth-child(13) {
+  color: #5f5663;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.marketTableShell .marketRow > b {
+  display: inline-flex;
+  align-items: center;
+  min-height: 29px;
+  padding: 0 8px;
+  color: #37003c;
+  background: #f4eafa;
+  border-radius: 8px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+}
+.marketTableShell .marketRow > b:nth-child(5) {
+  color: #37003c;
+  background: #e6f8ef;
+}
+.marketTableShell .marketRow > b:nth-child(7) {
+  background: #eee5f5;
+}
+.marketTableShell .marketRow > span:nth-child(10) {
+  color: #37003c;
+  font-weight: 700;
+}
+.marketTableShell .marketRow > span:nth-child(11) {
+  color: #37003c;
+  font-weight: 750;
+}
+.marketTableShell .marketRow > span:nth-child(13) {
+  color: #37003c;
+  font-weight: 700;
+}
+.marketTableShell .marketRow > button:last-child {
+  min-height: 36px;
+  padding: 0 14px;
+  color: #37003c;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #d9cde0;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(55, 0, 60, 0.08);
+  font-size: 11px;
+  font-weight: 800;
+}
+.marketTableShell .marketRow > button:last-child:hover {
+  color: #fff;
+  background: #37003c;
+  border-color: #37003c;
+  box-shadow: 0 7px 16px rgba(55, 0, 60, 0.18);
+}
+.marketTableShell .marketHeader > span:last-child {
+  background: #f5f1f6;
+}
+.marketTableShell .marketRow > button:last-child {
+  background: rgba(255, 255, 255, 0.97);
+}
+.marketTableShell .marketPlayerDot {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #f6edf9, #eee4f2);
+  border-color: #dfcfe7;
+  font-size: 9px;
+}
+@media (max-width: 760px) {
+  .marketTableMeta {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 17px 18px 15px;
+  }
+  .marketTableLegend {
+    justify-content: flex-start;
+  }
+  .marketTableShell .marketHeader,
+  .marketTableShell .marketRow {
+    min-width: 1460px;
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
