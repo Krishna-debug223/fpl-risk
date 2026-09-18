@@ -511,9 +511,12 @@ export default function LiveRefreshV12() {
   }, [marketRows]);
 
   const marketSignals = useMemo(() => {
-    const priceMover = [...marketRows]
-      .filter(({ player }) => Number.isFinite(player.cost_change_event))
-      .sort((a, b) => Math.abs(b.player.cost_change_event ?? 0) - Math.abs(a.player.cost_change_event ?? 0))[0] ?? null;
+    const priceRiser = [...marketRows]
+      .filter(({ player }) => Number.isFinite(player.cost_change_event) && (player.cost_change_event ?? 0) > 0)
+      .sort((a, b) => (b.player.cost_change_event ?? 0) - (a.player.cost_change_event ?? 0))[0] ?? null;
+    const priceFaller = [...marketRows]
+      .filter(({ player }) => Number.isFinite(player.cost_change_event) && (player.cost_change_event ?? 0) < 0)
+      .sort((a, b) => (a.player.cost_change_event ?? 0) - (b.player.cost_change_event ?? 0))[0] ?? null;
     const transferLeader = [...marketRows]
       .sort((a, b) => {
         const netB = (b.player.transfers_in_event ?? 0) - (b.player.transfers_out_event ?? 0);
@@ -531,7 +534,7 @@ export default function LiveRefreshV12() {
           .sort((a, b) => (b.player.event_points ?? 0) - (a.player.event_points ?? 0))
           .findIndex(({ player }) => player.id === gameweekLeader.player.id) + 1
       : null;
-    return { priceMover, transferLeader, haulLeader, gameweekLeader, gameweekRank };
+    return { priceRiser, priceFaller, transferLeader, haulLeader, gameweekLeader, gameweekRank };
   }, [marketRows]);
 
   const selectedMarketRow = useMemo(
@@ -742,7 +745,26 @@ export default function LiveRefreshV12() {
                     ? sportsbook.configuredWeight > 0
                       ? "Market prior active"
                       : "Market feed connected"
-                    : "Core model active"}
+                  : "Core model active"}
+                </span>
+              </div>
+              <div className={styles.overviewTicker} aria-label="Live player price movement">
+                <span className={styles.overviewTickerLabel}>LIVE PRICE TAPE</span>
+                <span className={styles.overviewTickerSignal}>
+                  <b>↑ RISING</b>
+                  <strong>
+                    {marketSignals.priceRiser
+                      ? `${marketSignals.priceRiser.player.web_name} ${signedPriceChange(marketSignals.priceRiser.player.cost_change_event)}`
+                      : "No rise yet"}
+                  </strong>
+                </span>
+                <span className={`${styles.overviewTickerSignal} ${styles.overviewTickerSignalDown}`}>
+                  <b>↓ FALLING</b>
+                  <strong>
+                    {marketSignals.priceFaller
+                      ? `${marketSignals.priceFaller.player.web_name} ${signedPriceChange(marketSignals.priceFaller.player.cost_change_event)}`
+                      : "No fall yet"}
+                  </strong>
                 </span>
               </div>
               <form className={styles.importCard} onSubmit={importTeam}>
@@ -1443,11 +1465,19 @@ export default function LiveRefreshV12() {
               <span>Next fixture window {nextEvent?.name ?? "Current GW"}</span>
               <span>{sportsbook?.available ? "Market prior connected" : "Core model · market prior optional"}</span>
               <span className={styles.marketTickerSignal}>
-                <b>PRICE WATCH</b>
+                <b>PRICE RISE</b>
                 <strong>
-                  {marketSignals.priceMover
-                    ? `${marketSignals.priceMover.player.web_name} ${signedPriceChange(marketSignals.priceMover.player.cost_change_event)}`
-                    : "No move yet"}
+                  {marketSignals.priceRiser
+                    ? `${marketSignals.priceRiser.player.web_name} ${signedPriceChange(marketSignals.priceRiser.player.cost_change_event)}`
+                    : "No rise yet"}
+                </strong>
+              </span>
+              <span className={`${styles.marketTickerSignal} ${styles.marketTickerSignalDown}`}>
+                <b>PRICE FALL</b>
+                <strong>
+                  {marketSignals.priceFaller
+                    ? `${marketSignals.priceFaller.player.web_name} ${signedPriceChange(marketSignals.priceFaller.player.cost_change_event)}`
+                    : "No fall yet"}
                 </strong>
               </span>
               <span className={styles.marketTickerSignal}>
@@ -1620,8 +1650,8 @@ export default function LiveRefreshV12() {
               <span>Sharpe</span>
               <span>Bust / haul</span>
               <span>Risk</span>
-              <span>Value</span>
-              <span>Why</span>
+              <span>Ownership</span>
+              <span>Reason</span>
               </div>
               {marketRows.map((row, index) => (
               <div
@@ -1655,8 +1685,8 @@ export default function LiveRefreshV12() {
                   {row.five.distribution ? `${Math.round(row.five.distribution.bands.bust)}% / ${Math.round(row.five.distribution.bands.haul)}%` : "—"}
                 </span>
                 <span className={`${styles.riskBadge} ${styles[row.five.risk.toLowerCase()]}`}>{row.five.risk}</span>
-                <span>{row.value.toFixed(2)}</span>
-                <button onClick={(event) => { event.stopPropagation(); showWhy(row); }}>Why?</button>
+                <span>{row.player.selected_by_percent}%</span>
+                <button onClick={(event) => { event.stopPropagation(); showWhy(row); }}>Why this pick</button>
               </div>
               ))}
             </div>
