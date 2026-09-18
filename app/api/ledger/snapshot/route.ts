@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { MODEL_VERSION, positionName, projectPlayer } from "@/lib/risk-v12";
+import { buildNewsScan } from "@/lib/news-scan";
 import type { SportsbookPayload } from "@/lib/sportsbook";
 import type {
   BootstrapPayload,
   FplFixture,
   HistoricalPayload,
+  NewsScanPayload,
 } from "@/lib/types";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -46,6 +48,7 @@ type SnapshotPayload = {
   };
   playerCount: number;
   fixtures: FplFixture[];
+  newsScan?: NewsScanPayload;
   rows: Array<Record<string, unknown>>;
 };
 
@@ -118,6 +121,7 @@ export async function GET(request: NextRequest) {
       const fixtures = fixturePayload.fixtures ?? [];
       const teamMap = new Map(bootstrap.teams.map((team) => [team.id, team]));
       const eventFixtures = fixtures.filter((fixture) => fixture.event === event.id);
+      const newsScan = buildNewsScan(bootstrap, fixtures, event.id);
       const kickoffByTeam = new Map<number, string | null>();
 
       eventFixtures.forEach((fixture) => {
@@ -164,6 +168,9 @@ export async function GET(request: NextRequest) {
           probabilities: projection.distribution?.bands ?? null,
           simulations: projection.distribution?.simulations ?? null,
           components: projection.components,
+          news: player.news ?? null,
+          newsAdded: player.news_added ?? null,
+          chanceOfPlayingThisRound: player.chance_of_playing_this_round ?? null,
         };
       });
 
@@ -182,6 +189,7 @@ export async function GET(request: NextRequest) {
         },
         playerCount: rows.length,
         fixtures: eventFixtures,
+        newsScan,
         rows,
       };
     });
