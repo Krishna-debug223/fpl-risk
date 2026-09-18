@@ -16,6 +16,9 @@ export type FplPlayer = {
   ep_next: string | null;
   chance_of_playing_next_round: number | null;
   status: string;
+  news?: string;
+  news_added?: string | null;
+  chance_of_playing_this_round?: number | null;
   expected_goals: string;
   expected_assists: string;
   expected_goal_involvements: string;
@@ -94,6 +97,38 @@ export type BootstrapPayload = {
   teams: FplTeam[];
   events: FplEvent[];
   fetchedAt: string;
+};
+
+export type NewsScanAlert = {
+  playerId: number;
+  playerName: string;
+  teamId: number;
+  team: string;
+  status: string;
+  chanceOfPlaying: number | null;
+  news: string;
+  newsAdded: string | null;
+  kickoffTime: string | null;
+  severity: "high" | "medium" | "low";
+};
+
+export type NewsScanPayload = {
+  schemaVersion: 1;
+  eventId: number;
+  eventName: string;
+  deadlineTime: string;
+  scanWindowStart: string;
+  windowState: "scheduled" | "active" | "closed";
+  scannedAt: string;
+  source: "official-fpl-bootstrap";
+  alerts: NewsScanAlert[];
+  summary: { high: number; medium: number; low: number; total: number };
+};
+
+export type LivePointsPayload = {
+  eventId: number;
+  fetchedAt: string;
+  elements: Array<{ id: number; points: number; minutes: number; played: boolean }>;
 };
 
 export type ManagerPick = {
