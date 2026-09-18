@@ -1547,6 +1547,49 @@
 .heroMeta span:last-child {
   border: 0;
 }
+.overviewTicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+.overviewTickerLabel {
+  color: #8f7c99;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.overviewTickerSignal {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 27px;
+  padding: 5px 10px;
+  border: 1px solid #e2eee8;
+  border-radius: 999px;
+  background: #f8fcfa;
+  white-space: nowrap;
+}
+.overviewTickerSignal b {
+  color: #008449;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+}
+.overviewTickerSignal strong {
+  color: #37003c;
+  font-size: 10px;
+  font-weight: 750;
+}
+.overviewTickerSignalDown {
+  border-color: #f0dfe4;
+  background: #fff9fa;
+}
+.overviewTickerSignalDown b,
+.overviewTickerSignalDown strong {
+  color: #9a3d55;
+}
 .heroCopy .importCard {
   padding: 0;
   margin-top: 30px;
@@ -2371,7 +2414,7 @@
 }
 .marketTableShell .marketHeader,
 .marketTableShell .marketRow {
-  grid-template-columns: 44px minmax(225px, 2.1fr) 86px 112px 72px 72px 72px 108px 108px 76px 100px 82px 86px 82px;
+  grid-template-columns: 44px minmax(225px, 2.1fr) 86px 112px 72px 72px 72px 108px 108px 76px 100px 82px 86px 110px;
   gap: 11px;
   padding-left: 22px;
   padding-right: 22px;
@@ -2491,8 +2534,8 @@
 }
 .marketTableShell .marketHeader > span:last-child {
   background: #f5f1f6;
-  width: 82px;
-  min-width: 82px;
+  width: 110px;
+  min-width: 110px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2500,7 +2543,7 @@
 .marketTableShell .marketHeader > span:nth-last-child(2),
 .marketTableShell .marketRow > span:nth-last-child(2) {
   position: sticky;
-  right: 82px;
+  right: 110px;
   z-index: 3;
   background: inherit;
   box-shadow: -8px 0 14px rgba(55, 0, 60, 0.045);
@@ -2543,20 +2586,29 @@
 }
 
 /* Keep the reasoning action centered in its own final column. */
-.marketTableShell .marketHeader > span:last-child,
-.marketTableShell .marketRow > button:last-child {
+.marketTableShell .marketHeader > span:last-child {
   right: 6px;
-  width: 70px;
-  min-width: 70px;
+  width: 110px;
+  min-width: 110px;
   justify-self: center;
   border-radius: 10px;
   box-shadow: none;
 }
 .marketTableShell .marketRow > button:last-child {
-  padding: 0 10px;
+  right: 6px;
+  width: 98px;
+  min-width: 98px;
+  justify-self: center;
+  border-radius: 10px;
+  box-shadow: none;
+}
+.marketTableShell .marketRow > button:last-child {
+  padding: 0 12px;
   background: #f8f4fa;
   border-color: #e4d8e8;
   color: #5b2462;
+  font-size: 10px;
+  letter-spacing: 0.01em;
 }
 .marketTableShell .marketRow > button:last-child:hover {
   color: #fff;
