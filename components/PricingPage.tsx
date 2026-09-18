@@ -27,7 +27,7 @@ const plans: Plan[] = [
       "Transfer Lab + 10,000-path simulations",
       "8-Gameweek Path Planner",
       "Chip planning and Player Market",
-      "FPL Ledger forward-test access",
+      "FPL Modelbook forward-test access",
       "Optional account to save your Team ID and defaults",
     ],
   },
@@ -123,7 +123,7 @@ export default function PricingPage() {
       </section>
 
       <section className={styles.faq}>
-        <div><span>DO I NEED TO PAY?</span><strong>No.</strong><p>Not for the current product. The projections, Transfer Lab, Monte Carlo, Path Planner, Player Market and Ledger remain available on Free during launch.</p></div>
+        <div><span>DO I NEED TO PAY?</span><strong>No.</strong><p>Not for the current product. The projections, Transfer Lab, Monte Carlo, Path Planner, Player Market and Modelbook remain available on Free during launch.</p></div>
         <div><span>DO I NEED AN ACCOUNT?</span><strong>No.</strong><p>You can keep using FPL Risk as a guest. Sign in only if you want your Team ID and planning defaults attached to an account.</p></div>
         <div><span>WHEN WOULD PRO START?</span><strong>Only after notice.</strong><p>If paid subscriptions launch later, the product will show the final feature split and checkout terms before anyone is charged.</p></div>
       </section>
