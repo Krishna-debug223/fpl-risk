@@ -725,6 +725,51 @@ export default function LiveRefreshV12() {
 
       {tab === "overview" && (
         <div className={styles.page} role="tabpanel" aria-label="Overview">
+          <section className={styles.overviewMarketTape} aria-label="Live player market signals">
+            <div className={styles.overviewTicker}>
+              <span className={styles.overviewTickerLabel}>LIVE MARKET TAPE</span>
+              <span className={styles.overviewTickerSignal}>
+                <b>↑ RISING</b>
+                <strong>
+                  {marketSignals.priceRiser
+                    ? `${marketSignals.priceRiser.player.web_name} ${signedPriceChange(marketSignals.priceRiser.player.cost_change_event)}`
+                    : "No rise yet"}
+                </strong>
+              </span>
+              <span className={`${styles.overviewTickerSignal} ${styles.overviewTickerSignalDown}`}>
+                <b>↓ FALLING</b>
+                <strong>
+                  {marketSignals.priceFaller
+                    ? `${marketSignals.priceFaller.player.web_name} ${signedPriceChange(marketSignals.priceFaller.player.cost_change_event)}`
+                    : "No fall yet"}
+                </strong>
+              </span>
+              <span className={styles.overviewTickerSignalNeutral}>
+                <b>TRANSFER FLOW</b>
+                <strong>
+                  {marketSignals.transferLeader
+                    ? `${marketSignals.transferLeader.player.web_name} ${signedCompactNumber((marketSignals.transferLeader.player.transfers_in_event ?? 0) - (marketSignals.transferLeader.player.transfers_out_event ?? 0))}`
+                    : "Waiting for feed"}
+                </strong>
+              </span>
+              <span className={styles.overviewTickerSignalNeutral}>
+                <b>HAUL PROBABILITY</b>
+                <strong>
+                  {marketSignals.haulLeader?.one.distribution
+                    ? `${marketSignals.haulLeader.player.web_name} ${Math.round(marketSignals.haulLeader.one.distribution.bands.haul)}%`
+                    : "Waiting for model"}
+                </strong>
+              </span>
+              <span className={styles.overviewTickerSignalNeutral}>
+                <b>GW POINTS RANK</b>
+                <strong>
+                  {marketSignals.gameweekLeader && marketSignals.gameweekRank
+                    ? `#${marketSignals.gameweekRank} ${marketSignals.gameweekLeader.player.web_name} · ${marketSignals.gameweekLeader.player.event_points ?? 0} pts`
+                    : "Waiting for feed"}
+                </strong>
+              </span>
+            </div>
+          </section>
           <section className={styles.hero}>
             <div className={styles.heroCopy}>
               <span className={styles.eyebrow}>LIVE FPL DECISION ENGINE</span>
@@ -746,49 +791,6 @@ export default function LiveRefreshV12() {
                       ? "Market prior active"
                       : "Market feed connected"
                   : "Core model active"}
-                </span>
-              </div>
-              <div className={styles.overviewTicker} aria-label="Live player market signals">
-                <span className={styles.overviewTickerLabel}>LIVE MARKET TAPE</span>
-                <span className={styles.overviewTickerSignal}>
-                  <b>↑ RISING</b>
-                  <strong>
-                    {marketSignals.priceRiser
-                      ? `${marketSignals.priceRiser.player.web_name} ${signedPriceChange(marketSignals.priceRiser.player.cost_change_event)}`
-                      : "No rise yet"}
-                  </strong>
-                </span>
-                <span className={`${styles.overviewTickerSignal} ${styles.overviewTickerSignalDown}`}>
-                  <b>↓ FALLING</b>
-                  <strong>
-                    {marketSignals.priceFaller
-                      ? `${marketSignals.priceFaller.player.web_name} ${signedPriceChange(marketSignals.priceFaller.player.cost_change_event)}`
-                    : "No fall yet"}
-                  </strong>
-                </span>
-                <span className={styles.overviewTickerSignalNeutral}>
-                  <b>TRANSFER FLOW</b>
-                  <strong>
-                    {marketSignals.transferLeader
-                      ? `${marketSignals.transferLeader.player.web_name} ${signedCompactNumber((marketSignals.transferLeader.player.transfers_in_event ?? 0) - (marketSignals.transferLeader.player.transfers_out_event ?? 0))}`
-                      : "Waiting for feed"}
-                  </strong>
-                </span>
-                <span className={styles.overviewTickerSignalNeutral}>
-                  <b>HAUL PROBABILITY</b>
-                  <strong>
-                    {marketSignals.haulLeader?.one.distribution
-                      ? `${marketSignals.haulLeader.player.web_name} ${Math.round(marketSignals.haulLeader.one.distribution.bands.haul)}%`
-                      : "Waiting for model"}
-                  </strong>
-                </span>
-                <span className={styles.overviewTickerSignalNeutral}>
-                  <b>GW POINTS RANK</b>
-                  <strong>
-                    {marketSignals.gameweekLeader && marketSignals.gameweekRank
-                      ? `#${marketSignals.gameweekRank} ${marketSignals.gameweekLeader.player.web_name} · ${marketSignals.gameweekLeader.player.event_points ?? 0} pts`
-                      : "Waiting for feed"}
-                  </strong>
                 </span>
               </div>
               <form className={styles.importCard} onSubmit={importTeam}>
