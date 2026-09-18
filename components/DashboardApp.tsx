@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import type { BootstrapPayload, FplFixture, FplPlayer, FplTeam, HistoricalPayload, ManagerPayload, TeamIntelligencePayload } from "@/lib/types";
+import type { BootstrapPayload, FplFixture, FplPlayer, FplTeam, HistoricalPayload, LivePointsPayload, ManagerPayload, NewsScanPayload, TeamIntelligencePayload } from "@/lib/types";
 import {
   assessChips,
   historyBlendInfo,
@@ -47,6 +47,8 @@ export default function DashboardApp() {
   const [loadingTeam, setLoadingTeam] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [transferSeed, setTransferSeed] = useState<TransferSeed>(null);
+  const [newsScan, setNewsScan] = useState<NewsScanPayload | null>(null);
+  const [livePoints, setLivePoints] = useState<Record<number, { points: number; played: boolean }>>({});
 
   async function loadMarketData() {
     setRefreshing(true);
@@ -90,6 +92,46 @@ export default function DashboardApp() {
   }
 
   useEffect(() => { void loadMarketData(); }, []);
+
+  const currentEventId = bootstrap?.events.find((event) => event.is_next)?.id ?? bootstrap?.events.find((event) => event.is_current)?.id;
+  const liveEventId = bootstrap?.events.find((event) => event.is_current)?.id ?? currentEventId;
+
+  useEffect(() => {
+    if (!currentEventId) return;
+    let cancelled = false;
+    const refreshNews = async () => {
+      try {
+        const response = await fetch(`/api/news/scan?event=${currentEventId}`, { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json() as NewsScanPayload;
+        if (!cancelled) setNewsScan(payload);
+      } catch {
+        // News is an enhancement; a temporary scan failure must not block the model.
+      }
+    };
+    void refreshNews();
+    const interval = window.setInterval(refreshNews, 5 * 60 * 1_000);
+    return () => { cancelled = true; window.clearInterval(interval); };
+  }, [currentEventId]);
+
+  useEffect(() => {
+    if (!liveEventId) return;
+    let cancelled = false;
+    const refreshLivePoints = async () => {
+      try {
+        const response = await fetch(`/api/fpl/live/${liveEventId}`, { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json() as LivePointsPayload;
+        if (cancelled) return;
+        setLivePoints(Object.fromEntries(payload.elements.map((player) => [player.id, { points: player.points, played: player.played }])));
+      } catch {
+        // Keep the last successful points snapshot. The dashboard can still use bootstrap values.
+      }
+    };
+    void refreshLivePoints();
+    const interval = window.setInterval(refreshLivePoints, 60 * 1_000);
+    return () => { cancelled = true; window.clearInterval(interval); };
+  }, [liveEventId]);
 
   useEffect(() => {
     const eventByTab = {
@@ -187,7 +229,7 @@ export default function DashboardApp() {
 
       <section className="main-panel">
         <div className="content">
-          {tab === "overview" && <Overview bootstrap={bootstrap} fixtures={fixtures} history={historicalData?.players} historicalData={historicalData} manager={manager} squad={squad} teamMap={teamMap} teamId={teamId} setTeamId={setTeamId} importTeam={importTeam} loadingTeam={loadingTeam} teamError={teamError} freeTransfers={freeTransfers} setFreeTransfers={updateFreeTransfers} onTransfer={openTransfer} onModel={() => openModel("overview")} />}
+          {tab === "overview" && <Overview bootstrap={bootstrap} fixtures={fixtures} history={historicalData?.players} historicalData={historicalData} manager={manager} squad={squad} teamMap={teamMap} teamId={teamId} setTeamId={setTeamId} importTeam={importTeam} loadingTeam={loadingTeam} teamError={teamError} freeTransfers={freeTransfers} setFreeTransfers={updateFreeTransfers} onTransfer={openTransfer} onModel={() => openModel("overview")} newsScan={newsScan} livePoints={livePoints} />}
           {tab === "transfer" && <TransferLab bootstrap={bootstrap} fixtures={fixtures} history={historicalData?.players} squad={squad} manager={manager} freeTransfers={freeTransfers} setFreeTransfers={updateFreeTransfers} seed={transferSeed} onModel={() => openModel("transfer_lab")} />}
           {tab === "market" && <PlayerMarket bootstrap={bootstrap} fixtures={fixtures} history={historicalData?.players} />}
           {tab === "model" && <ModelPage historicalData={historicalData} teamIntelligenceLoaded={teamIntelligenceLoaded} />}
@@ -202,7 +244,7 @@ export default function DashboardApp() {
   );
 }
 
-function Overview({ bootstrap, fixtures, history, historicalData, manager, squad, teamMap, teamId, setTeamId, importTeam, loadingTeam, teamError, freeTransfers, setFreeTransfers, onTransfer, onModel }: {
+function Overview({ bootstrap, fixtures, history, historicalData, manager, squad, teamMap, teamId, setTeamId, importTeam, loadingTeam, teamError, freeTransfers, setFreeTransfers, onTransfer, onModel, newsScan, livePoints }: {
   bootstrap: BootstrapPayload | null;
   fixtures: FplFixture[];
   history?: HistoricalProfileMap;
@@ -219,6 +261,8 @@ function Overview({ bootstrap, fixtures, history, historicalData, manager, squad
   setFreeTransfers: (value: number) => void;
   onTransfer: (seed?: { outId: number; inId: number }) => void;
   onModel: () => void;
+  newsScan: NewsScanPayload | null;
+  livePoints: Record<number, { points: number; played: boolean }>;
 }) {
   if (!manager) {
     const top = bootstrap?.elements.filter((p) => p.minutes > 0).sort((a,b) => num(b.form)-num(a.form)).slice(0, 4) ?? [];
@@ -247,6 +291,7 @@ function Overview({ bootstrap, fixtures, history, historicalData, manager, squad
           </div>
         </section>
         <section className="trust-strip"><span>LIVE PLAYER DATA</span><span>MONTE CARLO SIMULATION</span><span>BUDGET-AWARE AI</span><span>NO ACCOUNT REQUIRED</span></section>
+        <NewsScanPanel scan={newsScan} />
         <section className="section-block">
           <div className="section-heading"><div><span className="eyebrow">LIVE MARKET</span><h2>Form leaders right now</h2></div><span className="muted">Pulled from FPL when this page loads</span></div>
           <div className="leader-grid">
@@ -278,6 +323,7 @@ function Overview({ bootstrap, fixtures, history, historicalData, manager, squad
   const projections = squad.map(({player}) => projectPlayer(player, fixtures, teams, 5, history));
   const starters = squad.filter(({pick}) => pick.position <= 11);
   const projected = starters.reduce((sum, {pick, player}) => sum + projectPlayer(player, fixtures, teams, 1, history).expected * pick.multiplier, 0);
+  const expectedByPlayer = new Map(squad.map(({ player }) => [player.id, projectPlayer(player, fixtures, teams, 1, history).expected]));
   const avgRisk = projections.length ? projections.reduce((sum,p) => sum + p.volatility,0)/projections.length : 0;
   const ownership = starters.length ? starters.reduce((sum,{player}) => sum + num(player.selected_by_percent),0)/starters.length : 0;
   const benchPlayers = squad.filter(({ pick }) => pick.position > 11).map(({ player }) => player);
@@ -299,6 +345,7 @@ function Overview({ bootstrap, fixtures, history, historicalData, manager, squad
     <>
       <div className="page-title-row"><div><span className="eyebrow">TEAM #{manager.id}</span><h1 className="page-title">{manager.teamName}</h1><p>{manager.managerName} · Imported from {manager.eventId ? `GW${manager.eventId}` : "FPL"}</p></div><button className="secondary-button" onClick={() => onTransfer()}><SwapIcon /> Open Transfer Lab</button></div>
       <FreeTransferBar value={freeTransfers} onChange={setFreeTransfers} />
+      <NewsScanPanel scan={newsScan} />
       <div className="metric-grid">
         <Metric label="Projected next GW" value={`${projected.toFixed(1)}`} suffix="xPts" tone="positive" />
         <Metric label="Overall rank" value={rank(manager.overallRank)} suffix="OR" />
@@ -341,11 +388,11 @@ function Overview({ bootstrap, fixtures, history, historicalData, manager, squad
 
       <div className="dashboard-grid">
         <section className="panel pitch-panel">
-          <div className="panel-head"><div><span className="eyebrow">YOUR SQUAD</span><h2>Starting XI</h2></div><span className="muted">Avg ownership {ownership.toFixed(1)}%</span></div>
+          <div className="panel-head"><div><span className="eyebrow">YOUR SQUAD</span><h2>Starting XI</h2><p className="panel-subtitle">Actual points update live · xPts is the model projection for this Gameweek</p></div><span className="muted">Avg ownership {ownership.toFixed(1)}%</span></div>
           <div className="pitch">
-            {[1,2,3,4].map((position) => <div className={`pitch-row pitch-row-${position}`} key={position}>{starters.filter(({player}) => player.element_type === position).map(({player,pick}) => <PlayerChip key={player.id} player={player} team={teamMap.get(player.team)} captain={pick.is_captain} />)}</div>)}
+            {[1,2,3,4].map((position) => <div className={`pitch-row pitch-row-${position}`} key={position}>{starters.filter(({player}) => player.element_type === position).map(({player,pick}) => <PlayerChip key={player.id} player={player} team={teamMap.get(player.team)} captain={pick.is_captain} expected={expectedByPlayer.get(player.id)} actual={livePoints[player.id]?.played ? livePoints[player.id].points : null} />)}</div>)}
           </div>
-          <div className="bench"><span>BENCH</span>{squad.filter(({pick}) => pick.position > 11).map(({player}) => <PlayerChip compact key={player.id} player={player} team={teamMap.get(player.team)} />)}</div>
+          <div className="bench"><span>BENCH</span>{squad.filter(({pick}) => pick.position > 11).map(({player}) => <PlayerChip compact key={player.id} player={player} team={teamMap.get(player.team)} expected={expectedByPlayer.get(player.id)} actual={livePoints[player.id]?.played ? livePoints[player.id].points : null} />)}</div>
         </section>
         <section className="panel intel-panel">
           <div className="panel-head"><div><span className="eyebrow">PORTFOLIO INTELLIGENCE</span><h2>Squad signals</h2></div></div>
@@ -356,6 +403,34 @@ function Overview({ bootstrap, fixtures, history, historicalData, manager, squad
         </section>
       </div>
     </>
+  );
+}
+
+function NewsScanPanel({ scan }: { scan: NewsScanPayload | null }) {
+  const stateLabel = scan?.windowState === "active"
+    ? "ACTIVE — LAST HOUR"
+    : scan?.windowState === "closed"
+      ? "DEADLINE PASSED"
+      : "SCHEDULED";
+  const alerts = scan?.alerts.slice(0, 5) ?? [];
+
+  return (
+    <section className="panel news-scan-panel">
+      <div className="panel-head news-scan-head">
+        <div><span className="eyebrow">LAST-MINUTE INPUTS</span><h2>Deadline news scan</h2><p>Official FPL availability and injury news is checked continuously. The one-hour scan window is shown here before the deadline.</p></div>
+        <span className={`news-scan-state ${scan?.windowState ?? "loading"}`}>{scan ? stateLabel : "SYNCING"}</span>
+      </div>
+      {!scan ? <div className="news-scan-empty">Waiting for the official FPL feed…</div> : alerts.length === 0 ? <div className="news-scan-empty">No flagged availability news for the current Gameweek.</div> : (
+        <div className="news-scan-list">
+          {alerts.map((alert) => <div className="news-scan-row" key={alert.playerId}>
+            <span className={`news-severity ${alert.severity}`} aria-label={`${alert.severity} severity`} />
+            <div><strong>{alert.playerName}</strong><span>{alert.team} · {alert.news}</span></div>
+            <b>{alert.chanceOfPlaying == null ? "—" : `${alert.chanceOfPlaying}%`}</b>
+          </div>)}
+        </div>
+      )}
+      {scan && <div className="news-scan-foot"><span>{scan.summary.total} flagged player{scan.summary.total === 1 ? "" : "s"} · {scan.summary.high} high risk</span><span>Checked {new Date(scan.scannedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Official FPL feed</span></div>}
+    </section>
   );
 }
 
@@ -625,5 +700,13 @@ function Outcome({ label, text }: { label: string; text: string }) { return <div
 function Metric({label,value,suffix,tone}:{label:string;value:string;suffix:string;tone?:"positive"|"warning"}) { return <div className="metric-card"><span>{label}</span><strong className={tone??""}>{value}</strong><small>{suffix}</small></div>; }
 function ResultMetric({label,value,suffix,highlight}:{label:string;value:string;suffix:string;highlight?:boolean}) { return <div className={`result-metric ${highlight?"highlight":""}`}><span>{label}</span><strong>{value}</strong><small>{suffix}</small></div>; }
 function Signal({label,value,bar,status}:{label:string;value:string;bar:number;status:string}) { return <div className="signal"><div className="signal-top"><div><strong>{label}</strong><span>{status}</span></div><b>{value}</b></div><div className="signal-track"><i style={{width:`${Math.min(bar,100)}%`}}/></div></div>; }
-function PlayerChip({player,team,captain,compact}:{player:FplPlayer;team?:FplTeam;captain?:boolean;compact?:boolean}) { return <div className={`player-chip ${compact?"compact":""}`}><div className="shirt">{team?.short_name?.slice(0,2) ?? "--"}{captain&&<i>C</i>}</div><div><strong>{player.web_name}</strong><span>{team?.short_name} · {money(player.now_cost)}</span></div></div>; }
+function PlayerChip({player,team,captain,compact,expected,actual}:{player:FplPlayer;team?:FplTeam;captain?:boolean;compact?:boolean;expected?:number;actual?:number|null}) {
+  return <div className={`player-chip ${compact ? "compact" : ""}`}>
+    <div className="shirt">{team?.short_name?.slice(0,2) ?? "--"}{captain&&<i>C</i>}</div>
+    <div className="player-chip-main"><strong>{player.web_name}</strong><span>{team?.short_name} · {money(player.now_cost)}</span></div>
+    <div className="player-chip-points" title="Actual points and single-gameweek model projection">
+      <b>{actual == null ? "—" : actual}</b><span>actual</span><small>{expected == null ? "—" : expected.toFixed(1)} xPts</small>
+    </div>
+  </div>;
+}
 function PlayerSelect({value,onChange,players,teams,placeholder}:{value:number|null;onChange:(id:number)=>void;players:FplPlayer[];teams:FplTeam[];placeholder:string}) { const teamMap = new Map(teams.map(t=>[t.id,t])); return <div className="player-select-wrap"><select value={value??""} onChange={(e)=>onChange(Number(e.target.value))}><option value="" disabled>{placeholder}</option>{players.map(p=><option key={p.id} value={p.id}>{p.web_name} — {teamMap.get(p.team)?.short_name} · {positionName(p.element_type)} · {money(p.now_cost)}</option>)}</select>{value && (()=>{const p=players.find(x=>x.id===value);return p?<div className="select-player-meta"><span>{num(p.form).toFixed(1)} form</span><span>{num(p.selected_by_percent).toFixed(1)}% owned</span></div>:null})()}</div>; }
