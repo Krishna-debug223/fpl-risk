@@ -17,6 +17,7 @@ export type SquadPitchPlayer = {
 type Props = {
   players: SquadPitchPlayer[];
   teams: FplTeam[];
+  actualPoints?: Record<number, { points: number; played: boolean }>;
   selectedIds?: number[];
   mode?: "inspect" | "transfer";
   onPlayerClick?: (item: SquadPitchPlayer) => void;
@@ -31,6 +32,7 @@ function PlayerTile({
   team,
   selected,
   mode,
+  actualPoints,
   onPlayerClick,
   onInspect,
 }: {
@@ -38,12 +40,14 @@ function PlayerTile({
   team?: FplTeam;
   selected: boolean;
   mode: "inspect" | "transfer";
+  actualPoints?: Record<number, { points: number; played: boolean }>;
   onPlayerClick?: (item: SquadPitchPlayer) => void;
   onInspect?: (item: SquadPitchPlayer) => void;
 }) {
   const fixture = item.one.fixtureLabels[0] ?? "BLANK";
   const teamCode = team?.short_name ?? positionLabel(item.player.element_type);
   const kitStyle = getClubKitVars(teamCode) as CSSProperties;
+  const live = actualPoints?.[item.player.id];
 
   return (
     <div className={`${styles.tileWrap} ${selected ? styles.selectedWrap : ""}`}>
@@ -66,7 +70,10 @@ function PlayerTile({
           {item.pick.is_vice_captain && <b className={styles.vice}>V</b>}
         </span>
 
-        <span className={styles.points}>{item.one.expected.toFixed(1)} <em>xPts</em></span>
+        <span className={styles.points} title="Actual points and single-gameweek model projection">
+          <strong>{live?.played ? live.points : "—"}<small>actual</small></strong>
+          <em>{item.one.expected.toFixed(1)} xPts</em>
+        </span>
 
         <span className={styles.playerPlate}>
           <strong>{item.player.web_name}</strong>
@@ -95,6 +102,7 @@ function PlayerTile({
 export default function SquadPitch({
   players,
   teams,
+  actualPoints,
   selectedIds = [],
   mode = "inspect",
   onPlayerClick,
@@ -123,6 +131,7 @@ export default function SquadPitch({
                   team={teamMap.get(item.player.team)}
                   selected={selectedIds.includes(item.player.id)}
                   mode={mode}
+                  actualPoints={actualPoints}
                   onPlayerClick={onPlayerClick}
                   onInspect={onInspect}
                 />
@@ -145,6 +154,7 @@ export default function SquadPitch({
               team={teamMap.get(item.player.team)}
               selected={selectedIds.includes(item.player.id)}
               mode={mode}
+              actualPoints={actualPoints}
               onPlayerClick={onPlayerClick}
               onInspect={onInspect}
             />
