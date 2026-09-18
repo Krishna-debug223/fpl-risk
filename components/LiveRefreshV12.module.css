@@ -1551,12 +1551,12 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-top: 18px;
 }
 .overviewMarketTape {
   margin: 0 0 8px;
-  padding: 10px 14px;
+  padding: 14px 17px;
   border: 1px solid #e4dce9;
   border-radius: 17px;
   background: rgba(255, 255, 255, 0.72);
@@ -1567,42 +1567,43 @@
 }
 .overviewTickerLabel {
   color: #8f7c99;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.12em;
 }
 .overviewTickerSignal {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 27px;
-  padding: 5px 10px;
+  flex: 1 1 180px;
+  gap: 9px;
+  min-height: 38px;
+  padding: 8px 13px;
   border: 1px solid #e2eee8;
-  border-radius: 999px;
+  border-radius: 14px;
   background: #f8fcfa;
   white-space: nowrap;
 }
 .overviewTickerSignal b {
   color: #008449;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 850;
   letter-spacing: 0.09em;
 }
 .overviewTickerSignal strong {
   color: #37003c;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 750;
 }
 .overviewTickerIcon {
   display: grid;
   place-items: center;
-  width: 17px;
-  height: 17px;
+  width: 22px;
+  height: 22px;
   flex: 0 0 auto;
   border-radius: 50%;
   background: rgba(55, 0, 60, 0.08);
   color: #37003c;
-  font-size: 10px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 900;
 }
@@ -1621,7 +1622,7 @@
 .overviewTickerSignal em,
 .overviewTickerSignalNeutral em {
   color: #008449;
-  font-size: 10px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 850;
   font-variant-numeric: tabular-nums;
@@ -1632,23 +1633,24 @@
 .overviewTickerSignalNeutral {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 27px;
-  padding: 5px 10px;
+  flex: 1 1 180px;
+  gap: 9px;
+  min-height: 38px;
+  padding: 8px 13px;
   border: 1px solid #e5dbe9;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.78);
   white-space: nowrap;
 }
 .overviewTickerSignalNeutral b {
   color: #8f7d98;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.1em;
 }
 .overviewTickerSignalNeutral strong {
   color: #37003c;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 750;
 }
 .overviewTickerSignalNeutral em {
@@ -2145,9 +2147,9 @@
 .marketTicker {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 22px;
+  gap: 10px 22px;
   margin-top: 25px;
-  padding-top: 14px;
+  padding-top: 18px;
   color: #8b7b95;
   border-top: 1px solid #e7ddea;
   font-size: 10px;
@@ -2164,8 +2166,9 @@
 .marketTicker .marketTickerSignal {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 5px 9px;
+  gap: 9px;
+  min-height: 34px;
+  padding: 7px 12px;
   color: #6e6075;
   border: 1px solid #e5dbe9;
   border-radius: 999px;
@@ -2177,13 +2180,13 @@
 }
 .marketTickerSignal b {
   color: #8f7d98;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.1em;
 }
 .marketTickerSignal strong {
   color: #37003c;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 750;
 }
 .marketMetricStrip {
