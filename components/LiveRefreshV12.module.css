@@ -1950,3 +1950,19 @@
     display: inline-block;
   }
 }
+
+/* Keep the player detail action available while the dense market table scrolls. */
+.marketHeader > span:last-child,
+.marketRow > button:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 4;
+  white-space: nowrap;
+  box-shadow: -8px 0 14px rgba(55, 0, 60, 0.08);
+}
+.marketHeader > span:last-child {
+  background: #f1eef3;
+}
+.marketRow > button:last-child {
+  background: #fff;
+}
