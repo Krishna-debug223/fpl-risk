@@ -17,7 +17,7 @@ The product is live at **[fpl-risk-ui-refresh.vercel.app](https://fpl-risk-ui-re
 | [8-GW Path Planner](https://fpl-risk-ui-refresh.vercel.app/planner) | Searches roll, single-transfer and two-transfer paths across eight Gameweeks in Safe, Balanced and Aggressive modes. |
 | [Pricing](https://fpl-risk-ui-refresh.vercel.app/pricing) | Keeps the complete product free during launch. Pro and Elite are roadmap tiers; no paid checkout or automatic renewal is active. |
 | **Account / sign in** | Optional Supabase-backed settings for saving a public Team ID, free-transfer default and planner style. An FPL password is never requested. |
-| [FPL Ledger](https://fpl-ledger-azure.vercel.app/) | Companion forward-test workspace linked from the dashboard. |
+| [FPL Modelbook](https://fpl-ledger-azure.vercel.app/modelbook) | Companion forward-test workspace linked from the dashboard. |
 
 The production dashboard reports the current Gameweek and model version from the live feed. The latest release verified against production for this repository update is **Gameweek 5, model `1.2.0-beta.2`**.
 
