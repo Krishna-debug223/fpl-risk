@@ -64,6 +64,22 @@ export type Projection = {
   dataQuality: number;
   confidence: ModelConfidence;
   components: ProjectionComponents;
+  distribution?: ProjectionDistribution;
+};
+
+export type ProjectionDistribution = {
+  p10: number;
+  median: number;
+  p90: number;
+  standardDeviation: number;
+  sharpe: number;
+  bands: {
+    bust: number;
+    floor: number;
+    middle: number;
+    haul: number;
+  };
+  simulations: number;
 };
 
 export type TransferResult = {
@@ -740,6 +756,63 @@ function percentile(sorted: number[], p: number) {
   const upper = Math.ceil(index);
   if (lower === upper) return sorted[lower];
   return sorted[lower] + (sorted[upper] - sorted[lower]) * (index - lower);
+}
+
+/**
+ * Deterministic player-level Monte Carlo summary. The seeded stream keeps
+ * rankings stable between renders while using the same appearance and
+ * fixture scoring assumptions as transfer simulations.
+ */
+export function simulateProjection(
+  player: FplPlayer,
+  projection: Projection,
+  simulations = 768,
+): ProjectionDistribution {
+  const count = Math.max(128, Math.floor(simulations));
+  const seed = hashSeed([
+    MODEL_VERSION,
+    "player-distribution",
+    player.id,
+    projection.horizon,
+    projection.fixtureMeans.map((value) => value.toFixed(3)).join(","),
+    projection.appearanceProbabilities.map((value) => value.toFixed(3)).join(","),
+  ].join("|"));
+  const random = seededRandom(seed);
+  const samples = new Array<number>(count);
+  for (let index = 0; index < count; index += 1) {
+    let total = 0;
+    for (let gw = 0; gw < projection.horizon; gw += 1) {
+      total += simulateGameweek(
+        projection.fixtureMeans[gw] ?? 0,
+        projection.appearanceProbabilities[gw] ?? 0,
+        player,
+        random,
+      );
+    }
+    samples[index] = total;
+  }
+
+  const sorted = [...samples].sort((a, b) => a - b);
+  const mean = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+  const variance = samples.reduce((sum, value) => sum + (value - mean) ** 2, 0) / samples.length;
+  const standardDeviation = Math.sqrt(variance);
+  const bandCount = (predicate: (value: number) => boolean) =>
+    (samples.filter(predicate).length / samples.length) * 100;
+
+  return {
+    p10: percentile(sorted, 0.1),
+    median: percentile(sorted, 0.5),
+    p90: percentile(sorted, 0.9),
+    standardDeviation,
+    sharpe: mean / Math.max(standardDeviation, 0.35),
+    bands: {
+      bust: bandCount((value) => value <= 2),
+      floor: bandCount((value) => value >= 3 && value <= 5),
+      middle: bandCount((value) => value >= 6 && value <= 9),
+      haul: bandCount((value) => value >= 10),
+    },
+    simulations: samples.length,
+  };
 }
 
 export function simulateTransfer(

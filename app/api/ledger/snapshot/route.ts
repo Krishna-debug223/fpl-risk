@@ -134,6 +134,7 @@ export async function GET(request: NextRequest) {
           history?.players,
           sportsbook,
           [event.id],
+          true,
         );
         const team = teamMap.get(player.team);
 
@@ -156,12 +157,18 @@ export async function GET(request: NextRequest) {
           risk: projection.risk,
           confidence: projection.confidence,
           dataQuality: projection.dataQuality,
+          floor: projection.distribution?.p10 ?? Math.max(0, projection.expected - projection.volatility * 1.28),
+          median: projection.distribution?.median ?? projection.expected,
+          ceiling: projection.distribution?.p90 ?? projection.expected + projection.volatility * 1.28,
+          sharpe: projection.distribution?.sharpe ?? projection.expected / Math.max(projection.volatility, 0.35),
+          probabilities: projection.distribution?.bands ?? null,
+          simulations: projection.distribution?.simulations ?? null,
           components: projection.components,
         };
       });
 
       return {
-        schemaVersion: 1,
+        schemaVersion: 2,
         gameweek: event.id,
         eventName: event.name,
         deadlineTime: event.deadline_time,

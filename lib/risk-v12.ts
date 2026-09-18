@@ -8,12 +8,16 @@ import {
   type HistoricalProfileMap,
   type ModelConfidence,
   type Projection,
+  type ProjectionDistribution,
   type Recommendation,
+  simulateProjection,
 } from "./risk";
 
-export const MODEL_VERSION = "1.2.0-beta.2";
+export const MODEL_VERSION = "1.3.0";
 export { assessChips, positionName };
-export type { ChipAdvice, HistoricalProfileMap, ModelConfidence, Recommendation };
+export type { ChipAdvice, HistoricalProfileMap, ModelConfidence, Recommendation, ProjectionDistribution };
+
+export type RiskMode = "protect" | "balanced" | "chase" | "mini";
 
 export type MarketProjection = Omit<Projection, "components"> & {
   components: Projection["components"] & {
@@ -27,6 +31,7 @@ export type MarketProjection = Omit<Projection, "components"> & {
     effectiveWeight: number;
     source: string | null;
   };
+  distribution?: ProjectionDistribution;
 };
 
 export type JointTransferMove = {
@@ -138,6 +143,7 @@ export function projectPlayer(
   history?: HistoricalProfileMap,
   sportsbook?: SportsbookPayload | null,
   eventIdsOverride?: number[],
+  includeDistribution = false,
 ): MarketProjection {
   const base = projectPlayerBase(player, fixtures, teams, horizon, history, eventIdsOverride);
   const adjustments = base.fixtureMeans.map((mean, index) => marketFactor(player, base, index, sportsbook));
@@ -149,6 +155,9 @@ export function projectPlayer(
   const effectiveWeight = adjustments.length ? average(adjustments.map((item) => item.weight)) : 0;
   const dataQuality = clamp(base.dataQuality + (fixturesUsed > 0 ? Math.round(effectiveWeight * 20) : 0), 0, 100);
   const cv = base.volatility / Math.max(expected, 1);
+  const distribution = includeDistribution
+    ? simulateProjection(player, { ...base, expected, fixtureMeans: adjustedFixtureMeans }, 768)
+    : undefined;
 
   return {
     ...base,
@@ -158,6 +167,7 @@ export function projectPlayer(
     dataQuality,
     confidence: confidenceFromQuality(dataQuality),
     components: { ...base.components, fixtureDifficulty, sportsbookMarket },
+    distribution,
     sportsbook: {
       applied: fixturesUsed > 0 && effectiveWeight > 0,
       fixturesUsed,
@@ -190,6 +200,7 @@ export function recommendReplacements({
   history,
   freeTransfers = 1,
   sportsbook,
+  riskMode = "balanced",
 }: {
   players: FplPlayer[];
   squad: FplPlayer[];
@@ -203,6 +214,7 @@ export function recommendReplacements({
   history?: HistoricalProfileMap;
   freeTransfers?: number;
   sportsbook?: SportsbookPayload | null;
+  riskMode?: RiskMode;
 }): Recommendation[] {
   const sale = sellingPrice ?? outgoing.now_cost;
   const budget = sale + Math.max(bank, 0);
@@ -232,7 +244,15 @@ export function recommendReplacements({
       const outgoingFixture = outgoingProjection.fixtureContexts.length ? average(outgoingProjection.fixtureContexts.map((context) => context.overallFactor)) : 1;
       const incomingFixture = incomingProjection.fixtureContexts.length ? average(incomingProjection.fixtureContexts.map((context) => context.overallFactor)) : 1;
       const fixtureEdge = incomingFixture - outgoingFixture;
-      const score = expectedGain + signalToNoise * 0.35 - uncertaintyPenalty - rollValue + (availability(candidate) - 0.85) * 0.35 + Math.min(priceHeadroom, 1.5) * 0.01;
+      const riskPreference =
+        riskMode === "protect"
+          ? -0.30 * (incomingProjection.volatility - outgoingProjection.volatility)
+          : riskMode === "chase"
+            ? 0.26 * (incomingProjection.volatility - outgoingProjection.volatility)
+            : riskMode === "mini"
+              ? 0.12 * (incomingProjection.volatility - outgoingProjection.volatility)
+              : 0;
+      const score = expectedGain + signalToNoise * 0.35 - uncertaintyPenalty - rollValue + riskPreference + (availability(candidate) - 0.85) * 0.35 + Math.min(priceHeadroom, 1.5) * 0.01;
       const reasons: string[] = [];
       if (transferCost > 0) reasons.push(`Includes the -4 hit; raw projection edge is +${rawExpectedGain.toFixed(1)} points`);
       if (expectedGain >= 2) reasons.push(`Projects ${expectedGain.toFixed(1)} net points more over ${horizon} GWs`);
@@ -241,6 +261,9 @@ export function recommendReplacements({
       if (fixtureEdge >= 0.04) reasons.push("Moves into the stronger modelled fixture run");
       if (incomingProjection.sportsbook.applied && Math.abs(incomingProjection.components.sportsbookMarket) >= 0.15) reasons.push("De-vigged sportsbook markets support the incoming player's team-level scoring outlook");
       if (incomingProjection.risk === "Low" && outgoingProjection.risk !== "Low") reasons.push("Reduces modelled outcome risk");
+      if (riskMode === "protect" && incomingProjection.volatility < outgoingProjection.volatility) reasons.push("Protects rank with a tighter simulated range");
+      if (riskMode === "chase" && incomingProjection.volatility > outgoingProjection.volatility) reasons.push("Adds controlled variance for a rank-chasing profile");
+      if (riskMode === "mini" && incomingProjection.volatility > outgoingProjection.volatility) reasons.push("Balances expected gain with mini-league upside");
       if (quality >= 70) reasons.push("Both sides of the comparison have strong model data coverage");
 
       return {

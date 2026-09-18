@@ -22,7 +22,9 @@ import {
   recommendReplacements,
   type MarketProjection,
   type Recommendation,
+  type RiskMode,
 } from "@/lib/risk-v12";
+import { analyzePortfolioRisk } from "@/lib/portfolio-risk";
 
 type Tab = "overview" | "transfer" | "team" | "market" | "model";
 type ProjectionRow = {
@@ -34,7 +36,14 @@ type ProjectionRow = {
 };
 type SquadItem = SquadPitchPlayer;
 type MarketSort =
-  "one" | "three" | "five" | "value" | "price" | "risk" | "ownership";
+  | "one" | "three" | "five" | "value" | "price" | "risk" | "sharpe" | "ownership";
+
+const decisionContextCopy: Record<RiskMode, { label: string; detail: string }> = {
+  protect: { label: "Protect rank", detail: "Prefer a tighter simulated range and a safer median when the downside matters most." },
+  balanced: { label: "Balanced", detail: "Blend expected points, uncertainty and fixture quality without leaning into either extreme." },
+  chase: { label: "Chase rank", detail: "Give controlled variance and high ceilings more weight when you need to make ground." },
+  mini: { label: "Mini-league", detail: "Keep the expected edge while giving differentials a measured upside preference." },
+};
 
 const money = (value: number | null | undefined) =>
   value == null ? "—" : `£${(value / 10).toFixed(1)}m`;
@@ -92,6 +101,16 @@ export default function LiveRefreshV12() {
   const [marketTeam, setMarketTeam] = useState(0);
   const [marketMaxPrice, setMarketMaxPrice] = useState<number | null>(null);
   const [marketSort, setMarketSort] = useState<MarketSort>("five");
+  const [decisionContext, setDecisionContext] = useState<RiskMode>("balanced");
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("fpl-risk-decision-context") as RiskMode | null;
+    if (saved && saved in decisionContextCopy) setDecisionContext(saved);
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("fpl-risk-decision-context", decisionContext);
+  }, [decisionContext]);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,6 +197,8 @@ export default function LiveRefreshV12() {
         1,
         historicalProfiles,
         sportsbook,
+        undefined,
+        true,
       );
       const three = projectPlayer(
         player,
@@ -186,6 +207,8 @@ export default function LiveRefreshV12() {
         3,
         historicalProfiles,
         sportsbook,
+        undefined,
+        true,
       );
       const five = projectPlayer(
         player,
@@ -194,6 +217,8 @@ export default function LiveRefreshV12() {
         5,
         historicalProfiles,
         sportsbook,
+        undefined,
+        true,
       );
       const price = Math.max(player.now_cost / 10, 3.5);
       return { player, one, three, five, value: five.expected / price };
@@ -276,6 +301,17 @@ export default function LiveRefreshV12() {
       ) / starters.length;
     return averageCv < 0.52 ? "Low" : averageCv < 0.7 ? "Medium" : "High";
   }, [starters]);
+  const portfolioRisk = useMemo(
+    () => analyzePortfolioRisk(
+      starters.map((item) => ({
+        player: item.player,
+        projection: item.five,
+        weight: Math.max(item.pick.multiplier, 1),
+      })),
+      teams,
+    ),
+    [starters, teams],
+  );
 
   const autoRecommendation = useMemo<Recommendation | null>(() => {
     if (!manager || !squadPlayers.length) return null;
@@ -293,6 +329,7 @@ export default function LiveRefreshV12() {
         history: historicalProfiles,
         freeTransfers,
         sportsbook,
+        riskMode: decisionContext,
       }),
     );
     if (!candidates.length) return null;
@@ -316,6 +353,7 @@ export default function LiveRefreshV12() {
     sportsbook,
     squadPlayers,
     teams,
+    decisionContext,
   ]);
 
   const chipAdvice = useMemo(() => {
@@ -392,6 +430,7 @@ export default function LiveRefreshV12() {
       history: historicalProfiles,
       freeTransfers,
       sportsbook,
+      riskMode: decisionContext,
     });
   }, [
     fixtures,
@@ -405,6 +444,7 @@ export default function LiveRefreshV12() {
     sportsbook,
     squadPlayers,
     teams,
+    decisionContext,
   ]);
 
   const marketRows = useMemo(() => {
@@ -431,6 +471,8 @@ export default function LiveRefreshV12() {
       if (marketSort === "price") return b.player.now_cost - a.player.now_cost;
       if (marketSort === "risk")
         return riskRank[a.five.risk] - riskRank[b.five.risk];
+      if (marketSort === "sharpe")
+        return (b.five.distribution?.sharpe ?? 0) - (a.five.distribution?.sharpe ?? 0);
       return (
         Number.parseFloat(b.player.selected_by_percent || "0") -
         Number.parseFloat(a.player.selected_by_percent || "0")
@@ -687,6 +729,29 @@ export default function LiveRefreshV12() {
             />
           </section>
 
+          <section className={styles.contextSection} aria-labelledby="decision-context-title">
+            <div>
+              <span className={styles.eyebrow}>DECISION POSTURE</span>
+              <h2 id="decision-context-title">What are you playing for?</h2>
+              <p>Use the same projections with a preference that matches your rank situation.</p>
+            </div>
+            <div className={styles.contextChoices} role="radiogroup" aria-label="Risk tolerance">
+              {(Object.keys(decisionContextCopy) as RiskMode[]).map((mode) => (
+                <button
+                  type="button"
+                  key={mode}
+                  className={decisionContext === mode ? styles.contextChoiceActive : styles.contextChoice}
+                  onClick={() => setDecisionContext(mode)}
+                  role="radio"
+                  aria-checked={decisionContext === mode}
+                >
+                  {decisionContextCopy[mode].label}
+                </button>
+              ))}
+            </div>
+            <p className={styles.contextHint}>{decisionContextCopy[decisionContext].detail}</p>
+          </section>
+
           <section className={styles.marketSection}>
             <div className={styles.sectionTitle}>
               <div>
@@ -729,6 +794,10 @@ export default function LiveRefreshV12() {
                           {row.one.expected.toFixed(1)} <small>xPTS</small>
                         </strong>
                         <button onClick={() => showWhy(row)}>Why?</button>
+                      </div>
+                      <div className={styles.cardRisk}>
+                        <span>Range {row.one.distribution ? `${row.one.distribution.p10.toFixed(1)}–${row.one.distribution.p90.toFixed(1)}` : "—"}</span>
+                        <span>Sharpe {row.one.distribution?.sharpe.toFixed(2) ?? "—"}</span>
                       </div>
                     </article>
                   );
@@ -884,6 +953,24 @@ export default function LiveRefreshV12() {
                     <strong>{money(manager.teamValue)}</strong>
                     <small>latest public FPL value</small>
                   </div>
+                </div>
+              </section>
+
+              <section className={styles.portfolioPanel}>
+                <div className={styles.sectionTitle}>
+                  <div>
+                    <span className={styles.eyebrow}>PORTFOLIO RISK</span>
+                    <h2>Where your squad is concentrated</h2>
+                    <p>Covariance is added when players share a club or fixture, so team risk reflects the basket rather than a simple sum.</p>
+                  </div>
+                  <span className={`${styles.riskBadge} ${styles[portfolioRisk.risk.toLowerCase()]}`}>{portfolioRisk.risk}</span>
+                </div>
+                <div className={styles.portfolioGrid}>
+                  <div className={styles.portfolioMetric}><span>PORTFOLIO SD</span><strong>{portfolioRisk.portfolioVolatility.toFixed(1)}</strong><small>5GW simulated points</small></div>
+                  <div className={styles.portfolioMetric}><span>INDEPENDENT SD</span><strong>{portfolioRisk.independentVolatility.toFixed(1)}</strong><small>without covariance</small></div>
+                  <div className={styles.portfolioMetric}><span>COVARIANCE UPLIFT</span><strong>{portfolioRisk.correlationImpact >= 0 ? "+" : ""}{portfolioRisk.correlationImpact.toFixed(1)}</strong><small>shared outcome risk</small></div>
+                  <div className={styles.portfolioMetric}><span>TOP CLUB</span><strong>{portfolioRisk.topTeam}</strong><small>{(portfolioRisk.topTeamShare * 100).toFixed(0)}% of expected points</small></div>
+                  <div className={styles.portfolioMetric}><span>TOP FIXTURE</span><strong>{portfolioRisk.topFixture}</strong><small>{(portfolioRisk.topFixtureShare * 100).toFixed(0)}% of expected points</small></div>
                 </div>
               </section>
 
@@ -1352,6 +1439,7 @@ export default function LiveRefreshV12() {
               <option value="value">Sort: Value</option>
               <option value="price">Sort: Price</option>
               <option value="risk">Sort: Lowest risk</option>
+              <option value="sharpe">Sort: Sharpe ratio</option>
               <option value="ownership">Sort: Ownership</option>
             </select>
           </section>
@@ -1364,6 +1452,9 @@ export default function LiveRefreshV12() {
               <span>1GW</span>
               <span>3GW</span>
               <span>5GW</span>
+              <span>Range</span>
+              <span>Sharpe</span>
+              <span>Bust / haul</span>
               <span>Risk</span>
               <span>Value</span>
               <span>Why</span>
@@ -1384,6 +1475,11 @@ export default function LiveRefreshV12() {
                 <b>{row.one.expected.toFixed(1)}</b>
                 <b>{row.three.expected.toFixed(1)}</b>
                 <b>{row.five.expected.toFixed(1)}</b>
+                <span>{row.five.distribution ? `${row.five.distribution.p10.toFixed(1)}–${row.five.distribution.p90.toFixed(1)}` : "—"}</span>
+                <span>{row.five.distribution?.sharpe.toFixed(2) ?? "—"}</span>
+                <span className={styles.bandInline} title="Probability of 0–2 points / 10+ points">
+                  {row.five.distribution ? `${Math.round(row.five.distribution.bands.bust)}% / ${Math.round(row.five.distribution.bands.haul)}%` : "—"}
+                </span>
                 <span
                   className={`${styles.riskBadge} ${styles[row.five.risk.toLowerCase()]}`}
                 >
@@ -1420,6 +1516,9 @@ export default function LiveRefreshV12() {
               "Sportsbook market prior",
               "FPL scoring components",
               "Fixture-level uncertainty",
+              "P10 / P90 + Sharpe",
+              "Bust / haul bands",
+              "Portfolio covariance",
               "xPts + transfer decision",
             ].map((item, index) => (
               <div key={item}>
@@ -1491,6 +1590,14 @@ export default function LiveRefreshV12() {
                   minutes accumulate.
                 </p>
               </article>
+              <article>
+                <strong>Risk-adjusted range</strong>
+                <p>Monte Carlo simulations show the 10th percentile floor, 90th percentile ceiling and a Sharpe-style points-to-variance ratio.</p>
+              </article>
+              <article>
+                <strong>Outcome bands</strong>
+                <p>Every player carries probabilities for a bust (0–2), floor (3–5), middle (6–9) and haul (10+) outcome.</p>
+              </article>
             </div>
           </section>
 
@@ -1540,6 +1647,8 @@ export default function LiveRefreshV12() {
                 <strong>Wider outcome range</strong>
                 <span>Confidence</span>
                 <strong>Data coverage + signal quality</strong>
+                <span>Portfolio</span>
+                <strong>Club and fixture covariance</strong>
               </div>
             </article>
           </section>
@@ -1660,6 +1769,22 @@ export default function LiveRefreshV12() {
                 <span>RISK</span>
                 <strong>{whyPlayer.five.risk}</strong>
               </div>
+            </div>
+            <div className={styles.distributionPanel}>
+              <div className={styles.distributionMetric}><span>FLOOR · P10</span><strong>{whyPlayer.five.distribution?.p10.toFixed(1) ?? "—"}</strong><small>10% of simulations land below this</small></div>
+              <div className={styles.distributionMetric}><span>MEDIAN</span><strong>{whyPlayer.five.distribution?.median.toFixed(1) ?? "—"}</strong><small>central simulated outcome</small></div>
+              <div className={styles.distributionMetric}><span>CEILING · P90</span><strong>{whyPlayer.five.distribution?.p90.toFixed(1) ?? "—"}</strong><small>90% of simulations land below this</small></div>
+              <div className={styles.distributionMetric}><span>SHARPE-STYLE</span><strong>{whyPlayer.five.distribution?.sharpe.toFixed(2) ?? "—"}</strong><small>mean points per unit of spread</small></div>
+            </div>
+            <div className={styles.bandGrid} aria-label="Simulated outcome bands">
+              {[
+                ["0–2 BUST", whyPlayer.five.distribution?.bands.bust],
+                ["3–5 FLOOR", whyPlayer.five.distribution?.bands.floor],
+                ["6–9 MIDDLE", whyPlayer.five.distribution?.bands.middle],
+                ["10+ HAUL", whyPlayer.five.distribution?.bands.haul],
+              ].map(([label, value]) => (
+                <div className={styles.bandCell} key={label as string}><span>{label}</span><strong>{value == null ? "—" : `${Math.round(value as number)}%`}</strong></div>
+              ))}
             </div>
             <div className={styles.whyFixture}>
               <strong>
