@@ -1593,12 +1593,40 @@
   font-size: 10px;
   font-weight: 750;
 }
+.overviewTickerIcon {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgba(55, 0, 60, 0.08);
+  color: #37003c;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
 .overviewTickerSignalDown {
   border-color: #f0dfe4;
   background: #fff9fa;
 }
+.overviewTickerSignalDown .overviewTickerIcon {
+  background: rgba(154, 61, 85, 0.12);
+  color: #9a3d55;
+}
 .overviewTickerSignalDown b,
 .overviewTickerSignalDown strong {
+  color: #9a3d55;
+}
+.overviewTickerSignal em,
+.overviewTickerSignalNeutral em {
+  color: #008449;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+.overviewTickerSignalDown em {
   color: #9a3d55;
 }
 .overviewTickerSignalNeutral {
@@ -1622,6 +1650,9 @@
   color: #37003c;
   font-size: 10px;
   font-weight: 750;
+}
+.overviewTickerSignalNeutral em {
+  color: #5b2462;
 }
 .heroCopy .importCard {
   padding: 0;
