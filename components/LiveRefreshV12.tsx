@@ -47,6 +47,16 @@ const decisionContextCopy: Record<RiskMode, { label: string; detail: string }> =
 
 const money = (value: number | null | undefined) =>
   value == null ? "—" : `£${(value / 10).toFixed(1)}m`;
+const compactNumber = (value: number) =>
+  new Intl.NumberFormat("en-GB", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+const signedCompactNumber = (value: number) => {
+  if (value === 0) return "0";
+  return `${value > 0 ? "+" : "−"}${compactNumber(Math.abs(value))}`;
+};
+const signedPriceChange = (value: number | null | undefined) => {
+  if (value == null || !Number.isFinite(value) || value === 0) return "No move";
+  return `${value > 0 ? "+" : "−"}£${(Math.abs(value) / 10).toFixed(1)}m`;
+};
 const riskRank: Record<MarketProjection["risk"], number> = {
   Low: 1,
   Medium: 2,
@@ -498,6 +508,30 @@ export default function LiveRefreshV12() {
     )[0] ?? null;
     const bestValue = [...marketRows].sort((a, b) => b.value - a.value)[0] ?? null;
     return { topExpected, topSharpe, topCeiling, bestValue };
+  }, [marketRows]);
+
+  const marketSignals = useMemo(() => {
+    const priceMover = [...marketRows]
+      .filter(({ player }) => Number.isFinite(player.cost_change_event))
+      .sort((a, b) => Math.abs(b.player.cost_change_event ?? 0) - Math.abs(a.player.cost_change_event ?? 0))[0] ?? null;
+    const transferLeader = [...marketRows]
+      .sort((a, b) => {
+        const netB = (b.player.transfers_in_event ?? 0) - (b.player.transfers_out_event ?? 0);
+        const netA = (a.player.transfers_in_event ?? 0) - (a.player.transfers_out_event ?? 0);
+        return netB - netA;
+      })[0] ?? null;
+    const haulLeader = [...marketRows]
+      .sort((a, b) => (b.one.distribution?.bands.haul ?? 0) - (a.one.distribution?.bands.haul ?? 0))[0] ?? null;
+    const gameweekLeader = [...marketRows]
+      .filter(({ player }) => Number.isFinite(player.event_points))
+      .sort((a, b) => (b.player.event_points ?? 0) - (a.player.event_points ?? 0))[0] ?? null;
+    const gameweekRank = gameweekLeader
+      ? [...marketRows]
+          .filter(({ player }) => Number.isFinite(player.event_points))
+          .sort((a, b) => (b.player.event_points ?? 0) - (a.player.event_points ?? 0))
+          .findIndex(({ player }) => player.id === gameweekLeader.player.id) + 1
+      : null;
+    return { priceMover, transferLeader, haulLeader, gameweekLeader, gameweekRank };
   }, [marketRows]);
 
   const selectedMarketRow = useMemo(
@@ -1408,6 +1442,38 @@ export default function LiveRefreshV12() {
               <span>Model {MODEL_VERSION}</span>
               <span>Next fixture window {nextEvent?.name ?? "Current GW"}</span>
               <span>{sportsbook?.available ? "Market prior connected" : "Core model · market prior optional"}</span>
+              <span className={styles.marketTickerSignal}>
+                <b>PRICE WATCH</b>
+                <strong>
+                  {marketSignals.priceMover
+                    ? `${marketSignals.priceMover.player.web_name} ${signedPriceChange(marketSignals.priceMover.player.cost_change_event)}`
+                    : "No move yet"}
+                </strong>
+              </span>
+              <span className={styles.marketTickerSignal}>
+                <b>TRANSFER FLOW</b>
+                <strong>
+                  {marketSignals.transferLeader
+                    ? `${marketSignals.transferLeader.player.web_name} ${signedCompactNumber((marketSignals.transferLeader.player.transfers_in_event ?? 0) - (marketSignals.transferLeader.player.transfers_out_event ?? 0))}`
+                    : "Waiting for feed"}
+                </strong>
+              </span>
+              <span className={styles.marketTickerSignal}>
+                <b>HAUL PROBABILITY</b>
+                <strong>
+                  {marketSignals.haulLeader?.one.distribution
+                    ? `${marketSignals.haulLeader.player.web_name} ${Math.round(marketSignals.haulLeader.one.distribution.bands.haul)}%`
+                    : "Waiting for model"}
+                </strong>
+              </span>
+              <span className={styles.marketTickerSignal}>
+                <b>GW POINTS RANK</b>
+                <strong>
+                  {marketSignals.gameweekLeader && marketSignals.gameweekRank
+                    ? `#${marketSignals.gameweekRank} ${marketSignals.gameweekLeader.player.web_name} · ${marketSignals.gameweekLeader.player.event_points ?? 0} pts`
+                    : "Waiting for feed"}
+                </strong>
+              </span>
             </div>
           </section>
 
