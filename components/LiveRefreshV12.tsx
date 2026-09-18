@@ -869,7 +869,7 @@ export default function LiveRefreshV12() {
                         <strong>
                           {row.one.expected.toFixed(1)} <small>xPTS</small>
                         </strong>
-                        <button onClick={() => showWhy(row)}>Why?</button>
+                        <button onClick={() => showWhy(row)}>Why this pick</button>
                       </div>
                       <div className={styles.cardRisk}>
                         <span>Range {row.one.distribution ? `${row.one.distribution.p10.toFixed(1)}–${row.one.distribution.p90.toFixed(1)}` : "—"}</span>
@@ -1629,7 +1629,7 @@ export default function LiveRefreshV12() {
               <div>
                 <span className={styles.eyebrow}>MARKET RANKING</span>
                 <strong>{marketRows.length} players in view</strong>
-                <small>Click any row to pin a player snapshot. Use Why? to inspect the model inputs.</small>
+                <small>Click any row to pin a player snapshot. Use Why this pick to inspect the model inputs.</small>
               </div>
               <div className={styles.marketTableLegend} aria-label="Market column guide">
                 <span><i className={styles.legendDot} /> Higher xPts</span>
