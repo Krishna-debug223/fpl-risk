@@ -1554,6 +1554,17 @@
   gap: 8px;
   margin-top: 18px;
 }
+.overviewMarketTape {
+  margin: 0 0 8px;
+  padding: 10px 14px;
+  border: 1px solid #e4dce9;
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 6px 16px rgba(55, 0, 60, 0.035);
+}
+.overviewMarketTape .overviewTicker {
+  margin-top: 0;
+}
 .overviewTickerLabel {
   color: #8f7c99;
   font-size: 9px;
