@@ -1966,3 +1966,11 @@
 .marketRow > button:last-child {
   background: #fff;
 }
+
+/* Preserve horizontal access to the full market on smaller screens. */
+@media (max-width: 1180px) {
+  .marketTable {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+}
