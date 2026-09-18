@@ -2459,6 +2459,23 @@
 .marketTableShell .marketHeader > span:last-child {
   background: #f5f1f6;
 }
+.marketTableShell .marketHeader > span:nth-last-child(2),
+.marketTableShell .marketRow > span:nth-last-child(2) {
+  position: sticky;
+  right: 82px;
+  z-index: 3;
+  background: inherit;
+  box-shadow: -8px 0 14px rgba(55, 0, 60, 0.045);
+}
+.marketTableShell .marketHeader > span:nth-last-child(2) {
+  background: #f5f1f6;
+}
+.marketTableShell .marketRow > span:nth-last-child(2) {
+  background: #fff;
+}
+.marketTableShell .marketRow:nth-child(even) > span:nth-last-child(2) {
+  background: #fdfbfe;
+}
 .marketTableShell .marketRow > button:last-child {
   background: rgba(255, 255, 255, 0.97);
 }
