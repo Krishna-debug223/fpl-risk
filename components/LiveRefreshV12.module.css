@@ -2541,3 +2541,26 @@
     padding-right: 18px;
   }
 }
+
+/* Keep the reasoning action centered in its own final column. */
+.marketTableShell .marketHeader > span:last-child,
+.marketTableShell .marketRow > button:last-child {
+  right: 6px;
+  width: 70px;
+  min-width: 70px;
+  justify-self: center;
+  border-radius: 10px;
+  box-shadow: none;
+}
+.marketTableShell .marketRow > button:last-child {
+  padding: 0 10px;
+  background: #f8f4fa;
+  border-color: #e4d8e8;
+  color: #5b2462;
+}
+.marketTableShell .marketRow > button:last-child:hover {
+  color: #fff;
+  background: #37003c;
+  border-color: #37003c;
+  box-shadow: 0 5px 12px rgba(55, 0, 60, 0.15);
+}
