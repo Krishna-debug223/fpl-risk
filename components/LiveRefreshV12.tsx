@@ -101,6 +101,7 @@ export default function LiveRefreshV12() {
   const [marketTeam, setMarketTeam] = useState(0);
   const [marketMaxPrice, setMarketMaxPrice] = useState<number | null>(null);
   const [marketSort, setMarketSort] = useState<MarketSort>("five");
+  const [selectedMarketId, setSelectedMarketId] = useState<number | null>(null);
   const [decisionContext, setDecisionContext] = useState<RiskMode>("balanced");
 
   useEffect(() => {
@@ -486,6 +487,25 @@ export default function LiveRefreshV12() {
     marketTeam,
     projectableMarket,
   ]);
+
+  const marketLeaders = useMemo(() => {
+    const topExpected = marketRows[0] ?? null;
+    const topSharpe = [...marketRows].sort(
+      (a, b) => (b.five.distribution?.sharpe ?? 0) - (a.five.distribution?.sharpe ?? 0),
+    )[0] ?? null;
+    const topCeiling = [...marketRows].sort(
+      (a, b) => (b.one.distribution?.p90 ?? 0) - (a.one.distribution?.p90 ?? 0),
+    )[0] ?? null;
+    const bestValue = [...marketRows].sort((a, b) => b.value - a.value)[0] ?? null;
+    return { topExpected, topSharpe, topCeiling, bestValue };
+  }, [marketRows]);
+
+  const selectedMarketRow = useMemo(
+    () =>
+      marketRows.find((row) => row.player.id === selectedMarketId) ??
+      marketLeaders.topExpected,
+    [marketLeaders.topExpected, marketRows, selectedMarketId],
+  );
 
   const riskNotes = useMemo(() => {
     if (!manager) return [];
@@ -1367,83 +1387,148 @@ export default function LiveRefreshV12() {
 
       {tab === "market" && (
         <div className={styles.page} role="tabpanel" aria-label="Player Market">
-          <div className={styles.pageHeading}>
-            <div>
-              <span className={styles.eyebrow}>PLAYER MARKET</span>
-              <h1>Every projectable player.</h1>
-              <p>
-                Search, filter and sort the full live player pool. Every row
-                exposes the model's reasoning.
-              </p>
+          <section className={styles.marketMasthead}>
+            <div className={styles.marketMastheadTop}>
+              <div>
+                <span className={styles.eyebrow}>LIVE PLAYER MARKET · GW5</span>
+                <h1>The FPL tape.</h1>
+                <p>
+                  A cleaner view of the live player pool. Scan expected points like a market,
+                  then open the reasoning behind every number.
+                </p>
+              </div>
+              <div className={styles.marketLiveBadge}>
+                <i />
+                <span>MARKET OPEN</span>
+                <strong>{marketRows.length}</strong>
+                <small>projectable players</small>
+              </div>
             </div>
-            <div className={styles.marketCount}>
-              <strong>{marketRows.length}</strong>
-              <span>players shown</span>
+            <div className={styles.marketTicker}>
+              <span>Model {MODEL_VERSION}</span>
+              <span>Next fixture window {nextEvent?.name ?? "Current GW"}</span>
+              <span>{sportsbook?.available ? "Market prior connected" : "Core model · market prior optional"}</span>
             </div>
-          </div>
+          </section>
+
+          <section className={styles.marketMetricStrip} aria-label="Market summary">
+            <article>
+              <span>TOP 1GW xPTS</span>
+              <strong>{marketLeaders.topExpected?.one.expected.toFixed(1) ?? "—"}</strong>
+              <small>{marketLeaders.topExpected?.player.web_name ?? "Waiting for feed"}</small>
+            </article>
+            <article>
+              <span>BEST SHARPE</span>
+              <strong>{marketLeaders.topSharpe?.five.distribution?.sharpe.toFixed(2) ?? "—"}</strong>
+              <small>{marketLeaders.topSharpe?.player.web_name ?? "Waiting for feed"}</small>
+            </article>
+            <article>
+              <span>HIGHEST CEILING</span>
+              <strong>{marketLeaders.topCeiling?.one.distribution?.p90.toFixed(1) ?? "—"}</strong>
+              <small>{marketLeaders.topCeiling?.player.web_name ?? "Waiting for feed"}</small>
+            </article>
+            <article>
+              <span>BEST 5GW VALUE</span>
+              <strong>{marketLeaders.bestValue?.value.toFixed(2) ?? "—"}</strong>
+              <small>{marketLeaders.bestValue?.player.web_name ?? "Waiting for feed"}</small>
+            </article>
+          </section>
+
+          {selectedMarketRow && (
+            <section className={styles.marketFocusCard} aria-label="Selected player snapshot">
+              <div className={styles.marketFocusIdentity}>
+                <span className={styles.marketFocusRank}>#{String(marketRows.indexOf(selectedMarketRow) + 1).padStart(2, "0")}</span>
+                <div>
+                  <span className={styles.eyebrow}>SELECTED PLAYER</span>
+                  <h2>{selectedMarketRow.player.web_name}</h2>
+                  <p>
+                    {teamMap.get(selectedMarketRow.player.team)?.name ?? "—"} ·{" "}
+                    {positionName(selectedMarketRow.player.element_type)} ·{" "}
+                    {money(selectedMarketRow.player.now_cost)} · {selectedMarketRow.player.selected_by_percent}% owned
+                  </p>
+                </div>
+              </div>
+              <div className={styles.marketFocusStats}>
+                <div><span>1GW</span><strong>{selectedMarketRow.one.expected.toFixed(1)}</strong></div>
+                <div><span>1GW RANGE</span><strong>{selectedMarketRow.one.distribution ? `${selectedMarketRow.one.distribution.p10.toFixed(1)}–${selectedMarketRow.one.distribution.p90.toFixed(1)}` : "—"}</strong></div>
+                <div><span>5GW</span><strong>{selectedMarketRow.five.expected.toFixed(1)}</strong></div>
+                <div><span>SHARPE</span><strong>{selectedMarketRow.five.distribution?.sharpe.toFixed(2) ?? "—"}</strong></div>
+              </div>
+              <button className={styles.marketFocusAction} onClick={() => showWhy(selectedMarketRow)}>
+                Open reasoning ↗
+              </button>
+            </section>
+          )}
+
           <section className={styles.marketControls}>
-            <input
-              value={marketQuery}
-              onChange={(event) => setMarketQuery(event.target.value)}
-              placeholder="Search player"
-              aria-label="Search player"
-            />
-            <select
-              value={marketPosition}
-              onChange={(event) =>
-                setMarketPosition(Number(event.target.value))
-              }
-              aria-label="Position"
-            >
-              <option value={0}>All positions</option>
-              <option value={1}>Goalkeepers</option>
-              <option value={2}>Defenders</option>
-              <option value={3}>Midfielders</option>
-              <option value={4}>Forwards</option>
-            </select>
-            <select
-              value={marketTeam}
-              onChange={(event) => setMarketTeam(Number(event.target.value))}
-              aria-label="Club"
-            >
-              <option value={0}>All clubs</option>
-              {teams.map((team) => (
-                <option value={team.id} key={team.id}>
-                  {team.name}
-                </option>
-              ))}
-            </select>
+            <label className={styles.marketSearch}>
+              <span>SEARCH</span>
+              <input
+                value={marketQuery}
+                onChange={(event) => setMarketQuery(event.target.value)}
+                placeholder="Search player"
+                aria-label="Search player"
+              />
+            </label>
             <label>
-              Max price <strong>{money(effectiveMarketMaxPrice)}</strong>
+              <span>POSITION</span>
+              <select
+                value={marketPosition}
+                onChange={(event) => setMarketPosition(Number(event.target.value))}
+                aria-label="Position"
+              >
+                <option value={0}>All positions</option>
+                <option value={1}>Goalkeepers</option>
+                <option value={2}>Defenders</option>
+                <option value={3}>Midfielders</option>
+                <option value={4}>Forwards</option>
+              </select>
+            </label>
+            <label>
+              <span>CLUB</span>
+              <select
+                value={marketTeam}
+                onChange={(event) => setMarketTeam(Number(event.target.value))}
+                aria-label="Club"
+              >
+                <option value={0}>All clubs</option>
+                {teams.map((team) => (
+                  <option value={team.id} key={team.id}>{team.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.marketPriceControl}>
+              <span>MAX PRICE <strong>{money(effectiveMarketMaxPrice)}</strong></span>
               <input
                 type="range"
                 min={marketPriceFloor}
                 max={marketPriceCeiling}
                 step={1}
                 value={effectiveMarketMaxPrice}
-                onChange={(event) =>
-                  setMarketMaxPrice(Number(event.target.value))
-                }
+                onChange={(event) => setMarketMaxPrice(Number(event.target.value))}
+                aria-label="Maximum player price"
               />
             </label>
-            <select
-              value={marketSort}
-              onChange={(event) =>
-                setMarketSort(event.target.value as MarketSort)
-              }
-              aria-label="Sort player market"
-            >
-              <option value="five">Sort: 5GW xPts</option>
-              <option value="one">Sort: 1GW xPts</option>
-              <option value="three">Sort: 3GW xPts</option>
-              <option value="value">Sort: Value</option>
-              <option value="price">Sort: Price</option>
-              <option value="risk">Sort: Lowest risk</option>
-              <option value="sharpe">Sort: Sharpe ratio</option>
-              <option value="ownership">Sort: Ownership</option>
-            </select>
+            <label>
+              <span>SORT BY</span>
+              <select
+                value={marketSort}
+                onChange={(event) => setMarketSort(event.target.value as MarketSort)}
+                aria-label="Sort player market"
+              >
+                <option value="five">5GW xPts</option>
+                <option value="one">1GW xPts</option>
+                <option value="three">3GW xPts</option>
+                <option value="value">Value</option>
+                <option value="price">Price</option>
+                <option value="risk">Lowest risk</option>
+                <option value="sharpe">Sharpe ratio</option>
+                <option value="ownership">Ownership</option>
+              </select>
+            </label>
           </section>
-          <section className={styles.marketTable}>
+
+          <section className={styles.marketTable} aria-label="Player market table">
             <div className={styles.marketHeader}>
               <span>#</span>
               <span>Player</span>
@@ -1461,15 +1546,24 @@ export default function LiveRefreshV12() {
               <span>Why</span>
             </div>
             {marketRows.map((row, index) => (
-              <div className={styles.marketRow} key={row.player.id}>
+              <div
+                className={`${styles.marketRow} ${selectedMarketId === row.player.id ? styles.marketRowSelected : ""}`}
+                key={row.player.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedMarketId(row.player.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") setSelectedMarketId(row.player.id);
+                }}
+                aria-label={`Select ${row.player.web_name}`}
+              >
                 <span>{String(index + 1).padStart(2, "0")}</span>
-                <div>
-                  <strong>{row.player.web_name}</strong>
-                  <small>
-                    {teamMap.get(row.player.team)?.short_name} ·{" "}
-                    {positionName(row.player.element_type)} ·{" "}
-                    {row.player.selected_by_percent}% owned
-                  </small>
+                <div className={styles.marketPlayerCell}>
+                  <span className={styles.marketPlayerDot}>{teamMap.get(row.player.team)?.short_name?.slice(0, 2) ?? "FPL"}</span>
+                  <div>
+                    <strong>{row.player.web_name}</strong>
+                    <small>{teamMap.get(row.player.team)?.short_name} · {positionName(row.player.element_type)} · {row.player.selected_by_percent}% owned</small>
+                  </div>
                 </div>
                 <span>{money(row.player.now_cost)}</span>
                 <span>{row.one.fixtureLabels[0] ?? "BLANK"}</span>
@@ -1482,13 +1576,9 @@ export default function LiveRefreshV12() {
                 <span className={styles.bandInline} title="Probability of 0–2 points / 10+ points">
                   {row.five.distribution ? `${Math.round(row.five.distribution.bands.bust)}% / ${Math.round(row.five.distribution.bands.haul)}%` : "—"}
                 </span>
-                <span
-                  className={`${styles.riskBadge} ${styles[row.five.risk.toLowerCase()]}`}
-                >
-                  {row.five.risk}
-                </span>
+                <span className={`${styles.riskBadge} ${styles[row.five.risk.toLowerCase()]}`}>{row.five.risk}</span>
                 <span>{row.value.toFixed(2)}</span>
-                <button onClick={() => showWhy(row)}>Why?</button>
+                <button onClick={(event) => { event.stopPropagation(); showWhy(row); }}>Why?</button>
               </div>
             ))}
           </section>
