@@ -675,6 +675,10 @@ export default function LiveRefreshV12() {
   const nextEvent =
     events.find((event) => event.is_next) ??
     events.find((event) => event.is_current);
+  const lastFinishedEvent = [...events]
+    .filter((event) => event.finished)
+    .sort((a, b) => b.id - a.id)[0];
+  const lastGameweekLabel = lastFinishedEvent?.name ?? "Previous GW";
   const autoOutgoing = autoRecommendation
     ? playerMap.get(autoRecommendation.outgoingId)
     : null;
@@ -783,7 +787,7 @@ export default function LiveRefreshV12() {
 
               <span className={styles.overviewTickerSignalNeutral}>
                 <i className={styles.overviewTickerIcon} aria-hidden="true">#</i>
-                <b>GW POINTS RANK</b>
+                <b>LAST GW RANK · {lastGameweekLabel}</b>
                 {marketSignals.gameweekLeader && marketSignals.gameweekRank ? (
                   <>
                     <strong>#{marketSignals.gameweekRank} {marketSignals.gameweekLeader.player.web_name}</strong>
@@ -1548,7 +1552,7 @@ export default function LiveRefreshV12() {
                 </strong>
               </span>
               <span className={styles.marketTickerSignal}>
-                <b>GW POINTS RANK</b>
+                <b>LAST GW RANK · {lastGameweekLabel}</b>
                 <strong>
                   {marketSignals.gameweekLeader && marketSignals.gameweekRank
                     ? `#${marketSignals.gameweekRank} ${marketSignals.gameweekLeader.player.web_name} · ${marketSignals.gameweekLeader.player.event_points ?? 0} pts`
