@@ -2054,6 +2054,31 @@
   background: #00a95b;
   border-radius: 50%;
 }
+.marketTicker .marketTickerSignal {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  color: #6e6075;
+  border: 1px solid #e5dbe9;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  white-space: nowrap;
+}
+.marketTicker .marketTickerSignal::before {
+  display: none;
+}
+.marketTickerSignal b {
+  color: #8f7d98;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.marketTickerSignal strong {
+  color: #37003c;
+  font-size: 10px;
+  font-weight: 750;
+}
 .marketMetricStrip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2441,6 +2466,14 @@
 }
 .marketTableShell .marketRow > button:last-child {
   min-height: 36px;
+  width: 82px;
+  min-width: 82px;
+  align-self: center;
+  justify-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   padding: 0 14px;
   color: #37003c;
   background: rgba(255, 255, 255, 0.94);
@@ -2458,6 +2491,11 @@
 }
 .marketTableShell .marketHeader > span:last-child {
   background: #f5f1f6;
+  width: 82px;
+  min-width: 82px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .marketTableShell .marketHeader > span:nth-last-child(2),
 .marketTableShell .marketRow > span:nth-last-child(2) {
