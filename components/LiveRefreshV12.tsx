@@ -728,45 +728,70 @@ export default function LiveRefreshV12() {
           <section className={styles.overviewMarketTape} aria-label="Live player market signals">
             <div className={styles.overviewTicker}>
               <span className={styles.overviewTickerLabel}>LIVE MARKET TAPE</span>
+
               <span className={styles.overviewTickerSignal}>
-                <b>↑ RISING</b>
-                <strong>
-                  {marketSignals.priceRiser
-                    ? `${marketSignals.priceRiser.player.web_name} ${signedPriceChange(marketSignals.priceRiser.player.cost_change_event)}`
-                    : "No rise yet"}
-                </strong>
+                <i className={styles.overviewTickerIcon} aria-hidden="true">↗</i>
+                <b>PRICE RISE</b>
+                {marketSignals.priceRiser ? (
+                  <>
+                    <strong>{marketSignals.priceRiser.player.web_name}</strong>
+                    <em>{signedPriceChange(marketSignals.priceRiser.player.cost_change_event)}</em>
+                  </>
+                ) : (
+                  <strong>No rise yet</strong>
+                )}
               </span>
+
               <span className={`${styles.overviewTickerSignal} ${styles.overviewTickerSignalDown}`}>
-                <b>↓ FALLING</b>
-                <strong>
-                  {marketSignals.priceFaller
-                    ? `${marketSignals.priceFaller.player.web_name} ${signedPriceChange(marketSignals.priceFaller.player.cost_change_event)}`
-                    : "No fall yet"}
-                </strong>
+                <i className={styles.overviewTickerIcon} aria-hidden="true">↘</i>
+                <b>PRICE FALL</b>
+                {marketSignals.priceFaller ? (
+                  <>
+                    <strong>{marketSignals.priceFaller.player.web_name}</strong>
+                    <em>{signedPriceChange(marketSignals.priceFaller.player.cost_change_event)}</em>
+                  </>
+                ) : (
+                  <strong>No fall yet</strong>
+                )}
               </span>
+
               <span className={styles.overviewTickerSignalNeutral}>
+                <i className={styles.overviewTickerIcon} aria-hidden="true">⇄</i>
                 <b>TRANSFER FLOW</b>
-                <strong>
-                  {marketSignals.transferLeader
-                    ? `${marketSignals.transferLeader.player.web_name} ${signedCompactNumber((marketSignals.transferLeader.player.transfers_in_event ?? 0) - (marketSignals.transferLeader.player.transfers_out_event ?? 0))}`
-                    : "Waiting for feed"}
-                </strong>
+                {marketSignals.transferLeader ? (
+                  <>
+                    <strong>{marketSignals.transferLeader.player.web_name}</strong>
+                    <em>{signedCompactNumber((marketSignals.transferLeader.player.transfers_in_event ?? 0) - (marketSignals.transferLeader.player.transfers_out_event ?? 0))}</em>
+                  </>
+                ) : (
+                  <strong>Waiting for feed</strong>
+                )}
               </span>
+
               <span className={styles.overviewTickerSignalNeutral}>
+                <i className={styles.overviewTickerIcon} aria-hidden="true">⚡</i>
                 <b>HAUL PROBABILITY</b>
-                <strong>
-                  {marketSignals.haulLeader?.one.distribution
-                    ? `${marketSignals.haulLeader.player.web_name} ${Math.round(marketSignals.haulLeader.one.distribution.bands.haul)}%`
-                    : "Waiting for model"}
-                </strong>
+                {marketSignals.haulLeader?.one.distribution ? (
+                  <>
+                    <strong>{marketSignals.haulLeader.player.web_name}</strong>
+                    <em>{Math.round(marketSignals.haulLeader.one.distribution.bands.haul)}%</em>
+                  </>
+                ) : (
+                  <strong>Waiting for model</strong>
+                )}
               </span>
+
               <span className={styles.overviewTickerSignalNeutral}>
+                <i className={styles.overviewTickerIcon} aria-hidden="true">#</i>
                 <b>GW POINTS RANK</b>
-                <strong>
-                  {marketSignals.gameweekLeader && marketSignals.gameweekRank
-                    ? `#${marketSignals.gameweekRank} ${marketSignals.gameweekLeader.player.web_name} · ${marketSignals.gameweekLeader.player.event_points ?? 0} pts`
-                    : "Waiting for feed"}
-                </strong>
+                {marketSignals.gameweekLeader && marketSignals.gameweekRank ? (
+                  <>
+                    <strong>#{marketSignals.gameweekRank} {marketSignals.gameweekLeader.player.web_name}</strong>
+                    <em>{marketSignals.gameweekLeader.player.event_points ?? 0} pts</em>
+                  </>
+                ) : (
+                  <strong>Waiting for feed</strong>
+                )}
               </span>
             </div>
           </section>
