@@ -2,7 +2,7 @@ import Link from "next/link";
 import BrandMark from "./BrandMark";
 import styles from "./DashboardHomeNav.module.css";
 
-const LEDGER_URL = "https://fpl-ledger-azure.vercel.app/";
+const MODELBOOK_URL = "https://fpl-ledger-azure.vercel.app/modelbook";
 
 export default function DashboardHomeNav() {
   return (
@@ -20,7 +20,7 @@ export default function DashboardHomeNav() {
           <Link href="/dashboard" className={styles.active}>Dashboard</Link>
           <Link href="/planner">8-GW Planner</Link>
           <Link href="/pricing">Pricing</Link>
-          <a href={LEDGER_URL} target="_blank" rel="noreferrer">Ledger ↗</a>
+          <a href={MODELBOOK_URL} target="_blank" rel="noreferrer">Modelbook ↗</a>
           <Link href="/account">Account</Link>
         </nav>
 
