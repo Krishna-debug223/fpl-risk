@@ -734,10 +734,12 @@ export default function LiveRefreshV12() {
   const nextEvent =
     events.find((event) => event.is_next) ??
     events.find((event) => event.is_current);
-  const lastFinishedEvent = [...events]
-    .filter((event) => event.finished)
-    .sort((a, b) => b.id - a.id)[0];
-  const lastGameweekLabel = lastFinishedEvent?.name ?? "Previous GW";
+  // The FPL feed can expose a next Gameweek while the current one is still
+  // live. Status and live-score signals should always describe the current
+  // Gameweek, so prefer is_current for user-facing labels.
+  const activeEvent =
+    events.find((event) => event.is_current) ?? nextEvent;
+  const activeGameweekLabel = activeEvent?.name ?? "Current GW";
   const autoOutgoing = autoRecommendation
     ? playerMap.get(autoRecommendation.outgoingId)
     : null;
@@ -780,7 +782,7 @@ export default function LiveRefreshV12() {
             ? "Syncing"
             : feedError
               ? "Feed issue"
-              : (nextEvent?.name ?? "Live FPL")}
+              : activeGameweekLabel}
         </div>
       </header>
 
@@ -846,7 +848,7 @@ export default function LiveRefreshV12() {
 
               <span className={styles.overviewTickerSignalNeutral}>
                 <i className={styles.overviewTickerIcon} aria-hidden="true">#</i>
-                <b>LAST GW RANK · {lastGameweekLabel}</b>
+                <b>GAMEWEEK HIGHEST SCORER · {activeGameweekLabel}</b>
                 {marketSignals.gameweekLeader && marketSignals.gameweekRank ? (
                   <>
                     <strong>#{marketSignals.gameweekRank} {marketSignals.gameweekLeader.player.web_name}</strong>
@@ -1564,7 +1566,7 @@ export default function LiveRefreshV12() {
           <section className={styles.marketMasthead}>
             <div className={styles.marketMastheadTop}>
               <div>
-                <span className={styles.eyebrow}>LIVE PLAYER MARKET · GW5</span>
+                <span className={styles.eyebrow}>LIVE PLAYER MARKET · {activeGameweekLabel}</span>
                 <h1>The FPL tape.</h1>
                 <p>
                   A cleaner view of the live player pool. Scan expected points like a market,
@@ -1615,7 +1617,7 @@ export default function LiveRefreshV12() {
                 </strong>
               </span>
               <span className={styles.marketTickerSignal}>
-                <b>LAST GW RANK · {lastGameweekLabel}</b>
+                <b>GAMEWEEK HIGHEST SCORER · {activeGameweekLabel}</b>
                 <strong>
                   {marketSignals.gameweekLeader && marketSignals.gameweekRank
                     ? `#${marketSignals.gameweekRank} ${marketSignals.gameweekLeader.player.web_name} · ${marketSignals.gameweekLeader.player.event_points ?? 0} pts`
