@@ -71,6 +71,37 @@ const tabLabels: Record<Tab, string> = {
   model: "Model",
 };
 
+// The live FPL feed uses short display names for several clubs. Keep the
+// internal IDs unchanged, but expose names supporters can recognise when
+// searching the Player Market.
+const fullTeamNames: Record<string, string> = {
+  ARS: "Arsenal",
+  AVL: "Aston Villa",
+  BOU: "Bournemouth",
+  BRE: "Brentford",
+  BHA: "Brighton & Hove Albion",
+  CHE: "Chelsea",
+  COV: "Coventry City",
+  CRY: "Crystal Palace",
+  EVE: "Everton",
+  FUL: "Fulham",
+  HUL: "Hull City",
+  IPS: "Ipswich Town",
+  LEE: "Leeds United",
+  LIV: "Liverpool",
+  MCI: "Manchester City",
+  MUN: "Manchester United",
+  NEW: "Newcastle United",
+  NFO: "Nottingham Forest",
+  TOT: "Tottenham Hotspur",
+  SUN: "Sunderland",
+};
+
+function teamDisplayName(team?: { name: string; short_name: string }) {
+  if (!team) return "";
+  return fullTeamNames[team.short_name] ?? team.name;
+}
+
 function availabilityLabel(player: FplPlayer) {
   if (["u", "n"].includes(player.status)) return "Unavailable";
   if (player.status === "s") return "Suspended";
@@ -109,7 +140,7 @@ export default function LiveRefreshV12() {
   const [whyPlayer, setWhyPlayer] = useState<ProjectionRow | null>(null);
   const [marketQuery, setMarketQuery] = useState("");
   const [marketPosition, setMarketPosition] = useState(0);
-  const [marketTeam, setMarketTeam] = useState(0);
+  const [marketTeamQuery, setMarketTeamQuery] = useState("");
   const [marketMaxPrice, setMarketMaxPrice] = useState<number | null>(null);
   const [marketSort, setMarketSort] = useState<MarketSort>("five");
   const [selectedMarketId, setSelectedMarketId] = useState<number | null>(null);
@@ -482,6 +513,7 @@ export default function LiveRefreshV12() {
 
   const marketRows = useMemo(() => {
     const query = marketQuery.trim().toLowerCase();
+    const teamQuery = marketTeamQuery.trim().toLowerCase();
     const filtered = projectableMarket.filter(({ player }) => {
       if (
         query &&
@@ -492,7 +524,11 @@ export default function LiveRefreshV12() {
         return false;
       if (marketPosition && player.element_type !== marketPosition)
         return false;
-      if (marketTeam && player.team !== marketTeam) return false;
+      if (
+        teamQuery &&
+        !teamDisplayName(teamMap.get(player.team)).toLowerCase().includes(teamQuery)
+      )
+        return false;
       if (player.now_cost > effectiveMarketMaxPrice) return false;
       return true;
     });
@@ -516,8 +552,9 @@ export default function LiveRefreshV12() {
     marketPosition,
     marketQuery,
     marketSort,
-    marketTeam,
+    marketTeamQuery,
     projectableMarket,
+    teamMap,
   ]);
 
   const marketLeaders = useMemo(() => {
@@ -1619,7 +1656,7 @@ export default function LiveRefreshV12() {
                   <span className={styles.eyebrow}>SELECTED PLAYER</span>
                   <h2>{selectedMarketRow.player.web_name}</h2>
                   <p>
-                    {teamMap.get(selectedMarketRow.player.team)?.name ?? "—"} ·{" "}
+                    {teamDisplayName(teamMap.get(selectedMarketRow.player.team)) || "—"} ·{" "}
                     {positionName(selectedMarketRow.player.element_type)} ·{" "}
                     {money(selectedMarketRow.player.now_cost)} · {selectedMarketRow.player.selected_by_percent}% owned
                   </p>
@@ -1661,18 +1698,20 @@ export default function LiveRefreshV12() {
                 <option value={4}>Forwards</option>
               </select>
             </label>
-            <label>
-              <span>CLUB</span>
-              <select
-                value={marketTeam}
-                onChange={(event) => setMarketTeam(Number(event.target.value))}
-                aria-label="Club"
-              >
-                <option value={0}>All clubs</option>
+            <label className={styles.marketSearch}>
+              <span>TEAM</span>
+              <input
+                value={marketTeamQuery}
+                onChange={(event) => setMarketTeamQuery(event.target.value)}
+                placeholder="Search full team name"
+                aria-label="Search team by full name"
+                list="fpl-team-names"
+              />
+              <datalist id="fpl-team-names">
                 {teams.map((team) => (
-                  <option value={team.id} key={team.id}>{team.name}</option>
+                  <option value={teamDisplayName(team)} key={team.id} />
                 ))}
-              </select>
+              </datalist>
             </label>
             <label className={styles.marketPriceControl}>
               <span>MAX PRICE <strong>{money(effectiveMarketMaxPrice)}</strong></span>
@@ -1751,7 +1790,7 @@ export default function LiveRefreshV12() {
                   <span className={styles.marketPlayerDot}>{teamMap.get(row.player.team)?.short_name?.slice(0, 2) ?? "FPL"}</span>
                   <div>
                     <strong>{row.player.web_name}</strong>
-                    <small>{teamMap.get(row.player.team)?.short_name} · {positionName(row.player.element_type)} · {row.player.selected_by_percent}% owned</small>
+                    <small>{teamDisplayName(teamMap.get(row.player.team))} · {positionName(row.player.element_type)} · {row.player.selected_by_percent}% owned</small>
                   </div>
                 </div>
                 <span>{money(row.player.now_cost)}</span>
