@@ -2061,7 +2061,7 @@ export default function LiveRefreshV12() {
               <div>
                 <h2>{whyPlayer.player.web_name}</h2>
                 <p>
-                  {teamMap.get(whyPlayer.player.team)?.name} ·{" "}
+                  {teamDisplayName(teamMap.get(whyPlayer.player.team)) || "—"} ·{" "}
                   {positionName(whyPlayer.player.element_type)} ·{" "}
                   {money(whyPlayer.player.now_cost)} ·{" "}
                   {availabilityLabel(whyPlayer.player)}
