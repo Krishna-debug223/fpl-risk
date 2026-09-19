@@ -26,6 +26,7 @@ import {
   type RiskMode,
 } from "@/lib/risk-v12";
 import { analyzePortfolioRisk } from "@/lib/portfolio-risk";
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 
 type Tab = "overview" | "transfer" | "team" | "market" | "model";
 type ProjectionRow = {
@@ -211,7 +212,34 @@ export default function LiveRefreshV12() {
   const teams = bootstrap?.teams ?? [];
   const events = bootstrap?.events ?? [];
   const liveEventId = events.find((event) => event.is_current)?.id ?? events.find((event) => event.is_next)?.id;
+  const transferEventId = events.find((event) => event.is_next)?.id ?? events.find((event) => event.is_current)?.id;
   const historicalProfiles = history?.players;
+
+  useEffect(() => {
+    let cancelled = false;
+    async function hydrateSavedTeamId() {
+      let accountTeamId = "";
+      try {
+        const { data: { user } } = await createSupabaseClient().auth.getUser();
+        const metadataTeamId = user?.user_metadata?.fpl_team_id;
+        if (typeof metadataTeamId === "string" && /^\d+$/.test(metadataTeamId.trim())) {
+          accountTeamId = metadataTeamId.trim();
+        }
+      } catch {
+        // Auth is optional; fall back to the browser's saved guest preference.
+      }
+      if (cancelled) return;
+      const savedTeamId = accountTeamId || window.localStorage.getItem("fpl-risk-team-id")?.trim() || "";
+      if (savedTeamId && /^\d+$/.test(savedTeamId)) {
+        setTeamId((current) => current || savedTeamId);
+        window.localStorage.setItem("fpl-risk-team-id", savedTeamId);
+      }
+    }
+    void hydrateSavedTeamId();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!liveEventId) return;
@@ -320,6 +348,29 @@ export default function LiveRefreshV12() {
         })
         .filter((item): item is SquadItem => Boolean(item)) ?? [],
     [manager, playerMap, projectionMap],
+  );
+
+  // Transfer Lab is a next-Gameweek decision surface. Re-project the one-GW
+  // tile view against the next event so each player's fixture matches the
+  // week the user is deciding on, while the five-GW optimizer remains intact.
+  const transferSquad = useMemo<SquadItem[]>(
+    () => {
+      if (!transferEventId) return squad;
+      return squad.map((item) => ({
+        ...item,
+        one: projectPlayer(
+          item.player,
+          fixtures,
+          teams,
+          1,
+          historicalProfiles,
+          sportsbook,
+          [transferEventId],
+          true,
+        ),
+      }));
+    },
+    [fixtures, historicalProfiles, squad, sportsbook, teams, transferEventId],
   );
 
   const squadPlayers = useMemo(() => squad.map((item) => item.player), [squad]);
@@ -899,6 +950,18 @@ export default function LiveRefreshV12() {
                     {loadingTeam ? "Loading…" : manager ? "Reload" : "Analyze"}
                   </button>
                 </div>
+                {teamId && (
+                  <button
+                    type="button"
+                    className={styles.textButton}
+                    onClick={() => {
+                      setTeamId("");
+                      setTeamError("");
+                    }}
+                  >
+                    Use a different Team ID
+                  </button>
+                )}
                 {teamError && (
                   <small className={styles.formError}>{teamError}</small>
                 )}
@@ -1345,7 +1408,7 @@ export default function LiveRefreshV12() {
               <p>
                 The optimizer evaluates your selected outs together, so shared
                 budget and club constraints stay legal across the whole transfer
-                plan.
+                plan. Player tiles show fixtures for {nextEvent?.name ?? "the next Gameweek"}.
               </p>
             </div>
             {manager && (
@@ -1415,7 +1478,7 @@ export default function LiveRefreshV12() {
               </section>
 
               <SquadPitch
-                players={squad}
+                players={transferSquad}
                 teams={teams}
                 mode="transfer"
                 selectedIds={selectedOut}
