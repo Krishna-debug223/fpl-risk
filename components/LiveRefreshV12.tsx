@@ -36,6 +36,22 @@ type ProjectionRow = {
   five: MarketProjection;
   value: number;
 };
+type LockedProjectionRow = {
+  id: number;
+  fixture: string;
+  projected: number;
+  volatility: number;
+  risk: MarketProjection["risk"];
+  confidence: MarketProjection["confidence"];
+  dataQuality: number;
+  floor: number;
+  median: number;
+  ceiling: number;
+  sharpe: number;
+  probabilities: NonNullable<MarketProjection["distribution"]>["bands"] | null;
+  simulations: number | null;
+  components: Partial<MarketProjection["components"]>;
+};
 type SquadItem = SquadPitchPlayer;
 type MarketSort =
   | "one" | "three" | "five" | "value" | "price" | "risk" | "sharpe" | "ownership";
@@ -59,6 +75,18 @@ const signedPriceChange = (value: number | null | undefined) => {
   if (value == null || !Number.isFinite(value) || value === 0) return "No move";
   return `${value > 0 ? "+" : "−"}£${(Math.abs(value) / 10).toFixed(1)}m`;
 };
+const formatDataTimestamp = (value: string | null | undefined) => {
+  if (!value) return "Waiting for feed";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Waiting for feed";
+  return `${new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(date)} UTC`;
+};
 const riskRank: Record<MarketProjection["risk"], number> = {
   Low: 1,
   Medium: 2,
@@ -66,10 +94,10 @@ const riskRank: Record<MarketProjection["risk"], number> = {
 };
 const tabLabels: Record<Tab, string> = {
   overview: "Overview",
-  transfer: "Transfer Lab",
   team: "My Team",
-  market: "Player Market",
-  model: "Model",
+  transfer: "Transfers",
+  market: "Players",
+  model: "Model details",
 };
 
 // The live FPL feed uses short display names for several clubs. Keep the
@@ -131,6 +159,7 @@ export default function LiveRefreshV12() {
   const [history, setHistory] = useState<HistoricalPayload | null>(null);
   const [sportsbook, setSportsbook] = useState<SportsbookPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [feedError, setFeedError] = useState("");
   const [manager, setManager] = useState<ManagerPayload | null>(null);
   const [teamId, setTeamId] = useState("");
@@ -144,9 +173,13 @@ export default function LiveRefreshV12() {
   const [marketTeamQuery, setMarketTeamQuery] = useState("");
   const [marketMaxPrice, setMarketMaxPrice] = useState<number | null>(null);
   const [marketSort, setMarketSort] = useState<MarketSort>("five");
+  const [marketVisibleCount, setMarketVisibleCount] = useState(40);
   const [selectedMarketId, setSelectedMarketId] = useState<number | null>(null);
   const [decisionContext, setDecisionContext] = useState<RiskMode>("balanced");
   const [livePoints, setLivePoints] = useState<Record<number, { points: number; played: boolean }>>({});
+  const [lockedEventId, setLockedEventId] = useState<number | null>(null);
+  const [lockedProjectionRows, setLockedProjectionRows] = useState<Record<number, LockedProjectionRow>>({});
+  const hydratedViewRef = useRef(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem("fpl-risk-decision-context") as RiskMode | null;
@@ -156,6 +189,32 @@ export default function LiveRefreshV12() {
   useEffect(() => {
     window.localStorage.setItem("fpl-risk-decision-context", decisionContext);
   }, [decisionContext]);
+
+  useEffect(() => {
+    const saved = Number(window.localStorage.getItem("fpl-risk-free-transfers"));
+    if (Number.isInteger(saved) && saved >= 0 && saved <= 5) setFreeTransfers(saved);
+  }, []);
+
+  useEffect(() => {
+    const validTabs = new Set<Tab>(["overview", "team", "transfer", "market", "model"]);
+    const readView = () => {
+      const view = new URLSearchParams(window.location.search).get("view") as Tab | null;
+      if (view && validTabs.has(view)) setTab(view);
+      else setTab("overview");
+    };
+    readView();
+    hydratedViewRef.current = true;
+    window.addEventListener("popstate", readView);
+    return () => window.removeEventListener("popstate", readView);
+  }, []);
+
+  useEffect(() => {
+    if (!hydratedViewRef.current) return;
+    const url = new URL(window.location.href);
+    if (tab === "overview") url.searchParams.delete("view");
+    else url.searchParams.set("view", tab);
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [tab]);
 
   useEffect(() => {
     let cancelled = false;
@@ -206,6 +265,15 @@ export default function LiveRefreshV12() {
     return () => {
       cancelled = true;
     };
+  }, [refreshKey]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const queryTeam = params.get("team")?.trim() ?? "";
+    if (/^\d+$/.test(queryTeam)) {
+      setTeamId(queryTeam);
+      window.localStorage.setItem("fpl-risk-team-id", queryTeam);
+    }
   }, []);
 
   const players = bootstrap?.elements ?? [];
@@ -258,7 +326,37 @@ export default function LiveRefreshV12() {
     void refreshLivePoints();
     const interval = window.setInterval(refreshLivePoints, 60 * 1_000);
     return () => { cancelled = true; window.clearInterval(interval); };
-  }, [liveEventId]);
+  }, [liveEventId, refreshKey]);
+
+  useEffect(() => {
+    if (!liveEventId) {
+      setLockedEventId(null);
+      setLockedProjectionRows({});
+      return;
+    }
+    let cancelled = false;
+    async function loadLockedSnapshot() {
+      try {
+        const response = await fetch(`/modelbook/data/gw${liveEventId}-locked.json`, { cache: "no-store" });
+        if (!response.ok) throw new Error("No locked snapshot");
+        const artifact = await response.json() as { gameweek?: number; snapshot?: { gameweek?: number; rows?: LockedProjectionRow[] }; rows?: LockedProjectionRow[] };
+        const snapshot = artifact.snapshot ?? artifact;
+        const eventId = Number(snapshot.gameweek ?? artifact.gameweek);
+        const rows = snapshot.rows ?? [];
+        if (!cancelled && eventId === liveEventId && rows.length) {
+          setLockedEventId(eventId);
+          setLockedProjectionRows(Object.fromEntries(rows.map((row) => [row.id, row])));
+        }
+      } catch {
+        if (!cancelled) {
+          setLockedEventId(null);
+          setLockedProjectionRows({});
+        }
+      }
+    }
+    void loadLockedSnapshot();
+    return () => { cancelled = true; };
+  }, [liveEventId, refreshKey]);
   const marketPriceFloor = useMemo(() => {
     if (!players.length) return 40;
     const liveMinimum = Math.min(...players.map((player) => player.now_cost));
@@ -349,6 +447,42 @@ export default function LiveRefreshV12() {
         .filter((item): item is SquadItem => Boolean(item)) ?? [],
     [manager, playerMap, projectionMap],
   );
+
+  const hasLockedScoringComparison = Boolean(
+    manager && lockedEventId === manager.eventId && Object.keys(lockedProjectionRows).length,
+  );
+  const scoringSquad = useMemo<SquadItem[]>(() => {
+    if (!manager || lockedEventId !== manager.eventId) return squad;
+    return squad.map((item) => {
+      const locked = lockedProjectionRows[item.player.id];
+      if (!locked) return item;
+      const existingBands = item.one.distribution?.bands ?? { bust: 0, floor: 0, middle: 0, haul: 0 };
+      return {
+        ...item,
+        one: {
+          ...item.one,
+          expected: locked.projected,
+          volatility: locked.volatility,
+          risk: locked.risk,
+          confidence: locked.confidence,
+          dataQuality: locked.dataQuality,
+          fixtureLabels: [locked.fixture],
+          fixtureMeans: [locked.projected],
+          fixtureContexts: [],
+          components: { ...item.one.components, ...locked.components },
+          distribution: {
+            p10: locked.floor,
+            median: locked.median,
+            p90: locked.ceiling,
+            standardDeviation: locked.volatility,
+            sharpe: locked.sharpe,
+            bands: locked.probabilities ?? existingBands,
+            simulations: locked.simulations ?? item.one.distribution?.simulations ?? 0,
+          },
+        },
+      };
+    });
+  }, [lockedEventId, lockedProjectionRows, manager, squad]);
 
   // Transfer Lab is a next-Gameweek decision surface. Re-project the one-GW
   // tile view against the next event so each player's fixture matches the
@@ -653,6 +787,10 @@ export default function LiveRefreshV12() {
       marketLeaders.topExpected,
     [marketLeaders.topExpected, marketRows, selectedMarketId],
   );
+  const displayedMarketRows = useMemo(
+    () => marketRows.slice(0, marketVisibleCount),
+    [marketRows, marketVisibleCount],
+  );
 
   const riskNotes = useMemo(() => {
     if (!manager) return [];
@@ -697,9 +835,9 @@ export default function LiveRefreshV12() {
     return notes;
   }, [manager, squad, starters]);
 
-  async function importTeam(event: FormEvent) {
-    event.preventDefault();
-    if (!/^\d+$/.test(teamId.trim())) {
+  async function loadTeam(teamIdOverride = teamId) {
+    const requestedTeamId = teamIdOverride.trim();
+    if (!/^\d+$/.test(requestedTeamId)) {
       setTeamError("Enter the numeric Team ID from your FPL URL.");
       return;
     }
@@ -710,12 +848,13 @@ export default function LiveRefreshV12() {
         method: "POST",
         cache: "no-store",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamId: teamId.trim() }),
+        body: JSON.stringify({ teamId: requestedTeamId }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not import team");
       setManager(data as ManagerPayload);
       setSelectedOut([]);
+      window.localStorage.setItem("fpl-risk-team-id", requestedTeamId);
     } catch (error) {
       setTeamError(
         error instanceof Error ? error.message : "Could not import that team.",
@@ -724,6 +863,32 @@ export default function LiveRefreshV12() {
       setLoadingTeam(false);
     }
   }
+
+  function importTeam(event: FormEvent) {
+    event.preventDefault();
+    void loadTeam();
+  }
+
+  function refreshDashboard() {
+    setRefreshKey((value) => value + 1);
+    if (manager && /^\d+$/.test(teamId.trim())) void loadTeam(teamId);
+  }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const queryTeam = params.get("team")?.trim() ?? "";
+    const isDemo = params.get("demo") === "1";
+    const demoTeam = "1";
+    if (isDemo && !/^\d+$/.test(queryTeam)) {
+      setTeamId(demoTeam);
+      void loadTeam(demoTeam);
+    } else if (/^\d+$/.test(queryTeam)) {
+      void loadTeam(queryTeam);
+    }
+    // The query is only an entry point; after loading, the saved Team ID remains
+    // available for the normal dashboard flow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function toggleOutgoing(id: number) {
     setSelectedOut((current) =>
@@ -785,12 +950,23 @@ export default function LiveRefreshV12() {
   const nextEvent =
     events.find((event) => event.is_next) ??
     events.find((event) => event.is_current);
-  // The FPL feed can expose a next Gameweek while the current one is still
-  // live. Status and live-score signals should always describe the current
-  // Gameweek, so prefer is_current for user-facing labels.
+  // Keep forecast and scoring contexts separate. The dashboard's decision
+  // surfaces should point at the next scheduled Gameweek, while the live
+  // points and highest-scorer ticker can still describe the current/last feed.
   const activeEvent =
     events.find((event) => event.is_current) ?? nextEvent;
-  const activeGameweekLabel = activeEvent?.name ?? "Current GW";
+  const scoringGameweekLabel = activeEvent?.name ?? "Current Gameweek";
+  const forecastGameweekLabel = nextEvent?.name ?? scoringGameweekLabel;
+  const trainingThroughGameweek = nextEvent
+    ? Math.max(0, nextEvent.id - 1)
+    : null;
+  const modelDataUpdatedAt = bootstrap?.fetchedAt ?? history?.fetchedAt;
+  const historicalPriorLabel = history
+    ? `${history.seasons.length} completed-season priors`
+    : "historical priors loading";
+  const trainingStatusLabel = trainingThroughGameweek == null
+    ? "Training status pending"
+    : `Trained through GW${trainingThroughGameweek} · live target ${nextEvent?.name ?? `GW${nextEvent?.id}`}`;
   const autoOutgoing = autoRecommendation
     ? playerMap.get(autoRecommendation.outgoingId)
     : null;
@@ -800,20 +976,17 @@ export default function LiveRefreshV12() {
 
   return (
     <main className={styles.shell}>
-      <header className={styles.header}>
-        <button className={styles.brand} onClick={() => setTab("overview")}>
-          <span className={styles.brandMark}>FR</span>
-          <span>
-            <strong>FPL RISK</strong>
-            <small>Decision analytics</small>
-          </span>
+      <header className={styles.header} aria-label="Dashboard workspace">
+        <button className={styles.workspaceIdentity} onClick={() => setTab("overview")}>
+          <span>Dashboard</span>
+          <small>Decision desk</small>
         </button>
         <nav
           className={styles.nav}
-          aria-label="Primary navigation"
+          aria-label="Dashboard views"
           role="tablist"
         >
-          {(["overview", "transfer", "team", "market", "model"] as Tab[]).map(
+          {(["overview", "team", "transfer", "market", "model"] as Tab[]).map(
             (item) => (
               <button
                 key={item}
@@ -827,13 +1000,24 @@ export default function LiveRefreshV12() {
             ),
           )}
         </nav>
-        <div className={styles.liveStatus}>
-          <i />{" "}
-          {loading
-            ? "Syncing"
-            : feedError
-              ? "Feed issue"
-              : activeGameweekLabel}
+        <div className={styles.liveStatusGroup}>
+          <div className={styles.liveStatus}>
+            <i />{" "}
+            {loading
+              ? "Refreshing live data"
+              : feedError
+                ? "Feed issue"
+                : forecastGameweekLabel}
+          </div>
+          <button
+            className={styles.refreshButton}
+            type="button"
+            onClick={refreshDashboard}
+            disabled={loading || loadingTeam}
+            aria-label="Refresh live data and imported team"
+          >
+            ↻ {loading || loadingTeam ? "Refreshing" : "Refresh all"}
+          </button>
         </div>
       </header>
 
@@ -854,7 +1038,7 @@ export default function LiveRefreshV12() {
                     <em>{signedPriceChange(marketSignals.priceRiser.player.cost_change_event)}</em>
                   </>
                 ) : (
-                  <strong>No rise yet</strong>
+                    <strong>No confirmed rise</strong>
                 )}
               </span>
 
@@ -867,7 +1051,7 @@ export default function LiveRefreshV12() {
                     <em>{signedPriceChange(marketSignals.priceFaller.player.cost_change_event)}</em>
                   </>
                 ) : (
-                  <strong>No fall yet</strong>
+                    <strong>No confirmed fall</strong>
                 )}
               </span>
 
@@ -880,7 +1064,7 @@ export default function LiveRefreshV12() {
                     <em>{signedCompactNumber((marketSignals.transferLeader.player.transfers_in_event ?? 0) - (marketSignals.transferLeader.player.transfers_out_event ?? 0))}</em>
                   </>
                 ) : (
-                  <strong>Waiting for feed</strong>
+                  <strong>Live feed pending</strong>
                 )}
               </span>
 
@@ -893,20 +1077,20 @@ export default function LiveRefreshV12() {
                     <em>{Math.round(marketSignals.haulLeader.one.distribution.bands.haul)}%</em>
                   </>
                 ) : (
-                  <strong>Waiting for model</strong>
+                  <strong>Model pending</strong>
                 )}
               </span>
 
               <span className={styles.overviewTickerSignalNeutral}>
                 <i className={styles.overviewTickerIcon} aria-hidden="true">#</i>
-                <b>GAMEWEEK HIGHEST SCORER · {activeGameweekLabel}</b>
+                <b>GAMEWEEK HIGHEST SCORER · {scoringGameweekLabel}</b>
                 {marketSignals.gameweekLeader && marketSignals.gameweekRank ? (
                   <>
                     <strong>#{marketSignals.gameweekRank} {marketSignals.gameweekLeader.player.web_name}</strong>
                     <em>{marketSignals.gameweekLeader.player.event_points ?? 0} pts</em>
                   </>
                 ) : (
-                  <strong>Waiting for feed</strong>
+                  <strong>Live feed pending</strong>
                 )}
               </span>
             </div>
@@ -924,8 +1108,9 @@ export default function LiveRefreshV12() {
                 compare transfers and chips before you commit.
               </p>
               <div className={styles.heroMeta}>
-                <span>{nextEvent?.name ?? "Current GW"}</span>
+                <span>{nextEvent?.name ?? "Next gameweek"}</span>
                 <span>Model {MODEL_VERSION}</span>
+                <span>{trainingThroughGameweek == null ? "Training status pending" : `Trained through GW${trainingThroughGameweek}`}</span>
                 <span>
                   {sportsbook?.available
                     ? sportsbook.configuredWeight > 0
@@ -1022,12 +1207,12 @@ export default function LiveRefreshV12() {
             </div>
             <div className={styles.railViewport}>
               <div className={styles.projectionRail}>
-                {[...bestNow, ...bestNow].map((row, index) => {
+                {bestNow.map((row) => {
                   const team = teamMap.get(row.player.team);
                   return (
                     <article
                       className={styles.projectionCard}
-                      key={`${row.player.id}-${index}`}
+                      key={row.player.id}
                     >
                       <div className={styles.cardTop}>
                         <span className={styles.teamBubble}>
@@ -1068,23 +1253,35 @@ export default function LiveRefreshV12() {
             </p>
           </section>
 
+          <details className={styles.dashboardDisclosure}>
+            <summary>
+              <span>
+                <strong>How today&apos;s model was built</strong>
+                <small>Inputs, data quality and weekly training status</small>
+              </span>
+              <em>View details</em>
+            </summary>
           <section className={styles.modelSnapshot}>
             <div className={styles.sectionTitle}>
               <div>
                 <span className={styles.eyebrow}>MODEL SNAPSHOT</span>
                 <h2>What the engine is reading</h2>
               </div>
-              <button onClick={() => setTab("model")}>
-                How the model works →
-              </button>
+              <div className={styles.modelSnapshotTools}>
+                <span className={styles.modelPill}>{trainingStatusLabel}</span>
+                <button onClick={() => setTab("model")}>
+                  How the model works →
+                </button>
+              </div>
             </div>
             <div className={styles.snapshotGrid}>
               <div>
                 <span>PLAYER ROLE</span>
-                <strong>Expected minutes</strong>
+                <strong>Minutes mixture</strong>
                 <p>
                   Starts, historical role and current availability set the
-                  playing-time foundation.
+                  playing-time foundation, with p10–p90 minutes and rotation
+                  risk kept separate from scoring-rate uncertainty.
                 </p>
               </div>
               <div>
@@ -1118,7 +1315,20 @@ export default function LiveRefreshV12() {
                 </p>
               </div>
             </div>
+            <div className={styles.trainingCallout}>
+              <div>
+                <span className={styles.eyebrow}>WEEKLY MODEL UPDATE</span>
+                <strong>{trainingStatusLabel}</strong>
+              </div>
+              <p>
+                Current-season minutes, starts and underlying rates are blended
+                into stable multi-season priors as new Gameweeks finish. The
+                latest feed was refreshed {formatDataTimestamp(modelDataUpdatedAt)};
+                confidence rises when role, news and fixture evidence agree.
+              </p>
+            </div>
           </section>
+          </details>
         </div>
       )}
 
@@ -1235,10 +1445,9 @@ export default function LiveRefreshV12() {
                     <span className={styles.eyebrow}>SQUAD VIEW</span>
                     <h2>Your actual FPL shape</h2>
                     <p>
-                    Starting XI, bench order, captaincy, next fixture and
-                    model xPts in one place. Actual points appear after each
-                    player logs minutes and refresh automatically during the
-                    Gameweek.
+                      {hasLockedScoringComparison
+                        ? `Gameweek ${manager?.eventId} actual points beside the exact deadline projection. Next-Gameweek fixtures stay in Transfers.`
+                        : "Starting XI, bench order, captaincy and next fixture in one place. Actual points appear only when a matching frozen forecast is available."}
                     </p>
                   </div>
                   <button onClick={() => setTab("transfer")}>
@@ -1246,12 +1455,12 @@ export default function LiveRefreshV12() {
                   </button>
                 </div>
                 <SquadPitch
-                  players={squad}
+                  players={scoringSquad}
                   teams={teams}
                   mode="inspect"
                   onPlayerClick={showWhy}
                   onInspect={showWhy}
-                  actualPoints={livePoints}
+                  actualPoints={hasLockedScoringComparison ? livePoints : undefined}
                   compact
                 />
               </section>
@@ -1454,7 +1663,10 @@ export default function LiveRefreshV12() {
                         className={
                           freeTransfers === count ? styles.selectedFt : ""
                         }
-                        onClick={() => setFreeTransfers(count)}
+                        onClick={() => {
+                          setFreeTransfers(count);
+                          window.localStorage.setItem("fpl-risk-free-transfers", String(count));
+                        }}
                       >
                         {count}
                       </button>
@@ -1484,7 +1696,6 @@ export default function LiveRefreshV12() {
                 selectedIds={selectedOut}
                 onPlayerClick={(item) => toggleOutgoing(item.player.id)}
                 onInspect={showWhy}
-                actualPoints={livePoints}
               />
 
               <section className={styles.planSection}>
@@ -1508,7 +1719,7 @@ export default function LiveRefreshV12() {
                 {!selectedOut.length && (
                   <div className={styles.emptyPlan}>
                     <p>
-                      Tap one or more players on the pitch. FPL Risk will search
+                      Tap one or more players on the pitch. FPL Prism will search
                       replacements under one shared budget instead of
                       recommending each transfer independently.
                     </p>
@@ -1629,7 +1840,7 @@ export default function LiveRefreshV12() {
           <section className={styles.marketMasthead}>
             <div className={styles.marketMastheadTop}>
               <div>
-                <span className={styles.eyebrow}>LIVE PLAYER MARKET · {activeGameweekLabel}</span>
+                <span className={styles.eyebrow}>PLAYER MARKET FORECAST · {forecastGameweekLabel}</span>
                 <h1>The FPL tape.</h1>
                 <p>
                   A cleaner view of the live player pool. Scan expected points like a market,
@@ -1645,14 +1856,14 @@ export default function LiveRefreshV12() {
             </div>
             <div className={styles.marketTicker}>
               <span>Model {MODEL_VERSION}</span>
-              <span>Next fixture window {nextEvent?.name ?? "Current GW"}</span>
+              <span>Next fixture window {nextEvent?.name ?? "Next gameweek"}</span>
               <span>{sportsbook?.available ? "Market prior connected" : "Core model · market prior optional"}</span>
               <span className={styles.marketTickerSignal}>
                 <b>PRICE RISE</b>
                 <strong>
                   {marketSignals.priceRiser
                     ? `${marketSignals.priceRiser.player.web_name} ${signedPriceChange(marketSignals.priceRiser.player.cost_change_event)}`
-                    : "No rise yet"}
+                    : "No confirmed rise"}
                 </strong>
               </span>
               <span className={`${styles.marketTickerSignal} ${styles.marketTickerSignalDown}`}>
@@ -1660,7 +1871,7 @@ export default function LiveRefreshV12() {
                 <strong>
                   {marketSignals.priceFaller
                     ? `${marketSignals.priceFaller.player.web_name} ${signedPriceChange(marketSignals.priceFaller.player.cost_change_event)}`
-                    : "No fall yet"}
+                    : "No confirmed fall"}
                 </strong>
               </span>
               <span className={styles.marketTickerSignal}>
@@ -1668,7 +1879,7 @@ export default function LiveRefreshV12() {
                 <strong>
                   {marketSignals.transferLeader
                     ? `${marketSignals.transferLeader.player.web_name} ${signedCompactNumber((marketSignals.transferLeader.player.transfers_in_event ?? 0) - (marketSignals.transferLeader.player.transfers_out_event ?? 0))}`
-                    : "Waiting for feed"}
+                    : "Live feed pending"}
                 </strong>
               </span>
               <span className={styles.marketTickerSignal}>
@@ -1676,15 +1887,15 @@ export default function LiveRefreshV12() {
                 <strong>
                   {marketSignals.haulLeader?.one.distribution
                     ? `${marketSignals.haulLeader.player.web_name} ${Math.round(marketSignals.haulLeader.one.distribution.bands.haul)}%`
-                    : "Waiting for model"}
+                    : "Model pending"}
                 </strong>
               </span>
               <span className={styles.marketTickerSignal}>
-                <b>GAMEWEEK HIGHEST SCORER · {activeGameweekLabel}</b>
+                <b>GAMEWEEK HIGHEST SCORER · {scoringGameweekLabel}</b>
                 <strong>
                   {marketSignals.gameweekLeader && marketSignals.gameweekRank
                     ? `#${marketSignals.gameweekRank} ${marketSignals.gameweekLeader.player.web_name} · ${marketSignals.gameweekLeader.player.event_points ?? 0} pts`
-                    : "Waiting for feed"}
+                    : "Live feed pending"}
                 </strong>
               </span>
             </div>
@@ -1694,22 +1905,22 @@ export default function LiveRefreshV12() {
             <article>
               <span>TOP 1GW xPTS</span>
               <strong>{marketLeaders.topExpected?.one.expected.toFixed(1) ?? "—"}</strong>
-              <small>{marketLeaders.topExpected?.player.web_name ?? "Waiting for feed"}</small>
+              <small>{marketLeaders.topExpected?.player.web_name ?? "Live feed pending"}</small>
             </article>
             <article>
               <span>BEST SHARPE</span>
               <strong>{marketLeaders.topSharpe?.five.distribution?.sharpe.toFixed(2) ?? "—"}</strong>
-              <small>{marketLeaders.topSharpe?.player.web_name ?? "Waiting for feed"}</small>
+              <small>{marketLeaders.topSharpe?.player.web_name ?? "Live feed pending"}</small>
             </article>
             <article>
               <span>HIGHEST CEILING</span>
               <strong>{marketLeaders.topCeiling?.one.distribution?.p90.toFixed(1) ?? "—"}</strong>
-              <small>{marketLeaders.topCeiling?.player.web_name ?? "Waiting for feed"}</small>
+              <small>{marketLeaders.topCeiling?.player.web_name ?? "Live feed pending"}</small>
             </article>
             <article>
               <span>BEST 5GW VALUE</span>
               <strong>{marketLeaders.bestValue?.value.toFixed(2) ?? "—"}</strong>
-              <small>{marketLeaders.bestValue?.player.web_name ?? "Waiting for feed"}</small>
+              <small>{marketLeaders.bestValue?.player.web_name ?? "Live feed pending"}</small>
             </article>
           </section>
 
@@ -1744,7 +1955,7 @@ export default function LiveRefreshV12() {
               <span>SEARCH</span>
               <input
                 value={marketQuery}
-                onChange={(event) => setMarketQuery(event.target.value)}
+                onChange={(event) => { setMarketQuery(event.target.value); setMarketVisibleCount(40); }}
                 placeholder="Search player"
                 aria-label="Search player"
               />
@@ -1753,7 +1964,7 @@ export default function LiveRefreshV12() {
               <span>POSITION</span>
               <select
                 value={marketPosition}
-                onChange={(event) => setMarketPosition(Number(event.target.value))}
+                onChange={(event) => { setMarketPosition(Number(event.target.value)); setMarketVisibleCount(40); }}
                 aria-label="Position"
               >
                 <option value={0}>All positions</option>
@@ -1767,7 +1978,7 @@ export default function LiveRefreshV12() {
               <span>TEAM</span>
               <input
                 value={marketTeamQuery}
-                onChange={(event) => setMarketTeamQuery(event.target.value)}
+                onChange={(event) => { setMarketTeamQuery(event.target.value); setMarketVisibleCount(40); }}
                 placeholder="Search full team name"
                 aria-label="Search team by full name"
                 list="fpl-team-names"
@@ -1786,7 +1997,7 @@ export default function LiveRefreshV12() {
                 max={marketPriceCeiling}
                 step={1}
                 value={effectiveMarketMaxPrice}
-                onChange={(event) => setMarketMaxPrice(Number(event.target.value))}
+                onChange={(event) => { setMarketMaxPrice(Number(event.target.value)); setMarketVisibleCount(40); }}
                 aria-label="Maximum player price"
               />
             </label>
@@ -1794,7 +2005,7 @@ export default function LiveRefreshV12() {
               <span>SORT BY</span>
               <select
                 value={marketSort}
-                onChange={(event) => setMarketSort(event.target.value as MarketSort)}
+                onChange={(event) => { setMarketSort(event.target.value as MarketSort); setMarketVisibleCount(40); }}
                 aria-label="Sort player market"
               >
                 <option value="five">5GW xPts</option>
@@ -1813,8 +2024,8 @@ export default function LiveRefreshV12() {
             <div className={styles.marketTableMeta}>
               <div>
                 <span className={styles.eyebrow}>MARKET RANKING</span>
-                <strong>{marketRows.length} players in view</strong>
-                <small>Click any row to pin a player snapshot. Use Why this pick to inspect the model inputs.</small>
+                <strong>Showing {displayedMarketRows.length} of {marketRows.length} players</strong>
+                <small>Select a player to pin their snapshot. Use Why this pick to inspect the model inputs.</small>
               </div>
               <div className={styles.marketTableLegend} aria-label="Market column guide">
                 <span><i className={styles.legendDot} /> Higher xPts</span>
@@ -1833,31 +2044,30 @@ export default function LiveRefreshV12() {
               <span>1GW range</span>
               <span>5GW range</span>
               <span>Sharpe</span>
-              <span>Bust / haul</span>
+              <span>1GW bust / haul</span>
               <span>Risk</span>
               <span>Ownership</span>
               <span>Reason</span>
               </div>
-              {marketRows.map((row, index) => (
+              {displayedMarketRows.map((row, index) => (
               <div
                 className={`${styles.marketRow} ${selectedMarketId === row.player.id ? styles.marketRowSelected : ""}`}
                 key={row.player.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => setSelectedMarketId(row.player.id)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") setSelectedMarketId(row.player.id);
-                }}
-                aria-label={`Select ${row.player.web_name}`}
               >
                 <span>{String(index + 1).padStart(2, "0")}</span>
-                <div className={styles.marketPlayerCell}>
+                <button
+                  type="button"
+                  className={styles.marketPlayerCell}
+                  onClick={() => setSelectedMarketId(row.player.id)}
+                  aria-pressed={selectedMarketId === row.player.id}
+                  aria-label={`Select ${row.player.web_name}`}
+                >
                   <span className={styles.marketPlayerDot}>{teamMap.get(row.player.team)?.short_name?.slice(0, 2) ?? "FPL"}</span>
                   <div>
                     <strong>{row.player.web_name}</strong>
                     <small>{teamDisplayName(teamMap.get(row.player.team))} · {positionName(row.player.element_type)} · {row.player.selected_by_percent}% owned</small>
                   </div>
-                </div>
+                </button>
                 <span>{money(row.player.now_cost)}</span>
                 <span>{row.one.fixtureLabels[0] ?? "BLANK"}</span>
                 <b>{row.one.expected.toFixed(1)}</b>
@@ -1866,8 +2076,8 @@ export default function LiveRefreshV12() {
                 <span>{row.one.distribution ? `${row.one.distribution.p10.toFixed(1)}–${row.one.distribution.p90.toFixed(1)}` : "—"}</span>
                 <span>{row.five.distribution ? `${row.five.distribution.p10.toFixed(1)}–${row.five.distribution.p90.toFixed(1)}` : "—"}</span>
                 <span>{row.five.distribution?.sharpe.toFixed(2) ?? "—"}</span>
-                <span className={styles.bandInline} title="Probability of 0–2 points / 10+ points">
-                  {row.five.distribution ? `${Math.round(row.five.distribution.bands.bust)}% / ${Math.round(row.five.distribution.bands.haul)}%` : "—"}
+                <span className={styles.bandInline} title="Single-Gameweek probability of 0–2 points / 10+ points">
+                  {row.one.distribution ? `${Math.round(row.one.distribution.bands.bust)}% / ${Math.round(row.one.distribution.bands.haul)}%` : "—"}
                 </span>
                 <span className={`${styles.riskBadge} ${styles[row.five.risk.toLowerCase()]}`}>{row.five.risk}</span>
                 <span>{row.player.selected_by_percent}%</span>
@@ -1875,6 +2085,15 @@ export default function LiveRefreshV12() {
               </div>
               ))}
             </div>
+            {displayedMarketRows.length < marketRows.length && (
+              <button
+                type="button"
+                className={styles.marketShowMore}
+                onClick={() => setMarketVisibleCount((count) => Math.min(count + 40, marketRows.length))}
+              >
+                Show 40 more players
+              </button>
+            )}
           </section>
         </div>
       )}
@@ -1886,17 +2105,34 @@ export default function LiveRefreshV12() {
               <span className={styles.eyebrow}>MODEL TRANSPARENCY</span>
               <h1>Risk Model {MODEL_VERSION}</h1>
               <p>
-                The number is not a black box. FPL Risk builds expected points
+                The number is not a black box. FPL Prism builds expected points
                 from role, rates, fixtures, uncertainty and an optional external
-                market prior.
+                market prior. Each weekly update uses new FPL evidence while
+                retaining historical priors until the current sample is large
+                enough to justify more weight.
               </p>
             </div>
+            <span className={styles.modelPill}>{trainingStatusLabel}</span>
+          </div>
+
+          <div className={styles.trainingCallout}>
+            <div>
+              <span className={styles.eyebrow}>DATA QUALITY + CONFIDENCE</span>
+              <strong>{trainingStatusLabel}</strong>
+            </div>
+            <p>
+              Source: official live FPL data plus {historicalPriorLabel}. The engine weights current-season
+              minutes and role certainty more as evidence accumulates, and
+              keeps uncertainty wide when coverage, injury news or fixture
+              context is incomplete. Feed refreshed {formatDataTimestamp(modelDataUpdatedAt)}.
+            </p>
           </div>
 
           <section className={styles.modelFlow}>
             {[
               "Live FPL player data",
-              "Expected minutes",
+              "Minutes mixture",
+              "Rotation + substitution risk",
               "Shrunk xG / xA rates",
               "Team + opponent context",
               "Sportsbook market prior",
@@ -1923,10 +2159,13 @@ export default function LiveRefreshV12() {
             </div>
             <div className={styles.componentCards}>
               <article>
-                <strong>Minutes</strong>
+                <strong>Minutes uncertainty</strong>
                 <p>
-                  Start probability, cameo probability, historical role and
-                  current availability.
+                  Every fixture is a start, cameo or no-appearance mixture.
+                  Expected minutes, p10–p90, variance and rotation risk feed
+                  both the player range and transfer simulations. Official FPL
+                  news, status and chance-of-playing fields adjust the mixture
+                  before scoring is sampled.
                 </p>
               </article>
               <article>
@@ -2019,18 +2258,22 @@ export default function LiveRefreshV12() {
             </article>
             <article>
               <span className={styles.eyebrow}>UNCERTAINTY</span>
-              <h2>Fixture first, horizon second</h2>
+              <h2>Minutes first, scoring second</h2>
               <p>
-                Each projected Gameweek carries its own appearance probability
-                and outcome variance. Multi-fixture Gameweeks are aggregated
-                from their underlying fixture context rather than receiving one
-                generic risk label after the fact.
+                Most FPL variance starts with whether a player starts, comes on
+                or is rotated out. Each projected Gameweek carries its own
+                minutes mixture, substitution variance and fixture scoring
+                range. Multi-fixture Gameweeks are aggregated from their
+                underlying contexts rather than receiving one generic risk
+                label after the fact.
               </p>
               <div className={styles.modelStatus}>
                 <span>Low risk</span>
                 <strong>Tighter relative range</strong>
                 <span>High risk</span>
                 <strong>Wider outcome range</strong>
+                <span>Rotation risk</span>
+                <strong>Bench and substitution uncertainty</strong>
                 <span>Confidence</span>
                 <strong>Data coverage + signal quality</strong>
                 <span>Portfolio</span>
@@ -2138,6 +2381,11 @@ export default function LiveRefreshV12() {
                 {whyPlayer.five.confidence} confidence
               </span>
             </div>
+            {whyPlayer.player.news && (
+              <p className={styles.whyFooter}>
+                <strong>Official FPL news:</strong> {whyPlayer.player.news}
+              </p>
+            )}
             <div className={styles.horizonGrid}>
               <div>
                 <span>1 GW</span>
@@ -2158,17 +2406,27 @@ export default function LiveRefreshV12() {
             </div>
             <div className={styles.distributionPanel}>
               <div className={styles.distributionMetric}><span>1 GW RANGE</span><strong>{whyPlayer.one.distribution ? `${whyPlayer.one.distribution.p10.toFixed(1)}–${whyPlayer.one.distribution.p90.toFixed(1)}` : "—"}</strong><small>single-gameweek P10 to P90</small></div>
-              <div className={styles.distributionMetric}><span>FLOOR · P10</span><strong>{whyPlayer.five.distribution?.p10.toFixed(1) ?? "—"}</strong><small>10% of simulations land below this</small></div>
-              <div className={styles.distributionMetric}><span>MEDIAN</span><strong>{whyPlayer.five.distribution?.median.toFixed(1) ?? "—"}</strong><small>central simulated outcome</small></div>
-              <div className={styles.distributionMetric}><span>CEILING · P90</span><strong>{whyPlayer.five.distribution?.p90.toFixed(1) ?? "—"}</strong><small>90% of simulations land below this</small></div>
-              <div className={styles.distributionMetric}><span>SHARPE-STYLE</span><strong>{whyPlayer.five.distribution?.sharpe.toFixed(2) ?? "—"}</strong><small>mean points per unit of spread</small></div>
+              <div className={styles.distributionMetric}><span>5 GW FLOOR · P10</span><strong>{whyPlayer.five.distribution?.p10.toFixed(1) ?? "—"}</strong><small>10% of five-Gameweek simulations land below this</small></div>
+              <div className={styles.distributionMetric}><span>5 GW MEDIAN</span><strong>{whyPlayer.five.distribution?.median.toFixed(1) ?? "—"}</strong><small>central five-Gameweek outcome</small></div>
+              <div className={styles.distributionMetric}><span>5 GW CEILING · P90</span><strong>{whyPlayer.five.distribution?.p90.toFixed(1) ?? "—"}</strong><small>90% of five-Gameweek simulations land below this</small></div>
+              <div className={styles.distributionMetric}><span>5 GW SHARPE-STYLE</span><strong>{whyPlayer.five.distribution?.sharpe.toFixed(2) ?? "—"}</strong><small>mean points per unit of spread</small></div>
             </div>
-            <div className={styles.bandGrid} aria-label="Simulated outcome bands">
+            <div className={styles.distributionPanel} aria-label="Minutes projection uncertainty">
+              <div className={styles.distributionMetric}><span>EXPECTED MINUTES</span><strong>{whyPlayer.one.minutes.expected.toFixed(0)}</strong><small>playing-time expectation for the next fixture</small></div>
+              <div className={styles.distributionMetric}><span>MINUTES P10–P90</span><strong>{whyPlayer.one.minutes.p10.toFixed(0)}–{whyPlayer.one.minutes.p90.toFixed(0)}</strong><small>rotation and substitution range</small></div>
+              <div className={styles.distributionMetric}><span>START PROBABILITY</span><strong>{((whyPlayer.one.minutesByFixture[0]?.startProbability ?? 0) * 100).toFixed(0)}%</strong><small>probability of starting</small></div>
+              <div className={styles.distributionMetric}><span>CAMEO PROBABILITY</span><strong>{((whyPlayer.one.minutesByFixture[0]?.cameoProbability ?? 0) * 100).toFixed(0)}%</strong><small>probability of a bench appearance</small></div>
+              <div className={styles.distributionMetric}><span>ROTATION RISK</span><strong>{(whyPlayer.one.minutes.rotationRisk * 100).toFixed(0)}%</strong><small>chance of not starting</small></div>
+            </div>
+            <p className={styles.whyFooter}>
+              Minutes are sampled before scoring: starter, cameo or no appearance. This keeps rotation and substitutions visible instead of hiding them inside generic performance volatility.
+            </p>
+            <div className={styles.bandGrid} aria-label="Single-Gameweek simulated outcome bands">
               {[
-                ["0–2 BUST", whyPlayer.five.distribution?.bands.bust],
-                ["3–5 FLOOR", whyPlayer.five.distribution?.bands.floor],
-                ["6–9 MIDDLE", whyPlayer.five.distribution?.bands.middle],
-                ["10+ HAUL", whyPlayer.five.distribution?.bands.haul],
+                ["1GW · 0–2 BUST", whyPlayer.one.distribution?.bands.bust],
+                ["1GW · 3–5 FLOOR", whyPlayer.one.distribution?.bands.floor],
+                ["1GW · 6–9 MIDDLE", whyPlayer.one.distribution?.bands.middle],
+                ["1GW · 10+ HAUL", whyPlayer.one.distribution?.bands.haul],
               ].map(([label, value]) => (
                 <div className={styles.bandCell} key={label as string}><span>{label}</span><strong>{value == null ? "—" : `${Math.round(value as number)}%`}</strong></div>
               ))}
@@ -2212,11 +2470,8 @@ export default function LiveRefreshV12() {
       )}
 
       <footer className={styles.footer}>
-        <span>FPL Risk · Model {MODEL_VERSION}</span>
-        <span>
-          Independent project · Live public FPL data · Sportsbook layer is
-          optional and fails open
-        </span>
+        <span>FPL Prism · Model {MODEL_VERSION}</span>
+        <span>Independent project · Not affiliated with, endorsed by or sponsored by the Premier League.</span>
       </footer>
     </main>
   );

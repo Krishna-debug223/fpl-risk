@@ -1,0 +1,23 @@
+{
+  "gameweek": 3,
+  "modelVersion": "1.2.1-r1",
+  "final": true,
+  "generatedAt": "2026-09-07T05:12:25.683Z",
+  "overall": {"count": 652, "mae": 1.308, "rmse": 2.035, "bias": -0.22, "within1": 50.3, "within2": 80.7, "within3": 91.4},
+  "activeCohort": {"count": 459, "mae": 1.798, "rmse": 2.415, "bias": -0.253, "within1": 29.4, "within2": 72.5, "within3": 87.8},
+  "byPosition": {
+    "GKP": {"count": 45, "mae": 2.065, "rmse": 2.384, "bias": -0.955, "within1": 8.9, "within2": 44.4, "within3": 91.1},
+    "DEF": {"count": 162, "mae": 2.065, "rmse": 2.744, "bias": 0.073, "within1": 22.2, "within2": 67.3, "within3": 82.7},
+    "MID": {"count": 200, "mae": 1.605, "rmse": 2.233, "bias": -0.283, "within1": 37.5, "within2": 81.0, "within3": 90.5},
+    "FWD": {"count": 52, "mae": 1.476, "rmse": 1.983, "bias": -0.542, "within1": 38.5, "within2": 80.8, "within3": 90.4}
+  },
+  "adjustmentsForNextGw": {"GKP": -0.15, "DEF": -0.034, "MID": -0.15, "FWD": -0.124},
+  "largestMisses": [
+    {"name":"Mitchell","position":"DEF","projected":2.936,"actual":15,"error":12.064},
+    {"name":"Bogle","position":"DEF","projected":2.507,"actual":14,"error":11.493},
+    {"name":"Vuskovic","position":"DEF","projected":3.108,"actual":12,"error":8.892},
+    {"name":"Barnes","position":"MID","projected":3.193,"actual":12,"error":8.807},
+    {"name":"George","position":"MID","projected":1.826,"actual":10,"error":8.174},
+    {"name":"Isak","position":"FWD","projected":4.830,"actual":13,"error":8.170}
+  ]
+}

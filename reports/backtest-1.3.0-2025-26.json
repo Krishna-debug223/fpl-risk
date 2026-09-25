@@ -1,0 +1,110 @@
+{
+  "modelVersion": "1.3.0",
+  "targetSeason": "2025-26",
+  "generatedAt": "2026-09-20T21:56:33.203Z",
+  "methodology": {
+    "walkForward": true,
+    "noLookahead": "Player/team rates for target GW N are built only from merged_gw rows where GW < N. Target-GW rows supply identity, deadline price/fixture mapping and realized outcome only.",
+    "source": "vaastav/Fantasy-Premier-League historical data",
+    "startingGw": 4,
+    "endingGw": 5,
+    "limitations": [
+      "Historical injury/suspension snapshots are not reconstructed, so availability is neutral in this harness.",
+      "Official historical FDR/static team-strength snapshots are not reconstructed; lagged team xG-derived strength is used instead.",
+      "Historical multi-season priors are omitted from this first walk-forward harness.",
+      "No historical sportsbook archive supplied; sportsbook before/after calibration is intentionally not claimed."
+    ]
+  },
+  "overall": {
+    "n": 1454,
+    "mae": 1.7063,
+    "rmse": 2.1757,
+    "pearson": 0.5193,
+    "spearman": 0.5736,
+    "appearanceBrier": 0.1986,
+    "interval80Coverage": 0.9608,
+    "topDecileActualAverage": 3.7671,
+    "topDecileHaulRate": 0.0479,
+    "overallHaulRate": 0.0151
+  },
+  "byPosition": {
+    "GKP": {
+      "n": 168,
+      "mae": 2.0842,
+      "rmse": 2.2155,
+      "pearson": 0.6309,
+      "spearman": 0.59,
+      "appearanceBrier": 0.2207,
+      "interval80Coverage": 0.9881,
+      "topDecileActualAverage": 3.6471,
+      "topDecileHaulRate": 0,
+      "overallHaulRate": 0.006
+    },
+    "DEF": {
+      "n": 481,
+      "mae": 1.7816,
+      "rmse": 2.2687,
+      "pearson": 0.5316,
+      "spearman": 0.5912,
+      "appearanceBrier": 0.1886,
+      "interval80Coverage": 0.9397,
+      "topDecileActualAverage": 4.3061,
+      "topDecileHaulRate": 0.0204,
+      "overallHaulRate": 0.0146
+    },
+    "MID": {
+      "n": 647,
+      "mae": 1.5918,
+      "rmse": 2.1402,
+      "pearson": 0.5127,
+      "spearman": 0.6091,
+      "appearanceBrier": 0.2001,
+      "interval80Coverage": 0.9675,
+      "topDecileActualAverage": 3.8462,
+      "topDecileHaulRate": 0.1077,
+      "overallHaulRate": 0.0185
+    },
+    "FWD": {
+      "n": 158,
+      "mae": 1.5447,
+      "rmse": 1.9788,
+      "pearson": 0.6776,
+      "spearman": 0.7034,
+      "appearanceBrier": 0.1991,
+      "interval80Coverage": 0.9684,
+      "topDecileActualAverage": 4.4375,
+      "topDecileHaulRate": 0.0625,
+      "overallHaulRate": 0.0127
+    }
+  },
+  "byGameweek": {
+    "4": {
+      "n": 713,
+      "mae": 1.7778,
+      "rmse": 2.2503,
+      "pearson": 0.548,
+      "spearman": 0.553,
+      "appearanceBrier": 0.2091,
+      "interval80Coverage": 0.9621,
+      "topDecileActualAverage": 4.4167,
+      "topDecileHaulRate": 0.0694,
+      "overallHaulRate": 0.0168
+    },
+    "5": {
+      "n": 741,
+      "mae": 1.6376,
+      "rmse": 2.1013,
+      "pearson": 0.4937,
+      "spearman": 0.5896,
+      "appearanceBrier": 0.1885,
+      "interval80Coverage": 0.9595,
+      "topDecileActualAverage": 3.1467,
+      "topDecileHaulRate": 0.0267,
+      "overallHaulRate": 0.0135
+    }
+  },
+  "sportsbookComparison": {
+    "status": "not-run",
+    "note": "Historical sportsbook odds were not supplied, so no market-improvement claim is made."
+  }
+}

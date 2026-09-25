@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./AccountPanel.module.css";
+import LegalFooter from "./LegalFooter";
 
 type Props = {
   email: string;
@@ -82,15 +83,10 @@ export default function AccountPanel({
 
   return (
     <main className={styles.shell}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.brand}><span>FR</span><div><strong>FPL RISK</strong><small>Your account</small></div></Link>
-        <nav><Link href="/dashboard">Dashboard</Link><Link href="/planner">8-GW Planner</Link><Link href="/pricing">Pricing</Link></nav>
-      </header>
-
       <div className={styles.page}>
         <section className={styles.hero}>
-          <div><p className={styles.eyebrow}>CLOUD SAVE</p><h1>Your FPL Risk setup.</h1><p>Keep the product usable without an account, or save a few defaults here so your planning setup can follow you between sessions.</p></div>
-          <aside><span>CURRENT PLAN</span><strong>Free</strong><p>All current FPL Risk features are included during launch.</p></aside>
+          <div><p className={styles.eyebrow}>CLOUD SAVE</p><h1>Your FPL Prism setup.</h1><p>Keep the product usable without an account, or save a few defaults here so your planning setup can follow you between sessions.</p></div>
+          <aside><span>CURRENT PLAN</span><strong>Free</strong><p>All current FPL Prism features are included during launch.</p></aside>
         </section>
 
         <section className={styles.grid}>
@@ -118,13 +114,14 @@ export default function AccountPanel({
           </form>
 
           <div className={styles.side}>
-            <article><span>WHAT IS SAVED</span><h3>Small by design.</h3><p>Your login email is managed by the account provider. FPL Risk stores the Team ID and planning defaults above in account metadata. Your official FPL password is never requested or stored.</p></article>
-            <article><span>CROSS-DEVICE SYNC</span><h3>Your saved defaults follow the account.</h3><p>After you sign in on another browser, opening this account page copies the saved Team ID and planner defaults into that browser for the rest of the FPL Risk experience.</p><Link href="/planner">Open 8-GW Planner →</Link></article>
+            <article><span>WHAT IS SAVED</span><h3>Small by design.</h3><p>Your login email is managed by the account provider. FPL Prism stores the Team ID and planning defaults above in account metadata. Your official FPL password is never requested or stored.</p></article>
+            <article><span>CROSS-DEVICE SYNC</span><h3>Your saved defaults follow the account.</h3><p>After you sign in on another browser, opening this account page copies the saved Team ID and planner defaults into that browser for the rest of the FPL Prism experience.</p><Link href="/planner">Open 8-GW Planner →</Link></article>
             <article><span>GUEST MODE</span><h3>Signing in stays optional.</h3><p>Signing out does not block the model. You can continue using projections, Transfer Lab, Player Market and the Path Planner as a guest.</p><Link href="/dashboard">Open dashboard →</Link></article>
             <button className={styles.signOut} type="button" onClick={signOut} disabled={busy}>Sign out</button>
           </div>
         </section>
       </div>
+      <LegalFooter />
     </main>
   );
 }

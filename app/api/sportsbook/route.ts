@@ -14,7 +14,7 @@ const disabledPayload = () => ({
   configuredWeight: 0,
   calibrationStatus: "disabled-until-calibrated" as const,
   fixtures: [],
-  note: "Sportsbook integration is intentionally disabled for this release; the base FPL Risk model remains active.",
+  note: "Sportsbook integration is intentionally disabled for this release; the base FPL Prism model remains active.",
 });
 
 export async function GET() {

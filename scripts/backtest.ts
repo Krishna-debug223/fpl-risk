@@ -65,7 +65,7 @@ function parseCsv(text: string): CsvRow[] {
 }
 
 async function fetchCsv(url: string) {
-  const response = await fetch(url, { headers: { "User-Agent": "FPL-Risk-Backtest/1.0" } });
+  const response = await fetch(url, { headers: { "User-Agent": "FPL-Prism-Backtest/1.0" } });
   if (!response.ok) throw new Error(`Backtest source returned ${response.status}: ${url}`);
   return parseCsv(await response.text());
 }
@@ -321,7 +321,7 @@ function loadOptionalSportsbook(): SportsbookPayload | null {
 }
 
 async function main() {
-  console.log(`FPL Risk walk-forward backtest · model ${MODEL_VERSION} · season ${TARGET_SEASON}`);
+  console.log(`FPL Prism walk-forward backtest · model ${MODEL_VERSION} · season ${TARGET_SEASON}`);
   console.log(`Target GWs ${START_GW}-${END_GW}; each prediction uses only rows from earlier Gameweeks.`);
 
   const [allRows, rawTeams] = await Promise.all([

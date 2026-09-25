@@ -16,7 +16,7 @@ export default function PlannerShortcut() {
     <div className={styles.dock}>
       <div className={styles.launchLinks}>
         <Link href="/pricing">Pricing</Link>
-        <Link href="/">Sign in</Link>
+        <Link href="/sign-in">Sign in</Link>
       </div>
       {!isPlanner && (
         <div className={styles.shortcut}>

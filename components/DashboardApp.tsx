@@ -18,6 +18,7 @@ import {
   MODEL_VERSION,
 } from "@/lib/risk";
 import { ArrowIcon, BoltIcon, GridIcon, MarketIcon, RefreshIcon, ShieldIcon, SwapIcon } from "./Icons";
+import BrandMark from "./BrandMark";
 import { DistributionChart, RiskReturnChart } from "./Charts";
 import { trackProductEvent } from "@/lib/analytics";
 
@@ -205,9 +206,9 @@ export default function DashboardApp() {
     <main className="app-shell">
       <header className="site-header">
         <div className="header-inner">
-          <button className="brand" onClick={() => setTab("overview")} aria-label="Go to FPL Risk overview">
-            <div className="brand-mark"><ShieldIcon /></div>
-            <div><strong>FPL RISK</strong><span>Decision analytics</span></div>
+          <button className="brand" onClick={() => setTab("overview")} aria-label="Go to FPL Prism overview">
+            <div className="brand-mark"><BrandMark /></div>
+            <div><strong>FPL PRISM</strong><span>Decision analytics</span></div>
           </button>
 
           <nav className="nav" aria-label="Primary navigation">
@@ -237,7 +238,7 @@ export default function DashboardApp() {
       </section>
 
       <footer className="site-footer">
-        <span>FPL Risk · Public Beta · Risk Model v{MODEL_VERSION}</span>
+        <span>FPL Prism · Public Beta · Risk Model v{MODEL_VERSION}</span>
         <span className="footer-legal">Independent project · Not affiliated with the Premier League · <Link href="/privacy">Privacy</Link> · <Link href="/terms">Terms</Link></span>
       </footer>
     </main>
@@ -356,7 +357,7 @@ function Overview({ bootstrap, fixtures, history, historicalData, manager, squad
       <section className="ai-assessment">
         <div className="ai-assessment-head">
           <div className="ai-orb"><BoltIcon /></div>
-          <div><span className="eyebrow">FPL RISK AI · TEAM ASSESSMENT</span><h2>{assessmentTitle}</h2></div>
+          <div><span className="eyebrow">FPL PRISM AI · TEAM ASSESSMENT</span><h2>{assessmentTitle}</h2></div>
           {recommendation && <span className={`confidence-pill ${recommendation.confidence.toLowerCase()}`}>{recommendation.confidence} conviction</span>}
         </div>
         {recommendation && recOut && recIn ? (
@@ -561,7 +562,7 @@ function TransferLab({ bootstrap, fixtures, history, squad, manager, freeTransfe
           {manager && <div className="transfer-ft-inline"><span>Free transfers remaining</span><FreeTransferSelector value={freeTransfers} onChange={(value) => { setFreeTransfers(value); setResult(null); }} compact /></div>}
           {outgoing && incoming && <div className="comparison-mini"><div><span>{outgoing.web_name}</span><strong>{outProjection?.expected.toFixed(1)} xPts</strong><small>{outProjection?.risk} risk · {money(outgoing.now_cost)}</small></div><ArrowIcon/><div><span>{incoming.web_name}</span><strong>{inProjection?.expected.toFixed(1)} xPts</strong><small>{inProjection?.risk} risk · {money(incoming.now_cost)}</small></div></div>}
           <button className="primary-button full" onClick={run} disabled={!outgoing || !incoming || running}>{running ? "Simulating 10,000 paths…" : <><BoltIcon /> Run simulation</>}</button>
-          <p className="model-note">FPL Risk AI is an underlying-data projection engine. Recent FPL points do not drive the forecast: player xG/xA, team xG/xGA, expected minutes, opponent strength, FDR and decaying historical priors build the projection before the 10,000-path risk simulation.</p>
+          <p className="model-note">FPL Prism AI is an underlying-data projection engine. Recent FPL points do not drive the forecast: player xG/xA, team xG/xGA, expected minutes, opponent strength, FDR and decaying historical priors build the projection before the 10,000-path risk simulation.</p>
         </section>
 
         <section className="panel results-panel">
@@ -604,7 +605,7 @@ function ModelPage({ historicalData, teamIntelligenceLoaded }: { historicalData:
   return (
     <>
       <div className="model-hero">
-        <div><span className="eyebrow">MODEL TRANSPARENCY</span><h1 className="page-title">Why the model says what it says.</h1><p>FPL Risk does not hide a transfer behind a black-box score. Model v1.1 builds FPL scoring components from underlying performance rather than recent point hauls, applies opponent and team context, enforces legal squad constraints, then quantifies the transfer with a reproducible risk simulation.</p></div>
+        <div><span className="eyebrow">MODEL TRANSPARENCY</span><h1 className="page-title">Why the model says what it says.</h1><p>FPL Prism does not hide a transfer behind a black-box score. Model v1.1 builds FPL scoring components from underlying performance rather than recent point hauls, applies opponent and team context, enforces legal squad constraints, then quantifies the transfer with a reproducible risk simulation.</p></div>
         <div className="model-version"><span>RISK MODEL</span><strong>v{MODEL_VERSION}</strong><small>Launch baseline · explainable by design</small></div>
       </div>
 

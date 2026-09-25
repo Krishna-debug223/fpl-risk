@@ -39,7 +39,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ even
       }),
     };
     return NextResponse.json(payload, {
-      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+      headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
     });
   } catch {
     return NextResponse.json({ error: "Live FPL points are temporarily unavailable." }, { status: 502 });

@@ -1,21 +1,16 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Manrope, Space_Grotesk } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import SiteAnalytics from "@/components/SiteAnalytics";
 import FplVisualEnhancer from "@/components/FplVisualEnhancer";
 import PlannerShortcut from "@/components/PlannerShortcut";
+import SiteHeader from "@/components/SiteHeader";
 import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 import "./frontdesks-ui-fixes.css";
 import "./geist-typography.css";
 
-const manrope = Manrope({
+const plexSans = IBM_Plex_Sans({
   variable: "--font-app-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-app-display",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
@@ -33,23 +28,31 @@ const siteUrl = getSiteUrl();
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "FPL Risk — Fantasy Premier League Decision Analytics",
-    template: "%s · FPL Risk",
+    default: "FPL Prism — Fantasy Premier League Decision Analytics",
+    template: "%s · FPL Prism",
   },
   description: "Analyze your FPL squad, compare legal transfers and quantify expected upside, downside and uncertainty with an explainable risk model.",
-  applicationName: "FPL Risk",
+  applicationName: "FPL Prism",
   keywords: ["FPL", "Fantasy Premier League", "FPL transfers", "FPL analytics", "FPL AI", "FPL planner"],
   alternates: { canonical: "/" },
+  icons: {
+    icon: [
+      { url: "/favicon.png", type: "image/png", sizes: "64x64" },
+      { url: "/icon.svg", type: "image/svg+xml", sizes: "any" },
+    ],
+    shortcut: ["/favicon.png"],
+    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
   openGraph: {
     type: "website",
     url: "/",
-    siteName: "FPL Risk",
-    title: "FPL Risk — Know the risk behind every move",
+    siteName: "FPL Prism",
+    title: "FPL Prism — Know the risk behind every move",
     description: "Import your FPL squad, get a model-driven team assessment and simulate the risk behind your next transfer.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "FPL Risk — Know the risk behind every move",
+    title: "FPL Prism — Know the risk behind every move",
     description: "Model-driven FPL transfer recommendations with explainable risk and Monte Carlo simulation.",
   },
   robots: { index: true, follow: true },
@@ -57,8 +60,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${manrope.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
+    <html lang="en" className={`${plexSans.variable} ${ibmPlexMono.variable}`}>
       <body>
+        <SiteHeader />
         {children}
         <PlannerShortcut />
         <FplVisualEnhancer />

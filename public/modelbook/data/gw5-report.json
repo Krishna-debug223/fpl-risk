@@ -1,0 +1,182 @@
+{
+  "gameweek": 5,
+  "modelVersion": "1.3.0",
+  "final": true,
+  "generatedAt": "2026-09-20T20:02:23.157Z",
+  "snapshotHash": "c6a9aa57a720d5f2868aaf1b31fec5c2ca5044e2c9a6e99b7f2b0191ac09f15a",
+  "actualsFetchedAt": "2026-09-20T20:02:23.157Z",
+  "actualsSource": "Official FPL event 5 live and fixtures feeds",
+  "actualsFinality": {
+    "fixtureCount": 10,
+    "started": 10,
+    "finished": 0,
+    "finishedProvisional": 10,
+    "ninetyMinutes": 10
+  },
+  "overall": {
+    "count": 659,
+    "mae": 1.262,
+    "rmse": 2.184,
+    "bias": -0.011,
+    "within1": 52.2,
+    "within2": 83.8,
+    "within3": 90.6
+  },
+  "activeCohort": {
+    "count": 301,
+    "mae": 1.961,
+    "rmse": 3.032,
+    "bias": 0.776,
+    "within1": 41.5,
+    "within2": 69.1,
+    "within3": 80.1
+  },
+  "byPosition": {
+    "GKP": {
+      "count": 20,
+      "mae": 2.583,
+      "rmse": 3.254,
+      "bias": 1.079,
+      "within1": 20.0,
+      "within2": 50.0,
+      "within3": 70.0
+    },
+    "DEF": {
+      "count": 97,
+      "mae": 2.321,
+      "rmse": 3.329,
+      "bias": 1.1,
+      "within1": 30.9,
+      "within2": 59.8,
+      "within3": 71.1
+    },
+    "MID": {
+      "count": 148,
+      "mae": 1.733,
+      "rmse": 2.781,
+      "bias": 0.613,
+      "within1": 48.6,
+      "within2": 75.0,
+      "within3": 85.8
+    },
+    "FWD": {
+      "count": 36,
+      "mae": 1.585,
+      "rmse": 3.059,
+      "bias": 0.409,
+      "within1": 52.8,
+      "within2": 80.6,
+      "within3": 86.1
+    }
+  },
+  "largestMisses": [
+    {
+      "name": "Brobbey",
+      "position": "FWD",
+      "projected": 2.534,
+      "actual": 17,
+      "error": 14.466,
+      "absoluteError": 14.466,
+      "minutes": 90
+    },
+    {
+      "name": "Semenyo",
+      "position": "MID",
+      "projected": 3.913,
+      "actual": 17,
+      "error": 13.087,
+      "absoluteError": 13.087,
+      "minutes": 90
+    },
+    {
+      "name": "Dasilva",
+      "position": "DEF",
+      "projected": 2.612,
+      "actual": 15,
+      "error": 12.388,
+      "absoluteError": 12.388,
+      "minutes": 90
+    },
+    {
+      "name": "Schuster",
+      "position": "DEF",
+      "projected": 1.806,
+      "actual": 14,
+      "error": 12.194,
+      "absoluteError": 12.194,
+      "minutes": 90
+    },
+    {
+      "name": "Manzambi",
+      "position": "MID",
+      "projected": 1.288,
+      "actual": 13,
+      "error": 11.712,
+      "absoluteError": 11.712,
+      "minutes": 71
+    },
+    {
+      "name": "Groß",
+      "position": "MID",
+      "projected": 3.782,
+      "actual": 14,
+      "error": 10.218,
+      "absoluteError": 10.218,
+      "minutes": 90
+    },
+    {
+      "name": "Tarkowski",
+      "position": "DEF",
+      "projected": 4.098,
+      "actual": 14,
+      "error": 9.902,
+      "absoluteError": 9.902,
+      "minutes": 90
+    },
+    {
+      "name": "Hall",
+      "position": "DEF",
+      "projected": 3.352,
+      "actual": 13,
+      "error": 9.648,
+      "absoluteError": 9.648,
+      "minutes": 90
+    },
+    {
+      "name": "Buendía",
+      "position": "MID",
+      "projected": 2.808,
+      "actual": 12,
+      "error": 9.192,
+      "absoluteError": 9.192,
+      "minutes": 90
+    },
+    {
+      "name": "Willock",
+      "position": "MID",
+      "projected": 1.646,
+      "actual": 10,
+      "error": 8.354,
+      "absoluteError": 8.354,
+      "minutes": 86
+    },
+    {
+      "name": "Rushworth",
+      "position": "GKP",
+      "projected": 3.228,
+      "actual": 11,
+      "error": 7.772,
+      "absoluteError": 7.772,
+      "minutes": 90
+    },
+    {
+      "name": "Anthony",
+      "position": "MID",
+      "projected": 2.378,
+      "actual": 10,
+      "error": 7.622,
+      "absoluteError": 7.622,
+      "minutes": 80
+    }
+  ]
+}

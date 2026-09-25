@@ -235,7 +235,7 @@ export default function DecisionPreview({
             <BrandMark className={styles.mark} />
             <div>
               <strong>Your decision desk</strong>
-              <small>{gameweek} · FPL Risk</small>
+              <small>{gameweek} · FPL Prism</small>
             </div>
             <span className={styles.live} aria-busy={!row}>
               <i /> {row ? "Live data" : "—"}

@@ -7,7 +7,7 @@ export async function fplFetch<T>(path: string, revalidate = 300, timeoutMs = DE
     const response = await fetch(`${FPL_BASE}${path}`, {
       headers: {
         Accept: "application/json",
-        "User-Agent": "FPL-Risk/0.5 (independent public beta)",
+        "User-Agent": "FPL-Prism/0.5 (independent public beta)",
       },
       cache: "no-store",
       signal: AbortSignal.timeout(timeoutMs),

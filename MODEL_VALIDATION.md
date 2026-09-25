@@ -1,6 +1,6 @@
-# FPL Risk model validation
+# FPL Prism model validation
 
-The production dashboard currently identifies the active model as `1.2.0-beta.2` in [`lib/risk-v12.ts`](lib/risk-v12.ts). Validation is designed to catch rule and implementation regressions; it is not a claim of historical predictive accuracy.
+The production dashboard currently identifies the active model as `1.3.0` in [`lib/risk-v12.ts`](lib/risk-v12.ts). Validation is designed to catch rule and implementation regressions; it is not a claim of historical predictive accuracy.
 
 ## Automated checks
 
@@ -33,3 +33,14 @@ High, Medium and Low are model-confidence labels based on data coverage, signal 
 ## Versioning
 
 Increment `MODEL_VERSION` for material changes to weights, priors, thresholds, simulation logic or data sources. Preserve the model version alongside any forecast snapshot or retrospective evaluation so historical comparisons remain reproducible.
+
+## Weekly model update process
+
+After each completed Gameweek, the next forecast consumes the new official FPL
+minutes, starts, underlying rates, availability and fixture results. Current-season
+evidence receives more weight as a player accumulates minutes; three completed
+season priors keep small samples stable. We re-run the deterministic checks and a
+walk-forward validation before promoting a material change. A single noisy
+Gameweek is not used as a blanket points correction, because that would overfit
+the active-player selection and make confidence look better without improving
+out-of-sample forecasts.

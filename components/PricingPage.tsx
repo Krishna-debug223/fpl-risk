@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import styles from "./PricingPage.module.css";
+import LegalFooter from "./LegalFooter";
 
 type Plan = {
   name: string;
@@ -11,7 +12,6 @@ type Plan = {
   annualBill: number;
   description: string;
   features: string[];
-  popular?: boolean;
   future?: boolean;
 };
 
@@ -21,13 +21,13 @@ const plans: Plan[] = [
     monthly: 0,
     annualMonthly: 0,
     annualBill: 0,
-    description: "The complete FPL Risk product during launch.",
+    description: "The complete FPL Prism product during launch.",
     features: [
       "Live player projections and confidence",
       "Transfer Lab + 10,000-path simulations",
       "8-Gameweek Path Planner",
       "Chip planning and Player Market",
-      "FPL Modelbook forward-test access",
+      "FPL Prism Modelbook forward-test access",
       "Optional account to save your Team ID and defaults",
     ],
   },
@@ -45,7 +45,6 @@ const plans: Plan[] = [
       "CSV exports and saved planner paths",
       "Early access to new decision tools",
     ],
-    popular: true,
     future: true,
   },
   {
@@ -71,21 +70,10 @@ export default function PricingPage() {
 
   return (
     <main className={styles.shell}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.brand}>
-          <span>FR</span>
-          <div><strong>FPL RISK</strong><small>Decision analytics</small></div>
-        </Link>
-        <nav>
-          <Link href="/planner">8-GW Planner</Link>
-          <Link href="/sign-in">Sign in</Link>
-        </nav>
-      </header>
-
       <section className={styles.hero}>
         <p className={styles.eyebrow}>PRICING</p>
         <h1>Use the model.<br />Pay only when we earn it.</h1>
-        <p>Every feature currently shipping in FPL Risk stays free during launch. The paid tiers below show where the product can grow once the core model and weekly workflow have earned a subscription.</p>
+        <p>Every feature currently shipping in FPL Prism stays free during launch. The paid tiers below show where the product can grow once the core model and weekly workflow have earned a subscription.</p>
         <div className={styles.launchNote}><strong>Launch promise:</strong> Free currently includes the full live product. No paid checkout or automatic renewal is active.</div>
       </section>
 
@@ -98,8 +86,7 @@ export default function PricingPage() {
         {plans.map((plan) => {
           const price = annual ? plan.annualMonthly : plan.monthly;
           return (
-            <article key={plan.name} className={`${styles.card} ${plan.popular ? styles.popular : ""}`}>
-              {plan.popular && <div className={styles.popularBadge}>★ MOST POPULAR</div>}
+            <article key={plan.name} className={`${styles.card} ${plan.name === "FREE" ? styles.featured : ""}`}>
               <div className={styles.cardTop}>
                 <span className={styles.planName}>{plan.name}</span>
                 {plan.future && <span className={styles.future}>ROADMAP</span>}
@@ -114,8 +101,8 @@ export default function PricingPage() {
               <ul>
                 {plan.features.map((feature) => <li key={feature}><i>✓</i><span>{feature}</span></li>)}
               </ul>
-              <Link className={plan.popular ? styles.primary : styles.secondary} href="/sign-in">
-                {plan.future ? "Use everything free for now" : "Start free"}
+              <Link className={plan.name === "FREE" ? styles.primary : styles.secondary} href="/">
+                {plan.future ? "See launch access" : "Start free"}
               </Link>
             </article>
           );
@@ -124,9 +111,10 @@ export default function PricingPage() {
 
       <section className={styles.faq}>
         <div><span>DO I NEED TO PAY?</span><strong>No.</strong><p>Not for the current product. The projections, Transfer Lab, Monte Carlo, Path Planner, Player Market and Modelbook remain available on Free during launch.</p></div>
-        <div><span>DO I NEED AN ACCOUNT?</span><strong>No.</strong><p>You can keep using FPL Risk as a guest. Sign in only if you want your Team ID and planning defaults attached to an account.</p></div>
+        <div><span>DO I NEED AN ACCOUNT?</span><strong>No.</strong><p>You can keep using FPL Prism as a guest. Sign in only if you want your Team ID and planning defaults attached to an account.</p></div>
         <div><span>WHEN WOULD PRO START?</span><strong>Only after notice.</strong><p>If paid subscriptions launch later, the product will show the final feature split and checkout terms before anyone is charged.</p></div>
       </section>
+      <LegalFooter />
     </main>
   );
 }

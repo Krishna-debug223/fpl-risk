@@ -95,6 +95,15 @@ const weakPlayer = player({ id: 2, code: 2002, team: 2, web_name: "WeakCopy" });
 const strongProjection = projectPlayer(strongPlayer, fixtures, teams, 1, history);
 const weakProjection = projectPlayer(weakPlayer, fixtures, teams, 1, undefined);
 assert(strongProjection.expected > weakProjection.expected, "strong team / easy matchup should project above weak team / hard matchup");
+assert(strongProjection.minutes.p10 <= strongProjection.minutes.p50 && strongProjection.minutes.p50 <= strongProjection.minutes.p90, "minutes quantiles should be ordered");
+assert(strongProjection.minutes.variance > 0, "minutes mixture should carry positive variance");
+
+const noNewsRotation = player({ id: 11, code: 1100, team: 1, minutes: 0, starts: 0, chance_of_playing_next_round: 100, news: "" });
+const doubtfulRotation = player({ id: 12, code: 1200, team: 1, minutes: 0, starts: 0, chance_of_playing_next_round: 100, news: "Late fitness test before the match" });
+const noNewsProjection = projectPlayer(noNewsRotation, fixtures, teams, 1);
+const doubtfulProjection = projectPlayer(doubtfulRotation, fixtures, teams, 1);
+assert(doubtfulProjection.minutes.rotationRisk > noNewsProjection.minutes.rotationRisk, "official doubt news should raise rotation risk");
+assert(doubtfulProjection.minutes.expected < noNewsProjection.minutes.expected, "official doubt news should lower expected minutes");
 
 // A hot FPL points streak without matching underlying performance must not be extrapolated.
 const lowUnderlyingHauler = player({

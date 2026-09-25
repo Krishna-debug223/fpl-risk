@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import styles from "./SignInPanel.module.css";
+import LegalFooter from "./LegalFooter";
 
 type Mode = "signin" | "signup" | "reset";
 
@@ -37,7 +38,7 @@ export default function SignInPanel() {
 
     const normalizedEmail = email.trim();
     if (!normalizedEmail) {
-      setError("Enter the email address you want to use with FPL Risk.");
+      setError("Enter the email address you want to use with FPL Prism.");
       return;
     }
     if (mode !== "reset" && password.length < 8) {
@@ -48,9 +49,10 @@ export default function SignInPanel() {
     setBusy(true);
     try {
       const supabase = createClient();
+      const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || window.location.origin;
 
       if (mode === "reset") {
-        const redirectTo = `${window.location.origin}/auth/callback?next=/reset-password`;
+        const redirectTo = `${siteOrigin}/auth/callback?next=/reset-password`;
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
         if (resetError) throw resetError;
         setMessage("Password reset link sent. Open the email on this device, then choose a new password.");
@@ -65,7 +67,7 @@ export default function SignInPanel() {
         return;
       }
 
-      const redirectTo = `${window.location.origin}/auth/callback?next=/account`;
+      const redirectTo = `${siteOrigin}/auth/callback?next=/account`;
       const { data, error: authError } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
@@ -86,37 +88,25 @@ export default function SignInPanel() {
   }
 
   const heading = mode === "signin"
-    ? "Continue your FPL Risk setup"
+    ? "Continue your FPL Prism setup"
     : mode === "signup"
-      ? "Save your FPL Risk setup"
+      ? "Save your FPL Prism setup"
       : "Reset your password";
   const cardCopy = mode === "signin"
-    ? "Use the email and password you created for FPL Risk."
+    ? "Use the email and password you created for FPL Prism."
     : mode === "signup"
       ? "Create a free account. No payment details are required."
-      : "We will email a secure recovery link. Your FPL Risk tools remain usable as a guest while you wait.";
+      : "We will email a secure recovery link. Your FPL Prism tools remain usable as a guest while you wait.";
 
   return (
     <main className={styles.shell}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.brand}>
-          <span>FR</span>
-          <div><strong>FPL RISK</strong><small>Decision analytics</small></div>
-        </Link>
-        <nav className={styles.topNav}>
-          <Link href="/dashboard">Dashboard</Link>
-          <Link href="/planner">8-GW Planner</Link>
-          <Link href="/pricing">Pricing</Link>
-        </nav>
-      </header>
-
       <section className={styles.layout}>
         <div className={styles.copy}>
-          <p className={styles.eyebrow}>WELCOME TO FPL RISK</p>
+          <p className={styles.eyebrow}>WELCOME TO FPL PRISM</p>
           <h1>Save your setup.<br />Or jump straight in.</h1>
           <p>Sign in if you want your Team ID and planning defaults saved across sessions. You never need an account to use the live model, Transfer Lab, Player Market or Path Planner.</p>
           <ul>
-            <li><i>✓</i><span>All current FPL Risk tools remain available without signing in.</span></li>
+            <li><i>✓</i><span>All current FPL Prism tools remain available without signing in.</span></li>
             <li><i>✓</i><span>Your account stores only the preferences you choose to save.</span></li>
             <li><i>✓</i><span>Signing in never requires your official FPL password.</span></li>
           </ul>
@@ -154,6 +144,7 @@ export default function SignInPanel() {
           <Link href="/dashboard" className={styles.mobileGuest}>Continue without signing in</Link>
         </div>
       </section>
+      <LegalFooter />
     </main>
   );
 }

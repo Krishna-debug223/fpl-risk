@@ -168,6 +168,20 @@ export type HistoricalPayload = {
   partial?: boolean;
 };
 
+/**
+ * Public training provenance shared by the live Modelbook and dashboard.
+ * A Gameweek forecast is trained through the last completed Gameweek, while
+ * current-season minutes and rates are blended into stable historical priors.
+ */
+export type ModelTrainingStatus = {
+  trainedThroughGameweek: number;
+  targetGameweek: number;
+  updatedAt: string;
+  source: string;
+  method: string;
+  validation: string;
+};
+
 export type TeamIntelligencePayload = {
   teams: Array<{ id: number; shortName: string; elo: number }>;
   fetchedAt: string;

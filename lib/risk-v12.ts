@@ -13,7 +13,7 @@ import {
   simulateProjection,
 } from "./risk";
 
-export const MODEL_VERSION = "1.3.0";
+export const MODEL_VERSION = "1.4.0";
 export { assessChips, positionName };
 export type { ChipAdvice, HistoricalProfileMap, ModelConfidence, Recommendation, ProjectionDistribution };
 

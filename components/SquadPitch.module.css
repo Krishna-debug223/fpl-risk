@@ -666,3 +666,74 @@
     transition: none;
   }
 }
+
+/* Keep the four-player defensive line inside narrow phone viewports. */
+@media (max-width: 650px) {
+  .pitch,
+  .compact .pitch {
+    min-height: 600px;
+  }
+
+  .formation,
+  .compact .formation {
+    min-height: 550px;
+  }
+
+  .line,
+  .compact .line {
+    min-height: 132px;
+    gap: 0;
+  }
+
+  .tileWrap {
+    width: min(82px, 22vw);
+    min-width: 0;
+  }
+
+  .playerTile {
+    min-height: 120px;
+  }
+
+  .playerVisual {
+    width: 64px;
+    height: 62px;
+  }
+
+  .playerPlate strong {
+    font-size: 7.5px;
+  }
+
+  .playerPlate small {
+    font-size: 6.5px;
+  }
+
+  .benchRow {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 380px) {
+  .pitch,
+  .compact .pitch {
+    min-height: 570px;
+  }
+
+  .formation,
+  .compact .formation {
+    min-height: 522px;
+  }
+
+  .line,
+  .compact .line {
+    min-height: 125px;
+  }
+
+  .tileWrap {
+    width: min(74px, 21vw);
+  }
+
+  .playerVisual {
+    width: 58px;
+    height: 58px;
+  }
+}

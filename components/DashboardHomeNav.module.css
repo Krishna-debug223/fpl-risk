@@ -138,7 +138,9 @@
 
 @media (max-width: 720px) {
   .bar {
+    width: calc(100% - 20px);
     min-height: 56px;
+    gap: 8px;
   }
 
   .homeCopy {
@@ -159,5 +161,8 @@
 
   .signIn {
     padding-inline: 11px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
   }
 }

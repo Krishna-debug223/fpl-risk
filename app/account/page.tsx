@@ -1,13 +1,14 @@
-import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import AccountPanel from "@/components/AccountPanel";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { pageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
-  title: "Account",
-  description: "Manage the FPL Team ID and planning defaults saved to your optional FPL Risk account.",
-  robots: { index: false, follow: false },
-};
+export const metadata = pageMetadata({
+  title: "FPL Prism — Your account",
+  description: "Manage the Team ID and planning defaults saved to your optional FPL Prism account.",
+  path: "/account",
+  noindex: true,
+});
 
 export default async function AccountPage() {
   if (!isSupabaseConfigured()) redirect("/sign-in");

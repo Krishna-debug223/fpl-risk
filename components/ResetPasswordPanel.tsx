@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import styles from "./SignInPanel.module.css";
+import LegalFooter from "./LegalFooter";
 
 export default function ResetPasswordPanel() {
   const router = useRouter();
@@ -52,26 +53,18 @@ export default function ResetPasswordPanel() {
 
   return (
     <main className={styles.shell}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.brand}>
-          <span>FR</span>
-          <div><strong>FPL RISK</strong><small>Account recovery</small></div>
-        </Link>
-        <Link href="/sign-in" className={styles.pricing}>Sign in</Link>
-      </header>
-
       <section className={styles.layout}>
         <div className={styles.copy}>
           <p className={styles.eyebrow}>SECURE RECOVERY</p>
           <h1>Choose a new<br />password.</h1>
-          <p>This page is only useful after opening the recovery email sent by FPL Risk. Your FPL tools remain available even if you decide not to finish the reset.</p>
+          <p>This page is only useful after opening the recovery email sent by FPL Prism. Your FPL tools remain available even if you decide not to finish the reset.</p>
           <Link href="/" className={styles.guest}>Continue as guest →</Link>
         </div>
 
         <div className={styles.card}>
           <span className={styles.cardEyebrow}>NEW PASSWORD</span>
-          <h2>Reset your FPL Risk password</h2>
-          <p className={styles.cardCopy}>Enter a new password for your optional FPL Risk account.</p>
+          <h2>Reset your FPL Prism password</h2>
+          <p className={styles.cardCopy}>Enter a new password for your optional FPL Prism account.</p>
           <form onSubmit={submit}>
             <label htmlFor="new-password">New password</label>
             <input id="new-password" type="password" autoComplete="new-password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8+ characters" required />
@@ -85,6 +78,7 @@ export default function ResetPasswordPanel() {
           <div className={styles.legal}>Didn&apos;t request a reset? You can safely leave this page and <Link href="/">continue as a guest</Link>.</div>
         </div>
       </section>
+      <LegalFooter />
     </main>
   );
 }

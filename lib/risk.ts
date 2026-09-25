@@ -1,6 +1,6 @@
 import type { FplEvent, FplFixture, FplPlayer, FplTeam, HistoricalPayload, HistoricalSeasonSummary, UsedChip } from "./types";
 
-export const MODEL_VERSION = "1.1.0";
+export const MODEL_VERSION = "1.4.0";
 
 export type HistoricalProfileMap = HistoricalPayload["players"];
 export type ModelConfidence = "High" | "Medium" | "Low";
@@ -21,9 +21,17 @@ export type HistoryBlendInfo = {
   influence: number;
 };
 
+export type ProjectedFixtureIdentity = {
+  id: number;
+  event: number | null;
+  homeTeamId: number;
+  awayTeamId: number;
+};
+
 export type FixtureContext = {
   event: number | null;
   label: string;
+  fixtures: ProjectedFixtureIdentity[];
   fdr: number;
   overallFactor: number;
   fdrFactor: number;
@@ -51,6 +59,37 @@ export type ProjectionComponents = {
   empiricalAnchor: number;
 };
 
+/**
+ * Playing-time uncertainty for one projected fixture. The model keeps
+ * minutes uncertainty separate from scoring-rate uncertainty so rotation,
+ * bench cameos and substitutions are visible rather than hidden in a generic
+ * volatility multiplier.
+ */
+export type MinutesDistribution = {
+  expected: number;
+  p10: number;
+  p50: number;
+  p90: number;
+  variance: number;
+  startProbability: number;
+  cameoProbability: number;
+  appearanceProbability: number;
+  minutesIfStart: number;
+  minutesIfStartSd: number;
+  minutesIfCameo: number;
+  minutesIfCameoSd: number;
+  rotationRisk: number;
+};
+
+export type MinutesSummary = {
+  expected: number;
+  p10: number;
+  p50: number;
+  p90: number;
+  variance: number;
+  rotationRisk: number;
+};
+
 export type Projection = {
   playerId: number;
   horizon: number;
@@ -64,6 +103,8 @@ export type Projection = {
   dataQuality: number;
   confidence: ModelConfidence;
   components: ProjectionComponents;
+  minutes: MinutesSummary;
+  minutesByFixture: MinutesDistribution[];
   distribution?: ProjectionDistribution;
 };
 
@@ -100,6 +141,7 @@ const n = (value: string | number | null | undefined, fallback = 0) => {
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
+const average = (values: number[]) => values.length ? sum(values) / values.length : 0;
 
 export const positionName = (type: number) => ["", "GKP", "DEF", "MID", "FWD"][type] ?? "—";
 
@@ -285,6 +327,12 @@ function fixtureContext(
     return {
       event: item.fixture.event,
       label: item.label,
+      fixtures: [{
+        id: item.fixture.id,
+        event: item.fixture.event,
+        homeTeamId: item.fixture.team_h,
+        awayTeamId: item.fixture.team_a,
+      }],
       fdr: item.difficulty,
       overallFactor: fdrFactor * homeAttackFactor,
       fdrFactor,
@@ -381,6 +429,12 @@ function fixtureContext(
   return {
     event: item.fixture.event,
     label: item.label,
+    fixtures: [{
+      id: item.fixture.id,
+      event: item.fixture.event,
+      homeTeamId: item.fixture.team_h,
+      awayTeamId: item.fixture.team_a,
+    }],
     fdr: item.difficulty,
     overallFactor,
     fdrFactor,
@@ -398,10 +452,21 @@ function fixtureContext(
   };
 }
 
+function newsAvailabilityFactor(player: FplPlayer) {
+  const news = (player.news ?? "").trim().toLowerCase();
+  if (!news || /^(no news|none|—|-)$/.test(news)) return 1;
+  if (/(ruled out|out for|will miss|sidelined|suspended|suspension|not available|unavailable)/.test(news)) return 0.08;
+  if (/(injured|injury|illness|hamstring|knock|ankle|knee|groin|back problem)/.test(news)) return 0.45;
+  if (/(doubt|fitness test|late test|assess(ed|ment)?|being monitored|minor concern)/.test(news)) return 0.62;
+  if (/(returned to training|back in training|passed fit|fit and available|available for selection|in contention)/.test(news)) return 1.04;
+  return 0.94;
+}
+
 function playerAvailability(player: FplPlayer) {
   if (["u", "n", "s"].includes(player.status)) return 0;
   const fallbackChance = player.status === "a" ? 100 : player.status === "d" ? 65 : player.status === "i" ? 20 : 55;
-  return clamp((player.chance_of_playing_next_round ?? fallbackChance) / 100, 0, 1);
+  const feedChance = clamp((player.chance_of_playing_next_round ?? fallbackChance) / 100, 0, 1);
+  return clamp(feedChance * newsAvailabilityFactor(player), 0, 1);
 }
 
 function futurePlayerAvailability(player: FplPlayer, gameweekOffset: number) {
@@ -446,11 +511,51 @@ type MinutesEstimate = {
   appearanceProbability: number;
   sixtyProbability: number;
   minutesIfStart: number;
+  minutesIfStartSd: number;
+  minutesIfCameo: number;
+  minutesIfCameoSd: number;
   expectedMinutes: number;
+  variance: number;
+  p10: number;
+  p50: number;
+  p90: number;
+  rotationRisk: number;
 };
 
 function completedTeamMatches(teamId: number, fixtures: FplFixture[]) {
   return fixtures.filter((fixture) => fixture.finished && (fixture.team_h === teamId || fixture.team_a === teamId)).length;
+}
+
+// Abramowitz-Stegun normal CDF approximation. Keeping this local avoids a
+// runtime dependency on Math.erf, which is not available in every browser or
+// Node version supported by the dashboard.
+function normalCdf(value: number) {
+  const sign = value < 0 ? -1 : 1;
+  const absolute = Math.abs(value) / Math.sqrt(2);
+  const t = 1 / (1 + 0.3275911 * absolute);
+  const polynomial = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-absolute * absolute);
+  return 0.5 * (1 + sign * polynomial);
+}
+
+function mixtureCdf(minutes: number, startProbability: number, cameoProbability: number, minutesIfStart: number, minutesIfStartSd: number, minutesIfCameo: number, minutesIfCameoSd: number) {
+  if (minutes < 0) return 0;
+  const noAppearance = Math.max(0, 1 - startProbability - cameoProbability);
+  if (minutes === 0) return noAppearance;
+  return noAppearance
+    + startProbability * normalCdf((minutes - minutesIfStart) / Math.max(minutesIfStartSd, 1))
+    + cameoProbability * normalCdf((minutes - minutesIfCameo) / Math.max(minutesIfCameoSd, 1));
+}
+
+function mixtureQuantile(probability: number, startProbability: number, cameoProbability: number, minutesIfStart: number, minutesIfStartSd: number, minutesIfCameo: number, minutesIfCameoSd: number) {
+  if (probability <= Math.max(0, 1 - startProbability - cameoProbability)) return 0;
+  let low = 0;
+  let high = 90;
+  for (let i = 0; i < 28; i += 1) {
+    const middle = (low + high) / 2;
+    if (mixtureCdf(middle, startProbability, cameoProbability, minutesIfStart, minutesIfStartSd, minutesIfCameo, minutesIfCameoSd) >= probability) high = middle;
+    else low = middle;
+  }
+  return Math.round(high);
 }
 
 function minutesEstimate(player: FplPlayer, fixtures: FplFixture[], historyInfo: HistoryBlendInfo, availabilityOverride?: number): MinutesEstimate {
@@ -479,15 +584,39 @@ function minutesEstimate(player: FplPlayer, fixtures: FplFixture[], historyInfo:
   const minutesIfStart = currentMinutesPerStart == null
     ? historyMinutes
     : clamp(currentMinutesPerStart * currentWeight + historyMinutes * (1 - currentWeight), 52, 92);
+  // Substitution uncertainty is wider for players with little starting
+  // evidence, then narrows as observed starts establish a stable role.
+  const minutesIfStartSd = clamp(15 - player.starts * 0.35, 5, 15);
 
   const cameoConditional = player.element_type === 1 ? 0.02 : player.element_type === 2 ? 0.16 : 0.24;
   const cameoProbability = clamp((1 - startProbability) * availability * cameoConditional, 0, 0.35);
   const appearanceProbability = clamp(startProbability + cameoProbability, 0, 1);
+  const minutesIfCameo = player.element_type === 1 ? 8 : 17;
+  const minutesIfCameoSd = player.element_type === 1 ? 4 : 8;
   const sixtyIfStart = clamp((minutesIfStart - 55) / 12, 0.15, 1);
   const sixtyProbability = startProbability * sixtyIfStart;
-  const expectedMinutes = startProbability * minutesIfStart + cameoProbability * 17;
+  const expectedMinutes = startProbability * minutesIfStart + cameoProbability * minutesIfCameo;
+  const secondMoment = startProbability * (minutesIfStartSd ** 2 + minutesIfStart ** 2)
+    + cameoProbability * (minutesIfCameoSd ** 2 + minutesIfCameo ** 2);
+  const variance = Math.max(0, secondMoment - expectedMinutes ** 2);
 
-  return { availability, startProbability, cameoProbability, appearanceProbability, sixtyProbability, minutesIfStart, expectedMinutes };
+  return {
+    availability,
+    startProbability,
+    cameoProbability,
+    appearanceProbability,
+    sixtyProbability,
+    minutesIfStart,
+    minutesIfStartSd,
+    minutesIfCameo,
+    minutesIfCameoSd,
+    expectedMinutes,
+    variance,
+    p10: mixtureQuantile(0.1, startProbability, cameoProbability, minutesIfStart, minutesIfStartSd, minutesIfCameo, minutesIfCameoSd),
+    p50: mixtureQuantile(0.5, startProbability, cameoProbability, minutesIfStart, minutesIfStartSd, minutesIfCameo, minutesIfCameoSd),
+    p90: mixtureQuantile(0.9, startProbability, cameoProbability, minutesIfStart, minutesIfStartSd, minutesIfCameo, minutesIfCameoSd),
+    rotationRisk: clamp(1 - startProbability, 0, 1),
+  };
 }
 
 function positionUnderlyingPrior(player: FplPlayer) {
@@ -603,6 +732,7 @@ export function projectPlayer(player: FplPlayer, fixtures: FplFixture[], teams: 
   const fixtureLabels: string[] = [];
   const representativeContexts: FixtureContext[] = [];
   const appearanceProbabilities: number[] = [];
+  const minutesByFixture: MinutesDistribution[] = [];
   const components = zeroComponents();
   const goalPoints = player.element_type === 1 ? 10 : player.element_type === 2 ? 6 : player.element_type === 3 ? 5 : 4;
   const cleanSheetPoints = player.element_type <= 2 ? 4 : player.element_type === 3 ? 1 : 0;
@@ -613,6 +743,21 @@ export function projectPlayer(player: FplPlayer, fixtures: FplFixture[], teams: 
       fixtureMeans.push(0);
       fixtureLabels.push("BLANK");
       appearanceProbabilities.push(0);
+      minutesByFixture.push({
+        expected: 0,
+        p10: 0,
+        p50: 0,
+        p90: 0,
+        variance: 0,
+        startProbability: 0,
+        cameoProbability: 0,
+        appearanceProbability: 0,
+        minutesIfStart: 0,
+        minutesIfStartSd: 0,
+        minutesIfCameo: 0,
+        minutesIfCameoSd: 0,
+        rotationRisk: 1,
+      });
       return;
     }
 
@@ -630,7 +775,7 @@ export function projectPlayer(player: FplPlayer, fixtures: FplFixture[], teams: 
       const savePoints = player.element_type === 1 ? (saves90 * minutesFraction) / 3 : 0;
       const threshold = player.element_type === 2 ? 10 : 12;
       const startDcLambda = dc90 * (minutes.minutesIfStart / 90);
-      const cameoDcLambda = dc90 * (17 / 90);
+      const cameoDcLambda = dc90 * (minutes.minutesIfCameo / 90);
       const defensiveContribution = player.element_type === 1 ? 0
         : 2 * (minutes.startProbability * poissonTail(startDcLambda, threshold) + minutes.cameoProbability * poissonTail(cameoDcLambda, threshold));
       const concededPenalty = player.element_type <= 2
@@ -658,9 +803,25 @@ export function projectPlayer(player: FplPlayer, fixtures: FplFixture[], teams: 
     fixtureMeans.push(eventMean);
     fixtureLabels.push(eventContexts.map((context) => context.label).join(" + "));
     appearanceProbabilities.push(clamp(eventAppearance, 0, 1));
+    minutesByFixture.push({
+      expected: minutes.expectedMinutes,
+      p10: minutes.p10,
+      p50: minutes.p50,
+      p90: minutes.p90,
+      variance: minutes.variance,
+      startProbability: minutes.startProbability,
+      cameoProbability: minutes.cameoProbability,
+      appearanceProbability: minutes.appearanceProbability,
+      minutesIfStart: minutes.minutesIfStart,
+      minutesIfStartSd: minutes.minutesIfStartSd,
+      minutesIfCameo: minutes.minutesIfCameo,
+      minutesIfCameoSd: minutes.minutesIfCameoSd,
+      rotationRisk: minutes.rotationRisk,
+    });
     representativeContexts.push(eventContexts.length === 1 ? eventContexts[0] : {
       ...eventContexts[0],
       label: eventContexts.map((context) => context.label).join(" + "),
+      fixtures: eventContexts.flatMap((context) => context.fixtures),
       overallFactor: sum(eventContexts.map((context) => context.overallFactor)) / eventContexts.length,
       fdrFactor: sum(eventContexts.map((context) => context.fdrFactor)) / eventContexts.length,
       teamStrengthFactor: sum(eventContexts.map((context) => context.teamStrengthFactor)) / eventContexts.length,
@@ -679,20 +840,47 @@ export function projectPlayer(player: FplPlayer, fixtures: FplFixture[], teams: 
     fixtureMeans.push(0);
     fixtureLabels.push("BLANK");
     appearanceProbabilities.push(0);
+    minutesByFixture.push({
+      expected: 0,
+      p10: 0,
+      p50: 0,
+      p90: 0,
+      variance: 0,
+      startProbability: 0,
+      cameoProbability: 0,
+      appearanceProbability: 0,
+      minutesIfStart: 0,
+      minutesIfStartSd: 0,
+      minutesIfCameo: 0,
+      minutesIfCameoSd: 0,
+      rotationRisk: 1,
+    });
   }
 
   const expected = sum(fixtureMeans);
   const roleVolatility = player.element_type === 1 ? 0.78 : player.element_type === 2 ? 0.9 : player.element_type === 3 ? 1.05 : 1.12;
   const variance = fixtureMeans.reduce((total, mean, index) => {
     if (mean <= 0) return total;
-    const appearanceUncertainty = 1 + (1 - (appearanceProbabilities[index] ?? 1)) * 0.65;
-    const sd = (1.7 + mean * 0.64) * roleVolatility * appearanceUncertainty;
-    return total + sd * sd;
+    const minutes = minutesByFixture[index];
+    const pointsPerMinute = mean / Math.max(minutes?.expected ?? 1, 1);
+    const minutesVariance = pointsPerMinute ** 2 * (minutes?.variance ?? 0);
+    // Conditional scoring still has event variance, but the larger minutes
+    // mixture now carries the rotation/substitution contribution explicitly.
+    const scoringSd = (1.7 + mean * 0.64) * roleVolatility * 0.78;
+    return total + minutesVariance + scoringSd * scoringSd;
   }, 0);
   const volatility = Math.sqrt(variance);
   const cv = volatility / Math.max(expected, 1);
   const risk: Projection["risk"] = cv < 0.46 ? "Low" : cv < 0.63 ? "Medium" : "High";
   const dataQuality = projectionDataQuality(player, historyInfo, representativeContexts.length, teams);
+  const minutesExpected = sum(minutesByFixture.map((minutes) => minutes.expected));
+  const minutesVariance = sum(minutesByFixture.map((minutes) => minutes.variance));
+  const minutesP10 = sum(minutesByFixture.map((minutes) => minutes.p10));
+  const minutesP50 = sum(minutesByFixture.map((minutes) => minutes.p50));
+  const minutesP90 = sum(minutesByFixture.map((minutes) => minutes.p90));
+  const rotationRisk = minutesByFixture.length
+    ? average(minutesByFixture.map((minutes) => minutes.rotationRisk))
+    : 1;
 
   return {
     playerId: player.id,
@@ -707,6 +895,15 @@ export function projectPlayer(player: FplPlayer, fixtures: FplFixture[], teams: 
     dataQuality,
     confidence: confidenceFromQuality(dataQuality),
     components,
+    minutes: {
+      expected: minutesExpected,
+      p10: minutesP10,
+      p50: minutesP50,
+      p90: minutesP90,
+      variance: minutesVariance,
+      rotationRisk,
+    },
+    minutesByFixture,
   };
 }
 
@@ -738,11 +935,26 @@ function normalRandom(random: () => number) {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-function simulateGameweek(mean: number, appearanceProbability: number, player: FplPlayer, random: () => number) {
-  if (mean <= 0 || appearanceProbability <= 0) return 0;
-  if (random() > appearanceProbability) return 0;
+function boundedNormal(mean: number, standardDeviation: number, random: () => number) {
+  return clamp(mean + normalRandom(random) * standardDeviation, 0, 90);
+}
 
-  const conditionalMean = mean / Math.max(appearanceProbability, 0.12);
+function simulateGameweek(mean: number, minutes: MinutesDistribution, player: FplPlayer, random: () => number) {
+  if (mean <= 0 || minutes.appearanceProbability <= 0) return 0;
+  const state = random();
+  const starterCutoff = minutes.startProbability;
+  const cameoCutoff = starterCutoff + minutes.cameoProbability;
+  const sampledMinutes = state < starterCutoff
+    ? boundedNormal(minutes.minutesIfStart, minutes.minutesIfStartSd, random)
+    : state < cameoCutoff
+      ? boundedNormal(minutes.minutesIfCameo, minutes.minutesIfCameoSd, random)
+      : 0;
+  if (sampledMinutes <= 0) return 0;
+
+  // The fixture mean already includes the expected minutes mixture. Draw
+  // state first, then scale conditional scoring to the sampled minutes before
+  // applying the existing event-scoring noise.
+  const conditionalMean = mean * sampledMinutes / Math.max(minutes.expected, 1);
   const cv = player.element_type === 1 ? 0.58 : player.element_type === 2 ? 0.76 : player.element_type === 3 ? 0.9 : 0.96;
   const sigmaSquared = Math.log(1 + cv * cv);
   const mu = Math.log(Math.max(conditionalMean, 0.15)) - sigmaSquared / 2;
@@ -776,6 +988,7 @@ export function simulateProjection(
     projection.horizon,
     projection.fixtureMeans.map((value) => value.toFixed(3)).join(","),
     projection.appearanceProbabilities.map((value) => value.toFixed(3)).join(","),
+    projection.minutesByFixture.map((value) => `${value.startProbability.toFixed(3)}:${value.cameoProbability.toFixed(3)}:${value.expected.toFixed(1)}`).join(","),
   ].join("|"));
   const random = seededRandom(seed);
   const samples = new Array<number>(count);
@@ -784,7 +997,21 @@ export function simulateProjection(
     for (let gw = 0; gw < projection.horizon; gw += 1) {
       total += simulateGameweek(
         projection.fixtureMeans[gw] ?? 0,
-        projection.appearanceProbabilities[gw] ?? 0,
+        projection.minutesByFixture[gw] ?? {
+          expected: 0,
+          p10: 0,
+          p50: 0,
+          p90: 0,
+          variance: 0,
+          startProbability: projection.appearanceProbabilities[gw] ?? 0,
+          cameoProbability: 0,
+          appearanceProbability: projection.appearanceProbabilities[gw] ?? 0,
+          minutesIfStart: 0,
+          minutesIfStartSd: 0,
+          minutesIfCameo: 0,
+          minutesIfCameoSd: 0,
+          rotationRisk: 1,
+        },
         player,
         random,
       );
@@ -836,6 +1063,8 @@ export function simulateTransfer(
     hitCost,
     outProjection.fixtureMeans.map((value) => value.toFixed(3)).join(","),
     inProjection.fixtureMeans.map((value) => value.toFixed(3)).join(","),
+    outProjection.minutesByFixture.map((value) => `${value.startProbability.toFixed(3)}:${value.cameoProbability.toFixed(3)}:${value.expected.toFixed(1)}`).join(","),
+    inProjection.minutesByFixture.map((value) => `${value.startProbability.toFixed(3)}:${value.cameoProbability.toFixed(3)}:${value.expected.toFixed(1)}`).join(","),
   ].join("|"));
   const random = seededRandom(seed);
   const diffs = new Array<number>(simulations);
@@ -844,8 +1073,8 @@ export function simulateTransfer(
     let hold = 0;
     let transfer = -hitCost;
     for (let gw = 0; gw < horizon; gw += 1) {
-      hold += simulateGameweek(outProjection.fixtureMeans[gw] ?? 0, outProjection.appearanceProbabilities[gw] ?? 0, outgoing, random);
-      transfer += simulateGameweek(inProjection.fixtureMeans[gw] ?? 0, inProjection.appearanceProbabilities[gw] ?? 0, incoming, random);
+      hold += simulateGameweek(outProjection.fixtureMeans[gw] ?? 0, outProjection.minutesByFixture[gw], outgoing, random);
+      transfer += simulateGameweek(inProjection.fixtureMeans[gw] ?? 0, inProjection.minutesByFixture[gw], incoming, random);
     }
     diffs[i] = transfer - hold;
   }

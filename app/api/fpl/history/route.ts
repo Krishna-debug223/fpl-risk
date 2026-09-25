@@ -37,7 +37,7 @@ const numberValue = (value: string | undefined) => {
 
 async function seasonRows(season: string): Promise<Array<{ code: string; summary: HistoricalSeasonSummary }>> {
   const response = await fetch(`${BASE}/${season}/players_raw.csv`, {
-    headers: { Accept: "text/csv", "User-Agent": "FPL-Risk/1.0 (independent public beta)" },
+    headers: { Accept: "text/csv", "User-Agent": "FPL-Prism/1.0 (independent public beta)" },
     next: { revalidate: 604800 },
     signal: AbortSignal.timeout(6500),
   });

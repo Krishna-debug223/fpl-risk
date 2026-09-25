@@ -1,6 +1,6 @@
 # Analytics and privacy
 
-FPL Risk uses Vercel Web Analytics and Speed Insights for aggregate product usage and performance. Analytics is a convenience for operating the public beta, not an account or identity system.
+FPL Prism uses Vercel Web Analytics and Speed Insights for aggregate product usage and performance. Analytics is a convenience for operating the public beta, not an account or identity system.
 
 ## What is collected
 
@@ -13,7 +13,7 @@ The analytics component removes query strings and URL fragments before a page ev
 
 ## Privacy controls
 
-The browser-level control on [`/privacy`](https://fpl-risk-ui-refresh.vercel.app/privacy) stores an opt-out flag locally. When that flag is set, page analytics, Speed Insights and product events are not intentionally sent by the app. Account data is separate: optional sign-in settings are handled by Supabase and are not used as analytics identifiers.
+The browser-level control on [`/privacy`](https://fplprism.com/privacy) stores an opt-out flag locally. When that flag is set, page analytics, Speed Insights and product events are not intentionally sent by the app. Account data is separate: optional sign-in settings are handled by Supabase and are not used as analytics identifiers.
 
 ## Production check
 

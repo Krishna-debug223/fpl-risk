@@ -10,13 +10,14 @@ import type {
   ManagerPayload,
 } from "@/lib/types";
 import type { SportsbookPayload } from "@/lib/sportsbook";
-import { MODEL_VERSION, assessChips, type ChipAdvice } from "@/lib/risk-v12";
+import { assessChips, type ChipAdvice } from "@/lib/risk-v12";
 import {
   buildStrategyPlans,
   type StrategyMode,
   type StrategyPlannerResult,
 } from "@/lib/strategy-planner";
 import styles from "./StrategyPlanner.module.css";
+import LegalFooter from "./LegalFooter";
 
 const modeCopy: Record<StrategyMode, { label: string; detail: string }> = {
   safe: {
@@ -224,27 +225,13 @@ export default function StrategyPlanner() {
 
   return (
     <main className={styles.shell}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.brand}>
-          <span>FR</span>
-          <div>
-            <strong>FPL RISK</strong>
-            <small>8-GW Path Planner</small>
-          </div>
-        </Link>
-        <div className={styles.headerMeta}>
-          <span>Model {MODEL_VERSION}</span>
-          <Link href="/">Back to dashboard →</Link>
-        </div>
-      </header>
-
       <div className={styles.page}>
         <section className={styles.hero}>
           <div>
             <p className={styles.eyebrow}>MULTI-GAMEWEEK STRATEGY</p>
             <h1>Plan the next move.<br />Then the move after that.</h1>
             <p className={styles.lead}>
-              Search roll, single-transfer and two-transfer paths across the next eight Gameweeks using FPL Risk&apos;s own xPts model. The planner keeps budget, positions, club limits, hits and banked free transfers legal as the squad evolves.
+              Search roll, single-transfer and two-transfer paths across the next eight Gameweeks using FPL Prism&apos;s own xPts model. The planner keeps budget, positions, club limits, hits and banked free transfers legal as the squad evolves.
             </p>
           </div>
           <aside className={styles.heroCard}>
@@ -455,7 +442,7 @@ export default function StrategyPlanner() {
             </section>
 
             <div className={styles.methodNote}>
-              <strong>How this improves FPL Risk:</strong> the old Transfer Lab asks whether one move is good over a fixed horizon. Path Planner asks whether making that move now is better than rolling, making a different move later, or combining two transfers once you have banked them. It uses our own projection engine rather than importing another site&apos;s xPts.
+              <strong>How this improves FPL Prism:</strong> the old Transfer Lab asks whether one move is good over a fixed horizon. Path Planner asks whether making that move now is better than rolling, making a different move later, or combining two transfers once you have banked them. It uses our own projection engine rather than importing another site&apos;s xPts.
             </div>
           </>
         )}
@@ -468,6 +455,7 @@ export default function StrategyPlanner() {
           </section>
         )}
       </div>
+      <LegalFooter />
     </main>
   );
 }

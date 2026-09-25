@@ -16,7 +16,7 @@ main[class*="shell"] {
   font-family: var(--font-app-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
 
-/* Space Grotesk is intentionally more distinctive than the previous Inter/Geist look. */
+/* IBM Plex Sans keeps the product editorial and measured instead of using a heavy display face. */
 main[class*="shell"] h1,
 main[class*="shell"] h2,
 main[class*="shell"] h3,
@@ -29,19 +29,34 @@ main[class*="shell"] [class*="playerPlate"] strong {
 
 main[class*="shell"] h1 {
   font-weight: 500 !important;
-  letter-spacing: -0.038em !important;
+  letter-spacing: -0.02em !important;
   line-height: 0.96 !important;
 }
 
 main[class*="shell"] h2 {
-  font-weight: 600 !important;
-  letter-spacing: -0.025em !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.02em !important;
 }
 
 main[class*="shell"] h3,
 main[class*="shell"] [class*="projectionCard"] h3 {
-  font-weight: 600 !important;
-  letter-spacing: -0.018em !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.02em !important;
+}
+
+main[class*="shell"] h1,
+main[class*="shell"] h2,
+main[class*="shell"] h3 {
+  text-wrap: balance;
+}
+
+/* Keep headings calm across the older dashboard shell too. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-app-display), var(--font-app-sans), ui-sans-serif, system-ui, sans-serif !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.02em !important;
 }
 
 main[class*="shell"] p,

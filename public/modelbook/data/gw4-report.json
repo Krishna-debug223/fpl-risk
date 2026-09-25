@@ -1,0 +1,109 @@
+{
+  "gameweek": 4,
+  "modelVersion": "1.2.2",
+  "final": true,
+  "generatedAt": "2026-09-15T17:33:06.827924+00:00",
+  "snapshotHash": "67961131668128880769b6cd4f59d8716234bedfd56bb0fd01c195005f8fd13c",
+  "actualsFetchedAt": "2026-09-15T17:33:06.827924+00:00",
+  "actualsSource": "Official FPL event 4 live and fixtures feeds",
+  "overall": {
+    "count": 654,
+    "mae": 1.414,
+    "rmse": 2.274,
+    "bias": -0.151,
+    "within1": 47.2,
+    "within2": 79.5,
+    "within3": 87.6
+  },
+  "activeCohort": {
+    "count": 307,
+    "mae": 2.124,
+    "rmse": 3.091,
+    "bias": 0.568,
+    "within1": 37.8,
+    "within2": 63.2,
+    "within3": 75.2
+  },
+  "byPosition": {
+    "GKP": {
+      "count": 20,
+      "mae": 2.9,
+      "rmse": 3.842,
+      "bias": 1.137,
+      "within1": 15.0,
+      "within2": 45.0,
+      "within3": 65.0
+    },
+    "DEF": {
+      "count": 106,
+      "mae": 2.566,
+      "rmse": 3.421,
+      "bias": 0.69,
+      "within1": 24.5,
+      "within2": 52.8,
+      "within3": 67.9
+    },
+    "MID": {
+      "count": 146,
+      "mae": 1.649,
+      "rmse": 2.609,
+      "bias": 0.334,
+      "within1": 49.3,
+      "within2": 74.0,
+      "within3": 84.2
+    },
+    "FWD": {
+      "count": 35,
+      "mae": 2.324,
+      "rmse": 3.396,
+      "bias": 0.843,
+      "within1": 42.9,
+      "within2": 60.0,
+      "within3": 65.7
+    }
+  },
+  "largestMisses": [
+    {
+      "name": "Gro\u00df",
+      "position": "MID",
+      "projected": 3.411,
+      "actual": 17,
+      "error": 13.589
+    },
+    {
+      "name": "Bogle",
+      "position": "DEF",
+      "projected": 3.518,
+      "actual": 15,
+      "error": 11.482
+    },
+    {
+      "name": "Schade",
+      "position": "MID",
+      "projected": 3.545,
+      "actual": 15,
+      "error": 11.455
+    },
+    {
+      "name": "Davis",
+      "position": "DEF",
+      "projected": 2.941,
+      "actual": 14,
+      "error": 11.059
+    },
+    {
+      "name": "Raya",
+      "position": "GKP",
+      "projected": 3.227,
+      "actual": 14,
+      "error": 10.773
+    },
+    {
+      "name": "Belloumi",
+      "position": "MID",
+      "projected": 2.668,
+      "actual": 13,
+      "error": 10.332
+    }
+  ]
+}

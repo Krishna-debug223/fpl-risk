@@ -70,7 +70,7 @@ async function fetchCsv(url: string) {
   const timeout = setTimeout(() => controller.abort(), 30_000);
   try {
     const response = await fetch(url, {
-      headers: { "User-Agent": "FPL-Risk-Sportsbook-Calibration/1.0", Accept: "text/csv,*/*" },
+      headers: { "User-Agent": "FPL-Prism-Sportsbook-Calibration/1.0", Accept: "text/csv,*/*" },
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`Calibration source returned ${response.status}: ${url}`);

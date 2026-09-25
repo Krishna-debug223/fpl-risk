@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <meta name="description" content="Verified FPL Prism Modelbook GW4 forward-test accuracy report.">
+  <title>FPL Prism Modelbook — GW4 Verified Report</title>
+  <link rel="canonical" href="https://fplprism.com/modelbook/reports/gw4">
+  <meta property="og:title" content="FPL Prism Modelbook — GW4 Verified Report">
+  <meta property="og:description" content="Verified FPL Prism Modelbook GW4 forward-test accuracy report.">
+  <meta property="og:url" content="https://fplprism.com/modelbook/reports/gw4">
+  <meta property="og:image" content="https://fplprism.com/opengraph-image?section=modelbook-gw4">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="FPL Prism Modelbook — GW4 Verified Report">
+  <meta name="twitter:description" content="Verified FPL Prism Modelbook GW4 forward-test accuracy report.">
+  <meta name="twitter:image" content="https://fplprism.com/opengraph-image?section=modelbook-gw4">
+  <link rel="stylesheet" href="/modelbook/styles.css">
+</head>
+<body>
+  <header class="siteHeader"><div class="siteBar"><a class="siteBrand" href="/" aria-label="FPL Prism home"><img src="/icon.svg" alt="" aria-hidden="true"><span><strong>FPL PRISM</strong><small>Decision analytics</small></span></a><nav class="sitePrimary" aria-label="FPL Prism site navigation"><a href="/dashboard">Dashboard</a><a href="/planner">8-GW Planner</a><a class="active" href="/modelbook" aria-current="page">Modelbook</a><a href="/how-it-works">How it works</a></nav><div class="siteActions"><a href="/account">Account</a><a class="siteSignIn" href="/sign-in">Sign in</a></div><details class="siteMenu"><summary><span>Modelbook</span><i aria-hidden="true"></i></summary><nav aria-label="FPL Prism mobile navigation"><a href="/">Home</a><a href="/dashboard">Dashboard</a><a href="/planner">8-GW Planner</a><a href="/modelbook" aria-current="page">Modelbook</a><a href="/how-it-works">How it works</a><a href="/account">Account</a><a href="/sign-in">Sign in</a></nav></details></div></header>
+  <div class="bookNavShell"><nav class="bookNav" aria-label="Modelbook Gameweeks"><strong class="bookContext">Modelbook</strong><div class="bookLinks"><a href="/modelbook">Current · GW6</a><a href="/modelbook/reports/gw5">GW5</a><a class="active" href="/modelbook/reports/gw4" aria-current="page">GW4</a><a href="/modelbook/reports/gw3">GW3</a></div></nav></div>
+
+  <main class="wrap">
+    <section class="reportHero">
+      <p class="eyebrow">GW4 · VERIFIED FORWARD TEST</p>
+      <h1>Score the forecast.<br>Then learn.</h1>
+      <p class="lead">This archived report scores the original frozen GW4 projections against official FPL results. It stays unchanged while later gameweeks run as separate forward tests.</p>
+    </section>
+
+    <div id="cards" class="reportGrid"><div class="loading">Loading verified metrics…</div></div>
+
+    <section class="section">
+      <div class="sectionHead">
+        <h2>Active cohort by position</h2>
+        <p>The active cohort includes only players with actual minutes. The position rows and headline cards use this same cohort.</p>
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead><tr><th>Position</th><th>n</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>Within ±2</th></tr></thead>
+          <tbody id="positions"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <details class="archiveDisclosure">
+      <summary><span>Largest misses</span><small>Open the biggest absolute errors</small></summary>
+      <div class="tableWrap">
+        <table>
+          <thead><tr><th>Player</th><th>Pos</th><th>Projected</th><th>Actual</th><th>Abs. error</th></tr></thead>
+          <tbody id="misses"></tbody>
+        </table>
+      </div>
+    </details>
+
+    <div class="noteBox"><strong>Archive rule:</strong> GW4 is historical evidence, not a backtest of the current GW6 state. The original frozen GW4 projections and official points are preserved here; later model changes cannot rewrite this report.</div>
+
+    <footer class="footer"><span>Independent FPL analytics · not affiliated with, endorsed by or sponsored by the Premier League.</span><span><a href="/modelbook">Return to the live GW6 Modelbook →</a></span></footer>
+  </main>
+
+  <script type="module">
+    import { escapeHtml, loadJson, validateActiveCohortReport } from '/modelbook/app.js';
+    try {
+      const data = validateActiveCohortReport(await loadJson('/modelbook/data/gw4-report.json'));
+      const active = data.activeCohort;
+      document.querySelector('#cards').innerHTML = `
+        <article class="reportCard"><strong>${active.mae.toFixed(3)}</strong><span>Active-player MAE</span></article>
+        <article class="reportCard"><strong>${active.rmse.toFixed(3)}</strong><span>Active-player RMSE</span></article>
+        <article class="reportCard"><strong>${active.within2.toFixed(1)}%</strong><span>Within ±2 FPL points</span></article>`;
+      document.querySelector('#positions').innerHTML = Object.entries(data.byPosition).map(([position, values]) => `
+        <tr><td><strong>${escapeHtml(position)}</strong></td><td>${values.count}</td><td>${values.mae.toFixed(3)}</td><td>${values.rmse.toFixed(3)}</td><td class="${values.bias > 0 ? 'positive' : values.bias < 0 ? 'negative' : ''}">${values.bias >= 0 ? '+' : ''}${values.bias.toFixed(3)}</td><td>${values.within2.toFixed(1)}%</td></tr>`).join('');
+      document.querySelector('#misses').innerHTML = data.largestMisses.map((row) => `
+        <tr><td class="playerCell"><strong>${escapeHtml(row.name)}</strong></td><td>${escapeHtml(row.position)}</td><td>${row.projected.toFixed(3)}</td><td>${row.actual}</td><td>${row.error.toFixed(3)}</td></tr>`).join('');
+    } catch (error) {
+      document.querySelector('#cards').innerHTML = '<div class="errorBox"><strong>Archive unavailable</strong><span>Could not load the verified GW4 report.</span></div>';
+    }
+  </script>
+</body>
+</html>

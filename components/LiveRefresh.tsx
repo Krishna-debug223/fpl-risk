@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { BootstrapPayload, FplFixture, FplPlayer, HistoricalPayload, ManagerPayload } from "@/lib/types";
 import { MODEL_VERSION, positionName, projectPlayer, recommendReplacements, type HistoricalProfileMap, type Projection, type Recommendation } from "@/lib/risk";
 import styles from "./LiveRefresh.module.css";
+import BrandMark from "./BrandMark";
 
 type Tab = "overview" | "transfer" | "market" | "model";
 type SquadItem = { pick: ManagerPayload["picks"][number]; player: FplPlayer };
@@ -144,8 +145,8 @@ export default function LiveRefresh() {
     <main className={styles.shell}>
       <header className={styles.header}>
         <button className={styles.brand} onClick={() => setTab("overview")}>
-          <span className={styles.brandMark}>FR</span>
-          <span><strong>FPL RISK</strong><small>Decision analytics</small></span>
+          <BrandMark className={styles.brandMark} />
+          <span><strong>FPL PRISM</strong><small>Decision analytics</small></span>
         </button>
         <nav className={styles.nav} aria-label="Primary navigation">
           <button className={tab === "overview" ? styles.activeNav : ""} onClick={() => setTab("overview")}>Overview</button>
@@ -164,7 +165,7 @@ export default function LiveRefresh() {
             <div>
               <span className={styles.eyebrow}>LIVE FPL DECISION ENGINE</span>
               <h1>Know the risk behind every move.</h1>
-              <p>Live projections, legal transfer recommendations and uncertainty-aware decision support using the current FPL Risk model.</p>
+              <p>Live projections, legal transfer recommendations and uncertainty-aware decision support using the current FPL Prism model.</p>
             </div>
             <form className={styles.importForm} onSubmit={importTeam}>
               <input value={teamId} onChange={(event) => setTeamId(event.target.value)} placeholder="Enter FPL Team ID" inputMode="numeric" aria-label="FPL Team ID" />
@@ -217,7 +218,7 @@ export default function LiveRefresh() {
           {!manager ? (
             <section className={styles.loadPanel}>
               <h2>Load your FPL team first</h2>
-              <p>Your public Team ID lets FPL Risk check your actual squad, selling prices, bank and club-limit constraints.</p>
+              <p>Your public Team ID lets FPL Prism check your actual squad, selling prices, bank and club-limit constraints.</p>
               <form className={styles.importForm} onSubmit={importTeam}>
                 <input value={teamId} onChange={(event) => setTeamId(event.target.value)} placeholder="Enter FPL Team ID" inputMode="numeric" />
                 <button disabled={loadingTeam}>{loadingTeam ? "Loading…" : "Load team"}</button>
@@ -310,7 +311,7 @@ export default function LiveRefresh() {
         </div>
       )}
 
-      <footer className={styles.footer}><span>FPL Risk · Model v{MODEL_VERSION}</span><span>Independent project · Live public FPL data</span></footer>
+      <footer className={styles.footer}><span>FPL Prism · Model v{MODEL_VERSION}</span><span>Independent project · Not affiliated with, endorsed by or sponsored by the Premier League.</span></footer>
     </main>
   );
 }

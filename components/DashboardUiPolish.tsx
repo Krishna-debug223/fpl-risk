@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 function normalizeDashboardChrome() {
   document.querySelectorAll<HTMLElement>('[class*="brandMark"]').forEach((mark) => {
-    if (mark.textContent?.trim() !== "FR" || mark.querySelector("img")) return;
+    if (mark.textContent?.trim() !== "FP" || mark.querySelector("img")) return;
     mark.textContent = "";
     const image = document.createElement("img");
     image.src = "/icon.svg";

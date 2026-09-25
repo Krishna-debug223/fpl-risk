@@ -36,7 +36,7 @@ export async function GET() {
   try {
     for (const source of SOURCES) {
       const response = await fetch(source.url, {
-        headers: { Accept: "text/csv", "User-Agent": "FPL-Risk/1.0 (independent public beta)" },
+        headers: { Accept: "text/csv", "User-Agent": "FPL-Prism/1.0 (independent public beta)" },
         next: { revalidate: 21600 },
         signal: AbortSignal.timeout(5000),
       });

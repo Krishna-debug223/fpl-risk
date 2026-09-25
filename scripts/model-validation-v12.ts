@@ -1,5 +1,6 @@
 import { projectPlayer as baseProjectPlayer } from "../lib/risk";
 import { projectPlayer, recommendJointTransferPlan } from "../lib/risk-v12";
+import { analyzePortfolioRisk } from "../lib/portfolio-risk";
 import type { SportsbookPayload } from "../lib/sportsbook";
 import type { FplFixture, FplPlayer, FplTeam } from "../lib/types";
 
@@ -121,6 +122,36 @@ const goalkeeperBase = projectPlayer(goalkeeper, fixtures, teams, 1, undefined, 
 const goalkeeperMarket = projectPlayer(goalkeeper, fixtures, teams, 1, undefined, weighted);
 assert(goalkeeperMarket.expected > goalkeeperBase.expected, "stronger market clean-sheet odds should lift a goalkeeper projection");
 
+// Portfolio covariance must use actual fixture identity. Sharing an event is
+// insufficient because most players in a Gameweek play in unrelated matches.
+const alphaProjection = projectPlayer(player({ id: 40, code: 140, team: 1 }), fixtures, teams, 1);
+const alphaTeammateProjection = projectPlayer(player({ id: 41, code: 141, team: 1 }), fixtures, teams, 1);
+const betaOpponentProjection = projectPlayer(player({ id: 42, code: 142, team: 2 }), fixtures, teams, 1);
+const gammaUnrelatedProjection = projectPlayer(player({ id: 43, code: 143, team: 3 }), fixtures, teams, 1);
+assert(alphaProjection.fixtureContexts[0]?.fixtures[0]?.id === 10, "projection context must expose the real fixture id");
+assert(betaOpponentProjection.fixtureContexts[0]?.fixtures[0]?.id === 10, "opponents must share the same real fixture id");
+assert(gammaUnrelatedProjection.fixtureContexts[0]?.fixtures[0]?.id === 11, "same-Gameweek unrelated players must retain a different fixture id");
+
+const unrelatedPortfolio = analyzePortfolioRisk([
+  { player: player({ id: 40, code: 140, team: 1 }), projection: alphaProjection, weight: 1 },
+  { player: player({ id: 43, code: 143, team: 3 }), projection: gammaUnrelatedProjection, weight: 1 },
+], teams);
+assert(Math.abs(unrelatedPortfolio.portfolioVolatility - unrelatedPortfolio.independentVolatility) < 1e-10, "players in unrelated matches in the same Gameweek must have zero covariance");
+
+const teammatePortfolio = analyzePortfolioRisk([
+  { player: player({ id: 40, code: 140, team: 1 }), projection: alphaProjection, weight: 1 },
+  { player: player({ id: 41, code: 141, team: 1 }), projection: alphaTeammateProjection, weight: 1 },
+], teams);
+assert(teammatePortfolio.portfolioVolatility > teammatePortfolio.independentVolatility, "teammates in the same real fixture must have positive covariance");
+assert(teammatePortfolio.topFixture === "GW2 · ALP v BET" && teammatePortfolio.topFixtureShare > 0.999, "teammate exposure must group under one canonical fixture");
+
+const opponentPortfolio = analyzePortfolioRisk([
+  { player: player({ id: 40, code: 140, team: 1 }), projection: alphaProjection, weight: 1 },
+  { player: player({ id: 42, code: 142, team: 2 }), projection: betaOpponentProjection, weight: 1 },
+], teams);
+assert(opponentPortfolio.portfolioVolatility < opponentPortfolio.independentVolatility, "opponents in the same real fixture must carry the opposing match covariance");
+assert(opponentPortfolio.topFixture === "GW2 · ALP v BET" && opponentPortfolio.topFixtureShare > 0.999, "opponent exposure must group under the same canonical fixture");
+
 // Joint planning must respect one shared budget and the three-per-club limit.
 const outMid = player({ id: 10, code: 110, web_name: "Out Mid", team: 3, element_type: 3, now_cost: 70, expected_goals_per_90: "0.12", expected_assists_per_90: "0.10", expected_goal_involvements_per_90: "0.22" });
 const outDef = player({ id: 11, code: 111, web_name: "Out Def", team: 4, element_type: 2, now_cost: 55, expected_goals_per_90: "0.03", expected_assists_per_90: "0.05", expected_goal_involvements_per_90: "0.08" });
@@ -154,4 +185,4 @@ const resultingPlayers = [...resultingIds].map((id) => universe.find((item) => i
 const clubOneCount = resultingPlayers.filter((item) => item.team === 1).length;
 assert(clubOneCount <= 3, "joint optimizer must enforce the maximum-three-per-club rule across the resulting squad");
 
-console.log("Model v1.2 checks passed: fixture-component directionality, sportsbook fail-open/zero-weight invariance, bounded market influence, directional attack/clean-sheet response, and joint-transfer legality.");
+console.log("Model v1.2 checks passed: fixture-component directionality, sportsbook fail-open/zero-weight invariance, bounded market influence, directional attack/clean-sheet response, real-fixture portfolio covariance, and joint-transfer legality.");

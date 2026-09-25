@@ -1,0 +1,21 @@
+{
+  "season": "2026/27",
+  "gameweek": 3,
+  "lockedAt": "2026-09-04T17:02:59.947Z",
+  "deadline": "2026-09-04T17:30:00.000Z",
+  "modelVersion": "1.2.1-r1",
+  "sourceModelVersion": "1.2.1",
+  "lockedBeforeDeadline": true,
+  "contentHash": "ec9658bb43d084fcaf736cd12979710bd7fd19874e2f7045fff08ad1d611a8ba",
+  "feeds": {"history": true, "teamIntelligence": false, "liveUnderlying": true, "fplStrengthFallback": true, "recentGameweeks": [1,2]},
+  "sampleProjections": [
+    {"name":"B.Fernandes","team":"MUN","position":"MID","fixture":"EVE (A)","x":6.186,"confidence":"Medium","dataQuality":62},
+    {"name":"Haaland","team":"MCI","position":"FWD","fixture":"COV (H)","x":5.986,"confidence":"Medium","dataQuality":62},
+    {"name":"Mbeumo","team":"MUN","position":"MID","fixture":"EVE (A)","x":5.363,"confidence":"Medium","dataQuality":62},
+    {"name":"Isak","team":"LIV","position":"FWD","fixture":"IPS (A)","x":4.830,"confidence":"Medium","dataQuality":62},
+    {"name":"Saka","team":"ARS","position":"MID","fixture":"CHE (H)","x":4.623,"confidence":"Medium","dataQuality":61},
+    {"name":"Thiago","team":"BRE","position":"FWD","fixture":"SUN (H)","x":4.619,"confidence":"Medium","dataQuality":55},
+    {"name":"Szoboszlai","team":"LIV","position":"MID","fixture":"IPS (A)","x":4.575,"confidence":"Medium","dataQuality":62},
+    {"name":"Guehi","team":"MCI","position":"DEF","fixture":"COV (H)","x":4.538,"confidence":"Medium","dataQuality":62}
+  ]
+}

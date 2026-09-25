@@ -7,6 +7,7 @@ import type {
   BootstrapPayload,
   FplFixture,
   HistoricalPayload,
+  ModelTrainingStatus,
   NewsScanPayload,
 } from "@/lib/types";
 import { rateLimit } from "@/lib/rate-limit";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 const allowedOrigins = new Set([
   "https://fpl-ledger-azure.vercel.app",
   "https://fpl-risk-ui-refresh.vercel.app",
+  "https://fplprism.com",
 ]);
 
 function jsonHeaders(request: NextRequest) {
@@ -40,6 +42,7 @@ type SnapshotPayload = {
   deadlineTime: string;
   generatedAt: string;
   modelVersion: string;
+  training: ModelTrainingStatus;
   source: string;
   sportsbook: {
     available: boolean;
@@ -174,14 +177,28 @@ export async function GET(request: NextRequest) {
         };
       });
 
+      const generatedAt = new Date().toISOString();
+      const historicalPriorCount = history?.seasons.length ?? 0;
+      const training: ModelTrainingStatus = {
+        trainedThroughGameweek: Math.max(0, event.id - 1),
+        targetGameweek: event.id,
+        updatedAt: generatedAt,
+        source: historicalPriorCount > 0
+          ? `Official FPL live feed + ${historicalPriorCount} completed-season priors`
+          : "Official FPL live feed; historical priors unavailable",
+        method: "Walk-forward, minutes-weighted current-season blending",
+        validation: "GW4–GW5 walk-forward validation",
+      };
+
       return {
         schemaVersion: 2,
         gameweek: event.id,
         eventName: event.name,
         deadlineTime: event.deadline_time,
-        generatedAt: new Date().toISOString(),
+        generatedAt,
         modelVersion: MODEL_VERSION,
-        source: "FPL Risk production projection engine",
+        training,
+        source: "FPL Prism production projection engine",
         sportsbook: {
           available: sportsbook?.available ?? false,
           configuredWeight: sportsbook?.configuredWeight ?? 0,

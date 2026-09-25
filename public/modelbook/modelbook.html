@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <meta name="description" content="The public GW6 FPL Prism Modelbook: live FPL Prism projections before the deadline, with the GW5 forecast preserved as a verified archive.">
+  <title>FPL Prism Modelbook — GW6</title>
+  <link rel="stylesheet" href="/modelbook/styles.css">
+<link rel="canonical" href="https://fplprism.com/modelbook"><meta property="og:title" content="FPL Prism Modelbook — GW6"><meta property="og:url" content="https://fplprism.com/modelbook"><meta property="og:description" content="Live GW6 FPL Prism projections with a public, timestamped record of forecast performance."><meta property="og:image" content="https://fplprism.com/opengraph-image?section=modelbook"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="FPL Prism Modelbook — GW6"><meta name="twitter:description" content="Live GW6 FPL Prism projections with a public, timestamped record of forecast performance."><meta name="twitter:image" content="https://fplprism.com/opengraph-image?section=modelbook"></head>
+<body>
+  <header class="siteHeader">
+    <div class="siteBar">
+      <a class="siteBrand" href="/" aria-label="FPL Prism home"><img src="/icon.svg" alt="" aria-hidden="true"><span><strong>FPL PRISM</strong><small>Decision analytics</small></span></a>
+      <nav class="sitePrimary" aria-label="FPL Prism site navigation"><a href="/dashboard">Dashboard</a><a href="/planner">8-GW Planner</a><a class="active" href="/modelbook" aria-current="page">Modelbook</a><a href="/how-it-works">How it works</a></nav>
+      <div class="siteActions"><a href="/account">Account</a><a class="siteSignIn" href="/sign-in">Sign in</a></div>
+      <details class="siteMenu"><summary><span>Modelbook</span><i aria-hidden="true"></i></summary><nav aria-label="FPL Prism mobile navigation"><a href="/">Home</a><a href="/dashboard">Dashboard</a><a href="/planner">8-GW Planner</a><a href="/modelbook" aria-current="page">Modelbook</a><a href="/how-it-works">How it works</a><a href="/account">Account</a><a href="/sign-in">Sign in</a></nav></details>
+    </div>
+  </header>
+  <div class="bookNavShell">
+    <nav class="bookNav" aria-label="Modelbook Gameweeks">
+      <strong class="bookContext">Modelbook</strong>
+      <div class="bookLinks"><a class="active" href="/modelbook" aria-current="page">Current · GW6</a><a href="/modelbook/reports/gw5">GW5</a><a href="/modelbook/reports/gw4">GW4</a><a href="/modelbook/reports/gw3">GW3</a></div>
+    </nav>
+  </div>
+
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <p class="eyebrow" data-ledger-eyebrow>GW6 · PUBLIC PRE-LOCK</p>
+        <h1>GW6 projections.</h1>
+        <p class="lead">This live table follows the production FPL Prism projection export for the next scheduled Gameweek. At the deadline, the exact table will be frozen and fingerprinted, then scored against official FPL points.</p>
+      </div>
+      <aside class="statusCard">
+        <span class="statusLabel">Modelbook state</span>
+        <strong class="statusBadge" data-ledger-status data-tone="live">GW6 PRE-LOCK</strong>
+        <p data-ledger-detail>Projections remain live until the GW6 deadline. The exact deadline export will then be frozen and fingerprinted for scoring.</p>
+        <div class="countdown"><span>Deadline</span><strong id="countdown">Loading…</strong></div>
+      </aside>
+    </section>
+
+    <section class="metricGrid metricGridPrimary">
+      <article class="metricCard"><span>Deadline</span><strong id="deadline-time">Loading live feed…</strong><small>Official FPL event deadline</small></article>
+      <article class="metricCard"><span>Players</span><strong id="player-count">Loading…</strong><small>Rows in this projection export</small></article>
+    </section>
+
+    <div class="noteBox"><strong>Scoring rule:</strong> GW6 remains a live pre-lock forecast until the official deadline. The exact deadline snapshot will be evaluated after the Gameweek; GW5 is preserved as the verified archive. <span id="actuals-note">Official points appear in the Actual column once a player records minutes.</span> <a class="archiveLink" href="/modelbook/reports/gw5">Read the verified GW5 archive →</a></div>
+    <details class="technicalDetails snapshotDetails">
+      <summary>Snapshot and training details</summary>
+      <div class="snapshotDetailGrid">
+        <article class="metricCard"><span>Model</span><strong id="model-version">Loading…</strong><small>Version recorded with the live export</small></article>
+        <article class="metricCard"><span>Generated</span><strong id="generated-at">Loading…</strong><small id="source-state">Live production export</small></article>
+      </div>
+      <p><strong>Weekly training status:</strong> <span id="training-status">The latest completed Gameweek is blended into current-season minutes and rates while historical priors stabilize small samples.</span></p>
+      <div class="integrity"><span id="integrity-label">GW6 snapshot fingerprint will appear after the deadline lock</span><code id="integrity-hash">PRE-LOCK · LIVE EXPORT</code></div>
+    </details>
+
+    <section class="section">
+      <div class="sectionHead">
+        <h2>Player projections</h2>
+        <p>Search and filter the current export. Sorting or filtering changes only the view, never the stored forecast values. Actual points fill in from the official live feed as matches are played.</p>
+      </div>
+      <div class="tools">
+        <input id="search" type="search" autocomplete="off" placeholder="Search player or club">
+        <select id="position" aria-label="Filter by position">
+          <option value="">All positions</option>
+          <option value="GKP">GKP</option>
+          <option value="DEF">DEF</option>
+          <option value="MID">MID</option>
+          <option value="FWD">FWD</option>
+        </select>
+        <select id="risk" aria-label="Filter by risk">
+          <option value="">All risk levels</option>
+          <option value="Low">Low risk</option>
+          <option value="Medium">Medium risk</option>
+          <option value="High">High risk</option>
+        </select>
+        <select id="sort" aria-label="Sort projections">
+          <option value="projected">Highest xPts</option>
+          <option value="actual" disabled>Actual points (live)</option>
+          <option value="quality">Data quality</option>
+          <option value="ownership">Ownership</option>
+          <option value="price">Price</option>
+          <option value="name">Player name</option>
+        </select>
+        <button id="refresh-actuals" class="refreshButton" type="button">↻ Refresh actuals</button>
+        <button id="toggle-rows" class="refreshButton" type="button" aria-expanded="false">Show all players</button>
+        <span class="rowCount" id="row-count">Loading…</span>
+        <span class="liveState" id="live-status">Actuals loading…</span>
+      </div>
+      <div id="ledger-table" class="tableWrap"><div class="staticPreview"><p><strong>Live GW6 preview:</strong> the first eight projected players are shown without JavaScript. Enable JavaScript for the full live table, filters and official actual points.</p><table><thead><tr><th>Player</th><th>Fixture</th><th>Pos</th><th>Actual</th><th>xPts</th><th>Range</th><th>Sharpe</th><th>1GW bust / haul</th><th>Risk</th><th>Confidence</th><th>Data quality</th><th>Price</th><th>Owned</th></tr></thead><tbody><tr><td class="playerCell"><strong>Haaland</strong><span>MCI · a</span></td><td>LIV (A)</td><td>FWD</td><td class="actualPts">—</td><td class="xPts">5.6</td><td>1.0–12.0</td><td>1.02</td><td>30% / 15%</td><td><span class="pill high">High</span></td><td>Medium</td><td>61%</td><td>£15.6m</td><td>73.5%</td></tr><tr><td class="playerCell"><strong>B.Fernandes</strong><span>MUN · a</span></td><td>TOT (H)</td><td>MID</td><td class="actualPts">—</td><td class="xPts">5.4</td><td>1.0–11.0</td><td>1.14</td><td>28% / 14%</td><td><span class="pill high">High</span></td><td>Medium</td><td>61%</td><td>£12.0m</td><td>39.3%</td></tr><tr><td class="playerCell"><strong>Mbeumo</strong><span>MUN · a</span></td><td>TOT (H)</td><td>MID</td><td class="actualPts">—</td><td class="xPts">5.0</td><td>1.0–11.0</td><td>1.09</td><td>33% / 13%</td><td><span class="pill high">High</span></td><td>Medium</td><td>61%</td><td>£7.9m</td><td>21.1%</td></tr><tr><td class="playerCell"><strong>Saka</strong><span>ARS · a</span></td><td>LEE (H)</td><td>MID</td><td class="actualPts">—</td><td class="xPts">4.8</td><td>0.0–11.0</td><td>1.05</td><td>33% / 13%</td><td><span class="pill high">High</span></td><td>Medium</td><td>60%</td><td>£9.5m</td><td>13.4%</td></tr><tr><td class="playerCell"><strong>Gibbs-White</strong><span>NFO · a</span></td><td>CRY (A)</td><td>MID</td><td class="actualPts">—</td><td class="xPts">4.4</td><td>1.0–10.0</td><td>1.10</td><td>33% / 11%</td><td><span class="pill high">High</span></td><td>Medium</td><td>61%</td><td>£8.0m</td><td>15.8%</td></tr><tr><td class="playerCell"><strong>Palmer</strong><span>CHE · a</span></td><td>BOU (H)</td><td>MID</td><td class="actualPts">—</td><td class="xPts">4.3</td><td>0.0–9.0</td><td>1.08</td><td>38% / 10%</td><td><span class="pill high">High</span></td><td>Medium</td><td>61%</td><td>£9.7m</td><td>26.7%</td></tr><tr><td class="playerCell"><strong>Isak</strong><span>LIV · a</span></td><td>MCI (H)</td><td>FWD</td><td class="actualPts">—</td><td class="xPts">4.2</td><td>0.0–9.0</td><td>0.88</td><td>47% / 9%</td><td><span class="pill high">High</span></td><td>Medium</td><td>60%</td><td>£9.1m</td><td>22.1%</td></tr><tr><td class="playerCell"><strong>E.Le Fée</strong><span>SUN · a</span></td><td>BHA (H)</td><td>MID</td><td class="actualPts">—</td><td class="xPts">4.2</td><td>1.0–9.0</td><td>1.07</td><td>37% / 9%</td><td><span class="pill high">High</span></td><td>Low</td><td>47%</td><td>£5.7m</td><td>3.4%</td></tr></tbody></table></div></div>
+    </section>
+
+    <footer class="footer"><span>Independent FPL analytics · not affiliated with, endorsed by or sponsored by the Premier League.</span><span>Snapshot source: FPL Prism production projection engine.</span></footer>
+  </main>
+
+  <script type="module">
+    import { LIVE_REFRESH_MS, actualPointsFor, escapeHtml, formatDateTime, formatShortTime, loadCurrentLedger, loadLivePoints, one, pct, renderError, setStatus, setText, timeUntil } from '/modelbook/app.js';
+
+    const search = document.querySelector('#search');
+    const position = document.querySelector('#position');
+    const risk = document.querySelector('#risk');
+    const sort = document.querySelector('#sort');
+    const refreshButton = document.querySelector('#refresh-actuals');
+    const toggleRowsButton = document.querySelector('#toggle-rows');
+    let rows = [];
+    let showAllRows = false;
+    let currentMode = 'prelock';
+    let currentDeadline = null;
+    let livePoints = { available: false, players: {}, fetchedAt: null };
+    let liveRefreshTimer = null;
+    const actualSortOption = sort.querySelector('option[value="actual"]');
+
+    function updateActualSortState() {
+      const actualCount = Object.values(livePoints.players).filter((player) => player.played || player.minutes > 0).length;
+      const live = livePoints.available && actualCount > 0;
+      if (actualSortOption) actualSortOption.disabled = !live;
+      if (!live && sort.value === 'actual') sort.value = 'projected';
+      setText('#live-status', live
+        ? `Actuals live · ${actualCount} played · refreshed ${formatShortTime(livePoints.fetchedAt)}`
+        : 'Actuals appear when the Gameweek starts');
+    }
+
+    function renderCountdown() {
+      if (!currentDeadline) return;
+      setText('#countdown', currentMode === 'locked' ? 'Locked' : timeUntil(currentDeadline));
+    }
+
+    function visibleRows() {
+      const query = search.value.trim().toLocaleLowerCase();
+      const selectedPosition = position.value;
+      const selectedRisk = risk.value;
+      const filtered = rows.filter((row) => {
+        const haystack = `${row.name ?? ''} ${row.firstName ?? ''} ${row.secondName ?? ''} ${row.team ?? ''}`.toLocaleLowerCase();
+        return (!query || haystack.includes(query)) &&
+          (!selectedPosition || row.position === selectedPosition) &&
+          (!selectedRisk || row.risk === selectedRisk);
+      });
+      return filtered.sort((a, b) => {
+        if (sort.value === 'actual') {
+          const actualA = actualPointsFor(a, livePoints);
+          const actualB = actualPointsFor(b, livePoints);
+          if (actualA == null && actualB == null) return Number(b.projected || 0) - Number(a.projected || 0);
+          if (actualA == null) return 1;
+          if (actualB == null) return -1;
+          return actualB - actualA || Number(b.projected || 0) - Number(a.projected || 0);
+        }
+        if (sort.value === 'quality') return Number(b.dataQuality || 0) - Number(a.dataQuality || 0);
+        if (sort.value === 'ownership') return Number(b.ownership || 0) - Number(a.ownership || 0);
+        if (sort.value === 'price') return Number(b.price || 0) - Number(a.price || 0);
+        if (sort.value === 'name') return String(a.name || '').localeCompare(String(b.name || ''));
+        return Number(b.projected || 0) - Number(a.projected || 0);
+      });
+    }
+
+    function tableMarkup(items) {
+      if (!items.length) return '<div class="loading">No players match those filters.</div>';
+      const body = items.map((row) => {
+        const price = Number(row.price || 0) / 10;
+        const riskClass = String(row.risk || '').toLowerCase();
+        return `<tr>
+          <td class="playerCell"><strong>${escapeHtml(row.name)}</strong><span>${escapeHtml(row.team)} · ${escapeHtml(row.status || 'a')}</span></td>
+          <td>${escapeHtml(row.fixture)}</td>
+          <td>${escapeHtml(row.position)}</td>
+          <td class="actualPts">${actualPointsFor(row, livePoints) ?? '—'}</td>
+          <td class="xPts">${one(row.projected)}</td>
+          <td>${row.floor == null ? '—' : `${one(row.floor)}–${one(row.ceiling)}`}</td>
+          <td>${row.sharpe == null ? '—' : Number(row.sharpe).toFixed(2)}</td>
+          <td>${row.probabilities == null ? '—' : `${Math.round(Number(row.probabilities.bust || 0))}% / ${Math.round(Number(row.probabilities.haul || 0))}%`}</td>
+          <td><span class="pill ${escapeHtml(riskClass)}">${escapeHtml(row.risk || '—')}</span></td>
+          <td>${escapeHtml(row.confidence || '—')}</td>
+          <td>${Math.round(Number(row.dataQuality || 0))}%</td>
+          <td>£${price.toFixed(1)}m</td>
+          <td>${pct(row.ownership || 0)}</td>
+        </tr>`;
+      }).join('');
+      return `<table><thead><tr><th>Player</th><th>Fixture</th><th>Pos</th><th>Actual</th><th>xPts</th><th>Range</th><th>Sharpe</th><th>1GW bust / haul</th><th>Risk</th><th>Confidence</th><th>Data quality</th><th>Price</th><th>Owned</th></tr></thead><tbody>${body}</tbody></table>`;
+    }
+
+    function renderTable() {
+      const items = visibleRows();
+      const visibleItems = showAllRows ? items : items.slice(0, 50);
+      document.querySelector('#ledger-table').innerHTML = tableMarkup(visibleItems);
+      setText('#row-count', `Showing ${visibleItems.length} of ${items.length} matching players`);
+      if (toggleRowsButton) {
+        toggleRowsButton.hidden = items.length <= 50;
+        toggleRowsButton.textContent = showAllRows ? 'Show top 50' : `Show all ${items.length}`;
+        toggleRowsButton.setAttribute('aria-expanded', String(showAllRows));
+      }
+    }
+
+    async function refreshLivePoints() {
+      livePoints = await loadLivePoints();
+      if (livePoints.available && livePoints.fetchedAt) {
+        setText('#actuals-note', `Official points feed refreshed ${formatShortTime(livePoints.fetchedAt)}. A dash means the player has not recorded minutes yet.`);
+      } else {
+        setText('#actuals-note', 'Official points are temporarily unavailable. Forecasts remain visible and will be retried automatically.');
+      }
+      updateActualSortState();
+      renderTable();
+    }
+
+    function scheduleLiveRefresh() {
+      if (liveRefreshTimer) window.clearTimeout(liveRefreshTimer);
+      const beforeDeadline = currentDeadline && Date.now() < Date.parse(currentDeadline);
+      const delay = document.hidden ? 120000 : beforeDeadline ? 60000 : LIVE_REFRESH_MS;
+      liveRefreshTimer = window.setTimeout(async () => {
+        await refreshLivePoints();
+        scheduleLiveRefresh();
+      }, delay);
+    }
+
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        scheduleLiveRefresh();
+        return;
+      }
+      void refreshLivePoints().finally(scheduleLiveRefresh);
+    }
+
+    async function handleManualRefresh() {
+      if (!refreshButton) return;
+      refreshButton.disabled = true;
+      refreshButton.textContent = '↻ Refreshing…';
+      try {
+        await refreshLivePoints();
+      } finally {
+        refreshButton.disabled = false;
+        refreshButton.textContent = '↻ Refresh actuals';
+      }
+    }
+
+    [search, position, risk, sort].forEach((control) => control.addEventListener(control === search ? 'input' : 'change', renderTable));
+    refreshButton?.addEventListener('click', () => void handleManualRefresh());
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    toggleRowsButton?.addEventListener('click', () => {
+      showAllRows = !showAllRows;
+      renderTable();
+    });
+
+    try {
+      const ledger = await loadCurrentLedger();
+      const data = ledger.data;
+      rows = [...(data.rows ?? [])];
+      currentMode = ledger.mode;
+      currentDeadline = data.deadlineTime;
+      setStatus(ledger.mode, ledger.lockMode);
+      setText('#deadline-time', formatShortTime(data.deadlineTime));
+      setText('#player-count', data.playerCount ?? rows.length);
+      setText('#model-version', data.modelVersion ?? '—');
+      setText('#generated-at', formatShortTime(data.generatedAt));
+      const training = data.training;
+      setText('#training-status', training
+        ? `Trained through GW${training.trainedThroughGameweek}; live target GW${training.targetGameweek}. ${training.method}. Validation: ${training.validation}.`
+        : 'Training metadata is temporarily unavailable; the live projection export remains visible.');
+      setText('#source-state', ledger.mode === 'locked'
+        ? `${ledger.lockMode === 'manual-predeadline' ? 'Manually locked' : 'Locked'} ${formatDateTime(ledger.lockedAt)}`
+        : 'Live production export');
+      if (ledger.mode === 'locked' && ledger.contentHash) {
+        setText('#integrity-label', 'SHA-256 fingerprint of the frozen deadline snapshot');
+        setText('#integrity-hash', ledger.contentHash);
+      } else if (ledger.mode === 'lock-pending') {
+        setText('#integrity-label', 'Deadline reached. Waiting for the immutable lock artifact.');
+        setText('#integrity-hash', 'LOCK PENDING');
+      }
+      renderCountdown();
+      renderTable();
+      await refreshLivePoints();
+      setInterval(renderCountdown, 30000);
+      scheduleLiveRefresh();
+    } catch (error) {
+      renderError('#ledger-table', error instanceof Error ? error.message : 'Unknown data error');
+      setText('#row-count', 'Feed unavailable');
+      setText('#countdown', 'Feed unavailable');
+    }
+  </script>
+</body>
+</html>

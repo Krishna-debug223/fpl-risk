@@ -1,5 +1,25 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "npm run build"
+  "buildCommand": "npm run build",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "fpl-risk-ui-refresh.vercel.app" }],
+      "destination": "https://fplprism.com/:path*",
+      "statusCode": 301
+    },
+    {
+      "source": "/modelbook/:path*",
+      "has": [{ "type": "host", "value": "fpl-ledger-azure.vercel.app" }],
+      "destination": "https://fplprism.com/modelbook/:path*",
+      "statusCode": 301
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "fpl-ledger-azure.vercel.app" }],
+      "destination": "https://fplprism.com/modelbook/:path*",
+      "statusCode": 301
+    }
+  ]
 }
