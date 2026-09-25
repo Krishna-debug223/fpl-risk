@@ -1,4 +1,4 @@
-name: Validate FPL Risk
+name: Validate FPL Prism
 
 on:
   push:
