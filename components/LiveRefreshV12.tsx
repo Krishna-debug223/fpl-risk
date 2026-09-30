@@ -754,6 +754,11 @@ export default function LiveRefreshV12() {
     return { topExpected, topSharpe, topCeiling, bestValue };
   }, [marketRows]);
 
+  const marketPodiumRows = useMemo(
+    () => [...marketRows].sort((a, b) => b.five.expected - a.five.expected).slice(0, 3),
+    [marketRows],
+  );
+
   const marketSignals = useMemo(() => {
     const priceRiser = [...marketRows]
       .filter(({ player }) => Number.isFinite(player.cost_change_event) && (player.cost_change_event ?? 0) > 0)
@@ -1924,6 +1929,44 @@ export default function LiveRefreshV12() {
             </article>
           </section>
 
+          {marketPodiumRows.length > 0 && (
+            <section className={styles.marketLeaderboard} aria-label="Top five-Gameweek projections">
+              <div className={styles.marketLeaderboardHead}>
+                <div>
+                  <span className={styles.eyebrow}>PROJECTION LEADERS</span>
+                  <h2>Top of the market</h2>
+                  <p>Highest 5-Gameweek expected points within your active filters.</p>
+                </div>
+                <span className={styles.marketLeaderboardHorizon}>5GW xPTS</span>
+              </div>
+              <div className={styles.marketPodium}>
+                {marketPodiumRows.map((row, index) => (
+                  <button
+                    type="button"
+                    className={`${styles.marketPodiumCard} ${index === 0 ? styles.marketPodiumWinner : ""}`}
+                    key={row.player.id}
+                    onClick={() => setSelectedMarketId(row.player.id)}
+                    aria-label={`Select ${row.player.web_name}, ranked ${index + 1} by five-Gameweek expected points`}
+                  >
+                    <span className={styles.marketPodiumRank}>#{index + 1}</span>
+                    <span className={styles.marketPodiumClub}>{teamMap.get(row.player.team)?.short_name?.slice(0, 2) ?? "FPL"}</span>
+                    <span className={styles.marketPodiumIdentity}>
+                      <strong>{row.player.web_name}</strong>
+                      <small>{teamDisplayName(teamMap.get(row.player.team))} · {positionName(row.player.element_type)}</small>
+                    </span>
+                    <span className={styles.marketPodiumScore}>
+                      <strong>{row.five.expected.toFixed(1)}</strong>
+                      <small>5GW xPts</small>
+                    </span>
+                    <span className={styles.marketPodiumRange}>
+                      {row.one.distribution ? `${row.one.distribution.p10.toFixed(1)}–${row.one.distribution.p90.toFixed(1)} 1GW range` : "Range pending"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
           {selectedMarketRow && (
             <section className={styles.marketFocusCard} aria-label="Selected player snapshot">
               <div className={styles.marketFocusIdentity}>
@@ -2053,6 +2096,7 @@ export default function LiveRefreshV12() {
               <div
                 className={`${styles.marketRow} ${selectedMarketId === row.player.id ? styles.marketRowSelected : ""}`}
                 key={row.player.id}
+                data-rank={index + 1}
               >
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <button
@@ -2063,9 +2107,15 @@ export default function LiveRefreshV12() {
                   aria-label={`Select ${row.player.web_name}`}
                 >
                   <span className={styles.marketPlayerDot}>{teamMap.get(row.player.team)?.short_name?.slice(0, 2) ?? "FPL"}</span>
-                  <div>
+                  <div className={styles.marketPlayerInfo}>
                     <strong>{row.player.web_name}</strong>
-                    <small>{teamDisplayName(teamMap.get(row.player.team))} · {positionName(row.player.element_type)} · {row.player.selected_by_percent}% owned</small>
+                    <small>
+                      <span className={styles.marketPlayerTeam}>{teamDisplayName(teamMap.get(row.player.team))}</span>
+                      <span className={styles.marketPlayerMeta}>
+                        <span>{positionName(row.player.element_type)}</span>
+                        <span className={styles.marketPlayerOwnershipMeta}> · {row.player.selected_by_percent}% owned</span>
+                      </span>
+                    </small>
                   </div>
                 </button>
                 <span>{money(row.player.now_cost)}</span>
@@ -2079,7 +2129,7 @@ export default function LiveRefreshV12() {
                 <span className={styles.bandInline} title="Single-Gameweek probability of 0–2 points / 10+ points">
                   {row.one.distribution ? `${Math.round(row.one.distribution.bands.bust)}% / ${Math.round(row.one.distribution.bands.haul)}%` : "—"}
                 </span>
-                <span className={`${styles.riskBadge} ${styles[row.five.risk.toLowerCase()]}`}>{row.five.risk}</span>
+                <span className={`${styles.riskBadge} ${styles[row.five.risk.toLowerCase()]}`}>{row.five.risk} risk</span>
                 <span>{row.player.selected_by_percent}%</span>
                 <button onClick={(event) => { event.stopPropagation(); showWhy(row); }}>Why this pick</button>
               </div>

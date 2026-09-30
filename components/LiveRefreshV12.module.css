@@ -2384,6 +2384,145 @@
   color: #85748e;
   font-size: 10px;
 }
+.marketLeaderboard {
+  margin: 0 0 15px;
+  padding: 20px;
+  border: 1px solid #e1d7e6;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #ffffff 0%, #faf6fb 58%, #eefaf4 100%);
+  box-shadow: 0 10px 24px rgba(55, 0, 60, 0.045);
+}
+.marketLeaderboardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 15px;
+}
+.marketLeaderboardHead .eyebrow {
+  margin: 0 0 5px;
+  color: #8c7d93;
+}
+.marketLeaderboardHead h2 {
+  margin: 0;
+  color: #2f2633;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+.marketLeaderboardHead p {
+  margin: 5px 0 0;
+  color: #887b8e;
+  font-size: 11px;
+}
+.marketLeaderboardHorizon {
+  flex: 0 0 auto;
+  padding: 8px 11px;
+  color: #37003c;
+  border: 1px solid #decfe4;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.marketPodium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.marketPodiumCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "rank club identity score"
+    "rank club range range";
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+  padding: 13px;
+  color: #322936;
+  border: 1px solid #e4dbe8;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+.marketPodiumCard:hover,
+.marketPodiumCard:focus-visible {
+  border-color: #bda9c5;
+  box-shadow: 0 10px 20px rgba(55, 0, 60, 0.08);
+  outline: none;
+  transform: translateY(-2px);
+}
+.marketPodiumWinner {
+  border-color: rgba(0, 185, 98, 0.34);
+  box-shadow: inset 0 3px 0 #00b962;
+}
+.marketPodiumRank {
+  grid-area: rank;
+  align-self: start;
+  color: #8f8295;
+  font-size: 10px;
+  font-weight: 800;
+}
+.marketPodiumClub {
+  grid-area: club;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #37003c;
+  border: 1px solid #dfd0e7;
+  border-radius: 10px;
+  background: #f1eaf4;
+  font-size: 9px;
+  font-weight: 900;
+}
+.marketPodiumIdentity {
+  grid-area: identity;
+  min-width: 0;
+}
+.marketPodiumIdentity strong,
+.marketPodiumIdentity small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.marketPodiumIdentity strong {
+  color: #2f2633;
+  font-size: 13px;
+  font-weight: 650;
+}
+.marketPodiumIdentity small,
+.marketPodiumScore small {
+  margin-top: 3px;
+  color: #8c7e92;
+  font-size: 9px;
+}
+.marketPodiumScore {
+  grid-area: score;
+  text-align: right;
+}
+.marketPodiumScore strong {
+  display: block;
+  color: #37003c;
+  font-size: 22px;
+  font-weight: 550;
+  letter-spacing: -0.045em;
+}
+.marketPodiumRange {
+  grid-area: range;
+  min-width: 0;
+  overflow: hidden;
+  color: #776c7c;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .marketFocusCard {
   display: grid;
   grid-template-columns: minmax(240px, 1.1fr) minmax(350px, 1.8fr) auto;
@@ -2507,18 +2646,52 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   min-width: 0;
   padding: 0;
   border: 0;
+  border-radius: 0;
   color: inherit;
   background: transparent;
+  box-shadow: none;
   cursor: pointer;
   text-align: left;
+}
+.marketRow .marketPlayerCell:hover {
+  border-color: transparent;
 }
 .marketPlayerCell:focus-visible {
   outline: 2px solid #37003c;
   outline-offset: 3px;
   border-radius: 8px;
+}
+.marketPlayerInfo {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.marketPlayerInfo strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.marketPlayerInfo small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+}
+.marketPlayerTeam {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.marketPlayerMeta {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .marketShowMore {
@@ -2668,6 +2841,8 @@
 }
 .marketTableShell > .marketTable {
   margin-top: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -2802,11 +2977,9 @@
 }
 .marketTableShell .marketHeader > span:nth-last-child(2),
 .marketTableShell .marketRow > span:nth-last-child(2) {
-  position: sticky;
-  right: 110px;
-  z-index: 3;
+  position: static;
   background: inherit;
-  box-shadow: -8px 0 14px rgba(55, 0, 60, 0.045);
+  box-shadow: none;
 }
 .marketTableShell .marketHeader > span:nth-last-child(2) {
   background: #f5f1f6;
@@ -2820,6 +2993,28 @@
 .marketTableShell .marketRow > button:last-child {
   background: rgba(255, 255, 255, 0.97);
 }
+.marketTableShell .marketRow[data-rank="1"] > span:first-child,
+.marketTableShell .marketRow[data-rank="2"] > span:first-child,
+.marketTableShell .marketRow[data-rank="3"] > span:first-child {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  font-weight: 800;
+}
+.marketTableShell .marketRow[data-rank="1"] > span:first-child {
+  color: #006b3c;
+  background: #ddf8e9;
+}
+.marketTableShell .marketRow[data-rank="2"] > span:first-child {
+  color: #655c69;
+  background: #eeeaf0;
+}
+.marketTableShell .marketRow[data-rank="3"] > span:first-child {
+  color: #815a35;
+  background: #f7e9da;
+}
 .marketTableShell .marketPlayerDot {
   width: 34px;
   height: 34px;
@@ -2827,6 +3022,19 @@
   background: linear-gradient(145deg, #f6edf9, #eee4f2);
   border-color: #dfcfe7;
   font-size: 9px;
+}
+.marketTableShell .marketPlayerCell {
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 6px 4px 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+}
+.marketTableShell .marketPlayerCell:hover {
+  border-color: transparent;
+  background: transparent;
 }
 @media (max-width: 760px) {
   .marketTableMeta {
@@ -2875,6 +3083,12 @@
   background: #37003c;
   border-color: #37003c;
   box-shadow: 0 5px 12px rgba(55, 0, 60, 0.15);
+}
+.marketTableShell .marketHeader > span:last-child,
+.marketTableShell .marketRow > button:last-child {
+  position: static;
+  right: auto;
+  z-index: auto;
 }
 
 @media (max-width: 760px) {
@@ -3285,6 +3499,33 @@
     font-size: 23px;
   }
 
+  .marketLeaderboard {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .marketLeaderboardHead {
+    margin-bottom: 12px;
+  }
+
+  .marketLeaderboardHead h2 {
+    font-size: 20px;
+  }
+
+  .marketLeaderboardHead p {
+    max-width: 230px;
+    line-height: 1.4;
+  }
+
+  .marketPodium {
+    grid-template-columns: 1fr;
+  }
+
+  .marketPodiumCard {
+    grid-template-columns: 24px 34px minmax(0, 1fr) auto;
+    padding: 12px;
+  }
+
   .marketFocusCard {
     grid-template-columns: 1fr;
     gap: 14px;
@@ -3372,6 +3613,8 @@
     grid-area: player;
     align-self: start;
     min-width: 0;
+    min-height: 46px;
+    padding: 0;
   }
 
   .marketTableShell .marketRow > span:nth-child(3) {
@@ -3421,7 +3664,6 @@
   .marketTableShell .marketRow > b:nth-child(5)::before,
   .marketTableShell .marketRow > b:nth-child(7)::before,
   .marketTableShell .marketRow > span:nth-child(11)::before,
-  .marketTableShell .marketRow > span:nth-child(12)::before,
   .marketTableShell .marketRow > span:nth-child(13)::before {
     margin-right: 5px;
     color: #9b8da2;
@@ -3435,7 +3677,6 @@
   .marketTableShell .marketRow > b:nth-child(5)::before { content: "1GW"; }
   .marketTableShell .marketRow > b:nth-child(7)::before { content: "5GW"; }
   .marketTableShell .marketRow > span:nth-child(11)::before { content: "BUST / HAUL"; }
-  .marketTableShell .marketRow > span:nth-child(12)::before { content: "RISK"; }
   .marketTableShell .marketRow > span:nth-child(13)::before { content: "OWNED"; }
 
   .marketTableShell .marketRow > span:nth-last-child(2),
@@ -3459,6 +3700,7 @@
   .marketTableShell .marketRow > span:nth-child(12) {
     min-height: 26px;
     padding: 0 7px;
+    white-space: nowrap;
   }
 
   .marketTableShell .marketRow > b {
@@ -3466,13 +3708,34 @@
     padding: 0 7px;
   }
 
+  .marketTableShell .marketPlayerInfo {
+    gap: 3px;
+  }
+
+  .marketTableShell .marketPlayerInfo strong {
+    font-size: 14px;
+    line-height: 1.15;
+  }
+
   .marketTableShell .marketPlayerCell small {
+    display: grid;
+    gap: 1px;
     max-width: 100%;
     overflow: hidden;
     font-size: 9px;
     line-height: 1.3;
+  }
+
+  .marketTableShell .marketPlayerTeam,
+  .marketTableShell .marketPlayerMeta {
+    max-width: 100%;
+    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .marketTableShell .marketPlayerOwnershipMeta {
+    display: none;
   }
 
   .modelFlow,
