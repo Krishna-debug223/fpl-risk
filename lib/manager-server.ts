@@ -15,7 +15,7 @@ type Entry = {
 };
 
 type Picks = { active_chip: string | null; picks: ManagerPick[]; entry_history?: { points?: number } };
-type History = { current: Array<{ event: number }>; chips?: Array<{ name: string; event: number; time?: string }> };
+type History = { current: Array<{ event: number; bank?: number; value?: number }>; chips?: Array<{ name: string; event: number; time?: string }> };
 
 export async function loadPublicManager(teamId: string): Promise<ManagerPayload> {
   if (!/^\d{1,12}$/.test(teamId)) throw new Error("INVALID_TEAM_ID");
@@ -40,6 +40,30 @@ export async function loadPublicManager(teamId: string): Promise<ManagerPayload>
     picks = await fplFetch<Picks>(`/entry/${teamId}/event/${picksEventId}/picks/`, 0);
   }
 
+  // After a Free Hit, FPL restores the squad (and bank) from the previous
+  // deadline. Those picks are public, so show the squad that will actually
+  // play next rather than the temporary one.
+  let squadPicks = picks.picks;
+  let bank = entry.last_deadline_bank;
+  let teamValue = entry.last_deadline_value;
+  let freeHitRevert: ManagerPayload["freeHitRevert"] = null;
+  if (picks.active_chip === "freehit") {
+    const previous = history.current
+      .filter((row) => row.event < picksEventId)
+      .sort((a, b) => b.event - a.event)[0];
+    if (previous) {
+      try {
+        const restored = await fplFetch<Picks>(`/entry/${teamId}/event/${previous.event}/picks/`, 0);
+        squadPicks = restored.picks;
+        bank = previous.bank ?? bank;
+        teamValue = previous.value ?? teamValue;
+        freeHitRevert = { freeHitEvent: picksEventId, squadEvent: previous.event, freeHitPicks: picks.picks };
+      } catch {
+        // Fall back to the Free Hit picks; the UI explains they are temporary.
+      }
+    }
+  }
+
   return {
     id: entry.id,
     teamName: entry.name,
@@ -47,12 +71,13 @@ export async function loadPublicManager(teamId: string): Promise<ManagerPayload>
     overallPoints: entry.summary_overall_points,
     overallRank: entry.summary_overall_rank,
     gameweekPoints: entry.summary_event_points ?? picks.entry_history?.points ?? null,
-    bank: entry.last_deadline_bank,
-    teamValue: entry.last_deadline_value,
+    bank,
+    teamValue,
     eventId: picksEventId,
     activeChip: picks.active_chip,
     chipsUsed: history.chips ?? [],
-    picks: picks.picks,
+    picks: squadPicks,
+    freeHitRevert,
     fetchedAt: new Date().toISOString(),
   };
 }

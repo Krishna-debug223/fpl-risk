@@ -1,0 +1,31 @@
+.nav { margin-bottom: 20px; overflow-x: auto; }
+.nav :global(.segmented) { white-space: nowrap; }
+
+.statusRow { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.tableFoot { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin-top: 12px; }
+
+.playerCell { min-width: 140px; }
+.playerCell strong { display: block; font-weight: 600; }
+.playerCell span { color: var(--text-3); font-size: 12px; }
+.flag { color: var(--warn); font-weight: 700; margin-left: 4px; }
+
+.sticky th:first-child, .sticky td:first-child {
+  position: sticky; left: 0; z-index: 1; background: var(--surface);
+  box-shadow: 1px 0 0 var(--border);
+}
+.sticky thead th:first-child { z-index: 2; background: var(--surface-2); }
+
+.hash { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; color: var(--text-2); }
+
+@media (max-width: 720px) {
+  .filters { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .filters > :first-child { grid-column: 1 / -1; }
+}

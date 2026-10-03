@@ -207,5 +207,11 @@ export type ManagerPayload = {
   activeChip: string | null;
   chipsUsed: UsedChip[];
   picks: ManagerPick[];
+  /**
+   * Set when a Free Hit was played on the latest public picks. FPL restores the
+   * squad from the previous deadline, so `picks`, `bank` and `teamValue` hold
+   * that restored squad and the Free Hit picks are kept here for scoring views.
+   */
+  freeHitRevert?: { freeHitEvent: number; squadEvent: number; freeHitPicks: ManagerPick[] } | null;
   fetchedAt: string;
 };

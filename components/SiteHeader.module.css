@@ -133,6 +133,8 @@
   border-top: 1px solid var(--border);
   padding: 8px var(--gutter) 16px;
   max-height: calc(100vh - 56px);
+  max-height: calc(100dvh - 56px);
+  overscroll-behavior: contain;
   overflow-y: auto;
 }
 .mobile > div { display: flex; flex-direction: column; padding: 8px 0; }

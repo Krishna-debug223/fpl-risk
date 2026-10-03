@@ -23,10 +23,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ pat
   try {
     const { path: segments } = await params;
     const safeSegments = segments.filter((segment) => segment !== "" && segment !== "." && segment !== "..");
-    let relativePath = safeSegments.join("/");
-    if (relativePath === "reports/gw5") relativePath = "reports/gw5.html";
-    if (relativePath === "reports/gw4") relativePath = "reports/gw4.html";
-    if (relativePath === "reports/gw3") relativePath = "reports/gw3.html";
+    const relativePath = safeSegments.join("/");
     const filePath = path.join(MODELBOOK_ROOT, relativePath);
     if (!filePath.startsWith(`${MODELBOOK_ROOT}${path.sep}`)) return new NextResponse("Not found", { status: 404 });
     const type = contentType(filePath);

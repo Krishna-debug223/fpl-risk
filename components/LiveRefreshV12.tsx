@@ -19,6 +19,7 @@ import type {
   HistoricalPayload,
   LivePointsPayload,
   ManagerPayload,
+  ManagerPick,
 } from "@/lib/types";
 import type { SportsbookPayload } from "@/lib/sportsbook";
 import {
@@ -292,26 +293,33 @@ export default function LiveRefreshV12() {
 
   // ---------- Imported squad ----------
 
-  const squad = useMemo<SquadItem[]>(
-    () => manager?.picks
-      .map((pick) => {
+  const buildSquad = useCallback(
+    (picks: ManagerPick[] | undefined) => picks
+      ?.map((pick) => {
         const player = playerMap.get(pick.element);
         const row = player ? projectionMap.get(player.id) : null;
         return player && row ? { pick, player, one: row.one, three: row.three, five: row.five } : null;
       })
       .filter((item): item is SquadItem => Boolean(item)) ?? [],
-    [manager, playerMap, projectionMap],
+    [playerMap, projectionMap],
+  );
+  // `picks` is the squad going into the next deadline (restored after a Free
+  // Hit); the result view scores whatever was actually fielded on eventId.
+  const squad = useMemo<SquadItem[]>(() => buildSquad(manager?.picks), [buildSquad, manager]);
+  const fieldedSquad = useMemo<SquadItem[]>(
+    () => (manager?.freeHitRevert ? buildSquad(manager.freeHitRevert.freeHitPicks) : squad),
+    [buildSquad, manager, squad],
   );
 
   const hasLockedScoringComparison = Boolean(manager && lockedEventId === manager.eventId && Object.keys(lockedProjectionRows).length);
   const scoringSquad = useMemo<SquadItem[]>(() => {
-    if (!manager || lockedEventId !== manager.eventId) return squad;
-    return squad.map((item) => {
+    if (!manager || lockedEventId !== manager.eventId) return fieldedSquad;
+    return fieldedSquad.map((item) => {
       const locked = lockedProjectionRows[item.player.id];
       if (!locked) return item;
       return { ...item, one: { ...item.one, expected: locked.projected, fixtureLabels: [locked.fixture] } };
     });
-  }, [lockedEventId, lockedProjectionRows, manager, squad]);
+  }, [fieldedSquad, lockedEventId, lockedProjectionRows, manager]);
 
   // Decisions are about the next deadline, so the one-Gameweek view of the
   // squad is projected against that event specifically.
@@ -666,7 +674,7 @@ export default function LiveRefreshV12() {
             {manager ? (
               <span>
                 <strong>{manager.teamName}</strong>
-                <span className="muted"> · {isSample ? "public demo team, not yours" : manager.managerName} · picks as of GW{manager.eventId}</span>
+                <span className="muted"> · {isSample ? "public demo team, not yours" : manager.managerName} · {manager.freeHitRevert ? `GW${manager.freeHitRevert.squadEvent} squad, restored after Free Hit` : `picks as of GW${manager.eventId}`}</span>
                 {" "}
                 <button type="button" className="link-button small" onClick={() => setShowImport((open) => !open)} aria-expanded={showImport}>
                   {showImport ? "Cancel" : "Change"}
@@ -724,13 +732,16 @@ export default function LiveRefreshV12() {
           </div>
         )}
 
-        {manager?.activeChip === "freehit" && squadView && (
-          <div className="notice notice-warn" style={{ marginBottom: 16 }}>
-            <strong>These are Free Hit picks.</strong> Free Hit was active in GW{manager.eventId}, so this squad is temporary and reverts to the
-            previous squad for the next deadline. FPL does not publish that squad until after the next deadline, so projections and transfer
-            suggestions here describe the Free Hit team, not the one you will actually field.
+        {manager?.activeChip === "freehit" && squadView && (manager.freeHitRevert ? (
+          <div className="notice notice-neutral" style={{ marginBottom: 16 }}>
+            Free Hit was played in GW{manager.freeHitRevert.freeHitEvent}, so this is the GW{manager.freeHitRevert.squadEvent} squad that FPL restores for the next deadline.
           </div>
-        )}
+        ) : (
+          <div className="notice notice-warn" style={{ marginBottom: 16 }}>
+            <strong>These are Free Hit picks.</strong> The squad FPL restores after GW{manager.eventId} couldn&apos;t be loaded, so projections
+            here describe the temporary Free Hit team.
+          </div>
+        ))}
 
         {/* ============ OVERVIEW ============ */}
         {tab === "overview" && (
@@ -896,7 +907,9 @@ export default function LiveRefreshV12() {
                 <div>
                   <h1>{manager.teamName}</h1>
                   <p className="muted">
-                    {isSample ? "Sample squad" : manager.managerName} · squad as published for the GW{manager.eventId} deadline.
+                    {isSample ? "Sample squad" : manager.managerName} · {manager.freeHitRevert
+                      ? `the GW${manager.freeHitRevert.squadEvent} squad, restored after the GW${manager.freeHitRevert.freeHitEvent} Free Hit.`
+                      : `squad as published for the GW${manager.eventId} deadline.`}{" "}
                     Transfers you have made since then are not visible until FPL publishes them.
                   </p>
                 </div>

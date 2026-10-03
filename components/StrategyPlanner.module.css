@@ -5,7 +5,7 @@
   align-items: start;
 }
 .setup h2 { font-size: 15px; }
-@media (max-width: 900px) { .setup { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .setup { grid-template-columns: minmax(0, 1fr); } }
 
 .selectedRow td { background: var(--accent-soft); }
 

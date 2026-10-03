@@ -140,8 +140,12 @@ export default function StrategyPlanner() {
     setResult(null);
     setStale(false);
     setChipAdvice([]);
-    // Let the "Building…" state paint before the synchronous search runs.
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    // Let "Building…" paint before the search blocks the main thread. Animation
+    // frames pause in background tabs, so a short timeout also releases it.
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+      window.setTimeout(resolve, 50);
+    });
 
     try {
       const sellingPrices = new Map(manager.picks.map((pick) => [pick.element, pick.selling_price ?? playerMap.get(pick.element)?.now_cost ?? 0]));
@@ -205,7 +209,7 @@ export default function StrategyPlanner() {
           {manager ? (
             <p>
               <strong>{manager.teamName}</strong>
-              <span className="muted"> · picks as of GW{manager.eventId} · {money(manager.bank)} in the bank (last deadline)</span>
+              <span className="muted"> · {manager.freeHitRevert ? `GW${manager.freeHitRevert.squadEvent} squad, restored after Free Hit` : `picks as of GW${manager.eventId}`} · {money(manager.bank)} in the bank</span>
             </p>
           ) : (
             <p className="muted">{loadingTeam ? "Importing…" : "No squad imported yet."}</p>
@@ -224,9 +228,11 @@ export default function StrategyPlanner() {
             <button className="btn" disabled={loadingTeam || loading}>{loadingTeam ? "Importing…" : manager ? "Re-import" : "Import"}</button>
           </form>
           {teamError && <p className="field-error" role="alert">{teamError}</p>}
-          {manager?.activeChip === "freehit" && (
-            <p className="notice notice-warn small">These GW{manager.eventId} picks were a Free Hit squad, which reverts before the next deadline. The plan below starts from the Free Hit team.</p>
-          )}
+          {manager?.activeChip === "freehit" && (manager.freeHitRevert ? (
+            <p className="notice notice-neutral small">Free Hit was played in GW{manager.freeHitRevert.freeHitEvent}, so the plan starts from the GW{manager.freeHitRevert.squadEvent} squad that FPL restores.</p>
+          ) : (
+            <p className="notice notice-warn small">These GW{manager.eventId} picks were a temporary Free Hit squad and the restored squad couldn&apos;t be loaded, so the plan starts from the Free Hit team.</p>
+          ))}
         </div>
 
         <div className="stack-sm">
