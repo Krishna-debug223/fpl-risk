@@ -481,6 +481,12 @@ export default function LiveRefreshV12() {
     });
   }, [effectiveMarketMaxPrice, marketPosition, marketQuery, marketSort, marketTeam, projectableMarket]);
   const displayedMarketRows = useMemo(() => marketRows.slice(0, marketVisibleCount), [marketRows, marketVisibleCount]);
+  // The three highest five-Gameweek projections within the active filters,
+  // whatever the table is sorted by.
+  const marketLeaders = useMemo(
+    () => [...marketRows].sort((a, b) => b.five.expected - a.five.expected).slice(0, 3),
+    [marketRows],
+  );
   const filtersActive = Boolean(marketQuery || marketPosition || marketTeam || marketMaxPrice != null);
 
   function resetFilters() {
@@ -1292,6 +1298,28 @@ export default function LiveRefreshV12() {
               </div>
             ) : (
               <>
+                {marketLeaders.length > 0 && (
+                  <section aria-labelledby="market-leaders-heading">
+                    <h2 id="market-leaders-heading" className={styles.leadersTitle}>Top 5-Gameweek projections{filtersActive ? " for these filters" : ""}</h2>
+                    <ol className={styles.leaders}>
+                      {marketLeaders.map((row, index) => (
+                        <li key={row.player.id}>
+                          <button type="button" className={`card card-tight ${styles.leader}`} onClick={() => setDetail({ row, horizon: "five" })}>
+                            <span className={styles.leaderRank}>{index + 1}</span>
+                            <span className={styles.leaderName}>
+                              <strong>{row.player.web_name}</strong>
+                              <span className="muted tiny">{teamMap.get(row.player.team)?.short_name} · {positionShort(row.player.element_type)} · {money(row.player.now_cost)}</span>
+                            </span>
+                            <span className={styles.leaderScore}>
+                              <strong className="num">{pts(row.five.expected)}</strong>
+                              <span className="muted tiny">{range(row.five.distribution?.p10, row.five.distribution?.p90)}</span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+                )}
                 <div className={`table-wrap ${styles.marketTable}`}>
                   <table className="table">
                     <thead>
