@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import type { FplPlayer, FplTeam, ManagerPick } from "@/lib/types";
 import type { MarketProjection } from "@/lib/risk-v12";
 import { getClubKitVars } from "@/lib/club-kits";
+import { officialAvailability } from "./dashboard/format";
 import styles from "./SquadPitch.module.css";
 
 export type SquadPitchPlayer = {
@@ -17,82 +18,71 @@ export type SquadPitchPlayer = {
 type Props = {
   players: SquadPitchPlayer[];
   teams: FplTeam[];
-  actualPoints?: Record<number, { points: number; played: boolean }>;
-  selectedIds?: number[];
   mode?: "inspect" | "transfer";
-  onPlayerClick?: (item: SquadPitchPlayer) => void;
+  selectedIds?: number[];
+  /** Which number each tile shows. */
+  metric?: "next" | "five" | "result";
+  actualPoints?: Record<number, { points: number; played: boolean }>;
+  onSelect?: (item: SquadPitchPlayer) => void;
   onInspect?: (item: SquadPitchPlayer) => void;
-  compact?: boolean;
 };
 
-const positionLabel = (type: number) => ["", "GK", "DEF", "MID", "FWD"][type] ?? "";
-
-function PlayerTile({
-  item,
-  team,
-  selected,
-  mode,
-  actualPoints,
-  onPlayerClick,
-  onInspect,
+function Tile({
+  item, team, mode, selected, metric, actual, onSelect, onInspect,
 }: {
   item: SquadPitchPlayer;
   team?: FplTeam;
-  selected: boolean;
   mode: "inspect" | "transfer";
-  actualPoints?: Record<number, { points: number; played: boolean }>;
-  onPlayerClick?: (item: SquadPitchPlayer) => void;
+  selected: boolean;
+  metric: "next" | "five" | "result";
+  actual?: { points: number; played: boolean };
+  onSelect?: (item: SquadPitchPlayer) => void;
   onInspect?: (item: SquadPitchPlayer) => void;
 }) {
-  const fixture = item.one.fixtureLabels[0] ?? "BLANK";
-  const teamCode = team?.short_name ?? positionLabel(item.player.element_type);
-  const kitStyle = getClubKitVars(teamCode) as CSSProperties;
-  const live = actualPoints?.[item.player.id];
+  const code = team?.short_name ?? "";
+  const status = officialAvailability(item.player);
+  const fixture = item.one.fixtureLabels[0];
+  const value = metric === "five" ? item.five.expected : item.one.expected;
+
+  const primaryAction = mode === "transfer" ? onSelect : onInspect;
+  const verb = mode === "transfer" ? (selected ? "Deselect" : "Select to sell") : "Details for";
 
   return (
-    <div className={`${styles.tileWrap} ${selected ? styles.selectedWrap : ""}`}>
+    <div className={`${styles.tile} ${selected ? styles.selected : ""}`}>
       <button
         type="button"
-        className={`${styles.playerTile} ${selected ? styles.selectedTile : ""}`}
-        onClick={() => onPlayerClick?.(item)}
+        className={styles.tileButton}
+        onClick={() => primaryAction?.(item)}
         aria-pressed={mode === "transfer" ? selected : undefined}
-        aria-label={`${mode === "transfer" ? selected ? "Deselect" : "Select" : "Open"} ${item.player.web_name}`}
+        aria-label={`${verb} ${item.player.web_name}${item.pick.is_captain ? ", captain" : item.pick.is_vice_captain ? ", vice-captain" : ""}`}
       >
-        <span className={styles.playerVisual} aria-hidden="true">
-          <span className={styles.kitShirt} style={kitStyle}>
-            <span className={styles.kitCollar} />
-            <b>{teamCode}</b>
+        <span className={styles.shirt} style={getClubKitVars(code) as CSSProperties} aria-hidden="true" />
+        {(item.pick.is_captain || item.pick.is_vice_captain) && (
+          <span className={styles.armband} title={item.pick.is_captain ? "Captain" : "Vice-captain"}>
+            {item.pick.is_captain ? "C" : "V"}
           </span>
-        </span>
-
-        <span className={styles.badges}>
-          {item.pick.is_captain && <b className={styles.captain}>C</b>}
-          {item.pick.is_vice_captain && <b className={styles.vice}>V</b>}
-        </span>
-
-        <span className={styles.points} title="Actual points and single-gameweek model projection">
-          <strong>{live?.played ? live.points : "—"}<small>actual</small></strong>
-          <em>{item.one.expected.toFixed(1)} xPts</em>
-        </span>
-
-        <span className={styles.playerPlate}>
-          <strong>{item.player.web_name}</strong>
-          <small>{fixture}</small>
-        </span>
-
-        {mode === "transfer" && (
-          <span className={styles.selectState}>{selected ? "Selected" : "Transfer out"}</span>
         )}
+        {status.flagged && (
+          <span className={`${styles.flag} ${status.tone === "bad" ? styles.flagBad : styles.flagWarn}`} title={status.label}>!</span>
+        )}
+        <span className={styles.name}>{item.player.web_name}</span>
+        <span className={styles.meta}>
+          {metric === "result" ? (
+            <>
+              <b>{actual?.played ? `${actual.points} pts` : "Not played"}</b>
+              <span>forecast {value.toFixed(1)}</span>
+            </>
+          ) : (
+            <>
+              <b>{value.toFixed(1)}</b>
+              <span>{metric === "five" ? "5 GW" : fixture === "BLANK" ? "Blank" : fixture}</span>
+            </>
+          )}
+        </span>
       </button>
-
-      {onInspect && (
-        <button
-          type="button"
-          className={styles.inspectButton}
-          onClick={() => onInspect(item)}
-          aria-label={`Why ${item.player.web_name} projects this way`}
-        >
-          Why?
+      {mode === "transfer" && onInspect && (
+        <button type="button" className={styles.details} onClick={() => onInspect(item)}>
+          Details<span className="sr-only"> for {item.player.web_name}</span>
         </button>
       )}
     </div>
@@ -100,67 +90,44 @@ function PlayerTile({
 }
 
 export default function SquadPitch({
-  players,
-  teams,
-  actualPoints,
-  selectedIds = [],
-  mode = "inspect",
-  onPlayerClick,
-  onInspect,
-  compact = false,
+  players, teams, mode = "inspect", selectedIds = [], metric = "next", actualPoints, onSelect, onInspect,
 }: Props) {
   const teamMap = new Map(teams.map((team) => [team.id, team]));
   const starters = players.filter((item) => item.pick.position <= 11);
   const bench = players.filter((item) => item.pick.position > 11).sort((a, b) => a.pick.position - b.pick.position);
   const lines = [1, 2, 3, 4].map((type) => starters.filter((item) => item.player.element_type === type));
+  const tile = (item: SquadPitchPlayer) => (
+    <Tile
+      key={item.player.id}
+      item={item}
+      team={teamMap.get(item.player.team)}
+      mode={mode}
+      selected={selectedIds.includes(item.player.id)}
+      metric={metric}
+      actual={actualPoints?.[item.player.id]}
+      onSelect={onSelect}
+      onInspect={onInspect}
+    />
+  );
 
   return (
-    <section className={`${styles.pitchShell} ${compact ? styles.compact : ""}`} aria-label="FPL squad pitch">
-      <div className={styles.pitch}>
-        <div className={styles.halfway} />
-        <div className={styles.centreCircle} />
-        <div className={`${styles.box} ${styles.topBox}`} />
-        <div className={`${styles.box} ${styles.bottomBox}`} />
-        <div className={styles.formation}>
-          {lines.map((line, lineIndex) => (
-            <div className={styles.line} key={lineIndex} data-position={lineIndex + 1}>
-              {line.map((item) => (
-                <PlayerTile
-                  key={item.player.id}
-                  item={item}
-                  team={teamMap.get(item.player.team)}
-                  selected={selectedIds.includes(item.player.id)}
-                  mode={mode}
-                  actualPoints={actualPoints}
-                  onPlayerClick={onPlayerClick}
-                  onInspect={onInspect}
-                />
-              ))}
+    <div className={styles.wrap}>
+      <div className={styles.pitch} aria-label="Starting XI">
+        {lines.map((line, index) => (
+          <div className={styles.line} key={index}>{line.map(tile)}</div>
+        ))}
+      </div>
+      <div className={styles.bench} aria-label="Bench, in substitution order">
+        <span className={styles.benchLabel}>Bench</span>
+        <div className={styles.benchRow}>
+          {bench.map((item, index) => (
+            <div key={item.player.id} className={styles.benchSlot}>
+              <span className={styles.benchOrder}>{index === 0 ? "GK" : index}</span>
+              {tile(item)}
             </div>
           ))}
         </div>
       </div>
-
-      <div className={styles.benchSection}>
-        <div className={styles.benchHeading}>
-          <span>SUBSTITUTES</span>
-          <small>Bench order from your imported FPL squad</small>
-        </div>
-        <div className={styles.benchRow}>
-          {bench.map((item) => (
-            <PlayerTile
-              key={item.player.id}
-              item={item}
-              team={teamMap.get(item.player.team)}
-              selected={selectedIds.includes(item.player.id)}
-              mode={mode}
-              actualPoints={actualPoints}
-              onPlayerClick={onPlayerClick}
-              onInspect={onInspect}
-            />
-          ))}
-        </div>
-      </div>
-    </section>
+    </div>
   );
 }

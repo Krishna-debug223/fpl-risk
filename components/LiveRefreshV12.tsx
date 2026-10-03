@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef, type FormEvent } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { dashboardHref, dashboardView, type DashboardView as Tab } from "@/lib/navigation";
 
-import DecisionPreview from "./DecisionPreview";
 import SquadPitch, { type SquadPitchPlayer } from "./SquadPitch";
+import PlayerDetail, { type HorizonEvent } from "./dashboard/PlayerDetail";
+import {
+  chipStatus, compact, formatClock, formatDeadline, money, officialAvailability, positionShort,
+  pts, range, riskBadge, signed, teamDisplayName, timeUntil, toneBadge,
+} from "./dashboard/format";
 import styles from "./LiveRefreshV12.module.css";
 import type {
   BootstrapPayload,
@@ -19,7 +24,6 @@ import type { SportsbookPayload } from "@/lib/sportsbook";
 import {
   MODEL_VERSION,
   assessChips,
-  positionName,
   projectPlayer,
   recommendJointTransferPlan,
   recommendReplacements,
@@ -54,110 +58,44 @@ type LockedProjectionRow = {
   components: Partial<MarketProjection["components"]>;
 };
 type SquadItem = SquadPitchPlayer;
-type MarketSort =
-  | "one" | "three" | "five" | "value" | "price" | "risk" | "sharpe" | "ownership";
+type Horizon = "one" | "three" | "five";
+type MarketSort = "one" | "three" | "five" | "value" | "price" | "risk" | "sharpe" | "ownership";
 
-const decisionContextCopy: Record<RiskMode, { label: string; detail: string }> = {
-  protect: { label: "Protect rank", detail: "Prefer a tighter simulated range and a safer median when the downside matters most." },
-  balanced: { label: "Balanced", detail: "Blend expected points, uncertainty and fixture quality without leaning into either extreme." },
-  chase: { label: "Chase rank", detail: "Give controlled variance and high ceilings more weight when you need to make ground." },
-  mini: { label: "Mini-league", detail: "Keep the expected edge while giving differentials a measured upside preference." },
-};
+const SAMPLE_TEAM_ID = "1";
+const TRANSFER_HORIZON = 5;
 
-const money = (value: number | null | undefined) =>
-  value == null ? "—" : `£${(value / 10).toFixed(1)}m`;
-const compactNumber = (value: number) =>
-  new Intl.NumberFormat("en-GB", { notation: "compact", maximumFractionDigits: 1 }).format(value);
-const signedCompactNumber = (value: number) => {
-  if (value === 0) return "0";
-  return `${value > 0 ? "+" : "−"}${compactNumber(Math.abs(value))}`;
-};
-const signedPriceChange = (value: number | null | undefined) => {
-  if (value == null || !Number.isFinite(value) || value === 0) return "No move";
-  return `${value > 0 ? "+" : "−"}£${(Math.abs(value) / 10).toFixed(1)}m`;
-};
-const formatDataTimestamp = (value: string | null | undefined) => {
-  if (!value) return "Waiting for feed";
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "Waiting for feed";
-  return `${new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-  }).format(date)} UTC`;
-};
-const riskRank: Record<MarketProjection["risk"], number> = {
-  Low: 1,
-  Medium: 2,
-  High: 3,
-};
-const tabLabels: Record<Tab, string> = {
-  overview: "Overview",
-  team: "My Team",
-  transfer: "Transfers",
-  market: "Players",
-  model: "Model details",
+const rankingPreferences: Record<RiskMode, { label: string; detail: string }> = {
+  protect: { label: "Protect rank", detail: "Prefers replacements with a narrower outcome range." },
+  balanced: { label: "Balanced", detail: "Weighs expected points and uncertainty evenly." },
+  chase: { label: "Chase rank", detail: "Gives more weight to upside and tolerates a wider range." },
+  mini: { label: "Mini-league", detail: "Slight preference for less-owned upside. Does not use your league data." },
 };
 
-// The live FPL feed uses short display names for several clubs. Keep the
-// internal IDs unchanged, but expose names supporters can recognise when
-// searching the Player Market.
-const fullTeamNames: Record<string, string> = {
-  ARS: "Arsenal",
-  AVL: "Aston Villa",
-  BOU: "Bournemouth",
-  BRE: "Brentford",
-  BHA: "Brighton & Hove Albion",
-  CHE: "Chelsea",
-  COV: "Coventry City",
-  CRY: "Crystal Palace",
-  EVE: "Everton",
-  FUL: "Fulham",
-  HUL: "Hull City",
-  IPS: "Ipswich Town",
-  LEE: "Leeds United",
-  LIV: "Liverpool",
-  MCI: "Manchester City",
-  MUN: "Manchester United",
-  NEW: "Newcastle United",
-  NFO: "Nottingham Forest",
-  TOT: "Tottenham Hotspur",
-  SUN: "Sunderland",
+const sortLabels: Record<MarketSort, string> = {
+  five: "Expected points, 5 GW",
+  three: "Expected points, 3 GW",
+  one: "Expected points, next GW",
+  value: "Value (5 GW points per £m)",
+  sharpe: "Points-to-uncertainty, 5 GW",
+  price: "Price (high to low)",
+  risk: "Lowest risk, 5 GW",
+  ownership: "Ownership",
 };
 
-function teamDisplayName(team?: { name: string; short_name: string }) {
-  if (!team) return "";
-  return fullTeamNames[team.short_name] ?? team.name;
-}
+const chipNames: Record<string, string> = { wildcard: "Wildcard", freehit: "Free Hit", bboost: "Bench Boost", "3xc": "Triple Captain" };
 
-function availabilityLabel(player: FplPlayer) {
-  if (["u", "n"].includes(player.status)) return "Unavailable";
-  if (player.status === "s") return "Suspended";
-  if (player.status === "i")
-    return `${player.chance_of_playing_next_round ?? 20}%`;
-  if (player.status === "d")
-    return `${player.chance_of_playing_next_round ?? 65}%`;
-  return player.chance_of_playing_next_round == null
-    ? "Available"
-    : `${player.chance_of_playing_next_round}%`;
-}
-
-function chipTone(status: string) {
-  if (status === "PLAY") return styles.play;
-  if (status === "CONSIDER") return styles.consider;
-  if (status === "USED") return styles.used;
-  if (status === "UNAVAILABLE") return styles.unavailable;
-  return styles.hold;
-}
+const riskRank: Record<MarketProjection["risk"], number> = { Low: 1, Medium: 2, High: 3 };
+const horizonCount: Record<Horizon, number> = { one: 1, three: 3, five: 5 };
 
 export default function LiveRefreshV12() {
-  const whyDialogRef = useRef<HTMLElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = dashboardView(searchParams.toString());
-  const setTab = (view: Tab) => router.push(dashboardHref(view, searchParams.toString()), { scroll: false });
+  const setTab = useCallback(
+    (view: Tab) => router.push(dashboardHref(view, searchParams.toString()), { scroll: true }),
+    [router, searchParams],
+  );
+
   const [bootstrap, setBootstrap] = useState<BootstrapPayload | null>(null);
   const [fixtures, setFixtures] = useState<FplFixture[]>([]);
   const [history, setHistory] = useState<HistoricalPayload | null>(null);
@@ -165,38 +103,52 @@ export default function LiveRefreshV12() {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [feedError, setFeedError] = useState("");
+
   const [manager, setManager] = useState<ManagerPayload | null>(null);
+  const [isSample, setIsSample] = useState(false);
   const [teamId, setTeamId] = useState("");
   const [teamError, setTeamError] = useState("");
   const [loadingTeam, setLoadingTeam] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+
   const [selectedOut, setSelectedOut] = useState<number[]>([]);
   const [freeTransfers, setFreeTransfers] = useState(1);
-  const [whyPlayer, setWhyPlayer] = useState<ProjectionRow | null>(null);
+  const [decisionContext, setDecisionContext] = useState<RiskMode>("balanced");
+  const [detail, setDetail] = useState<{ row: ProjectionRow; horizon: Horizon } | null>(null);
+  const [teamMode, setTeamMode] = useState<"next" | "result">("next");
+
   const [marketQuery, setMarketQuery] = useState("");
   const [marketPosition, setMarketPosition] = useState(0);
-  const [marketTeamQuery, setMarketTeamQuery] = useState("");
+  const [marketTeam, setMarketTeam] = useState(0);
   const [marketMaxPrice, setMarketMaxPrice] = useState<number | null>(null);
   const [marketSort, setMarketSort] = useState<MarketSort>("five");
-  const [marketVisibleCount, setMarketVisibleCount] = useState(40);
-  const [selectedMarketId, setSelectedMarketId] = useState<number | null>(null);
-  const [decisionContext, setDecisionContext] = useState<RiskMode>("balanced");
+  const [marketHorizon, setMarketHorizon] = useState<Horizon>("five");
+  const [marketVisibleCount, setMarketVisibleCount] = useState(50);
+
   const [livePoints, setLivePoints] = useState<Record<number, { points: number; played: boolean }>>({});
   const [lockedEventId, setLockedEventId] = useState<number | null>(null);
   const [lockedProjectionRows, setLockedProjectionRows] = useState<Record<number, LockedProjectionRow>>({});
 
+  // ---------- Guest preferences (device-local) ----------
+
   useEffect(() => {
     const saved = window.localStorage.getItem("fpl-risk-decision-context") as RiskMode | null;
-    if (saved && saved in decisionContextCopy) setDecisionContext(saved);
+    if (saved && saved in rankingPreferences) setDecisionContext(saved);
+    const savedFt = Number(window.localStorage.getItem("fpl-risk-free-transfers"));
+    if (window.localStorage.getItem("fpl-risk-free-transfers") != null && Number.isInteger(savedFt) && savedFt >= 0 && savedFt <= 5) setFreeTransfers(savedFt);
   }, []);
 
-  useEffect(() => {
-    window.localStorage.setItem("fpl-risk-decision-context", decisionContext);
-  }, [decisionContext]);
+  function chooseDecisionContext(mode: RiskMode) {
+    setDecisionContext(mode);
+    window.localStorage.setItem("fpl-risk-decision-context", mode);
+  }
 
-  useEffect(() => {
-    const saved = Number(window.localStorage.getItem("fpl-risk-free-transfers"));
-    if (Number.isInteger(saved) && saved >= 0 && saved <= 5) setFreeTransfers(saved);
-  }, []);
+  function chooseFreeTransfers(count: number) {
+    setFreeTransfers(count);
+    window.localStorage.setItem("fpl-risk-free-transfers", String(count));
+  }
+
+  // ---------- Public FPL feeds ----------
 
   useEffect(() => {
     let cancelled = false;
@@ -204,92 +156,57 @@ export default function LiveRefreshV12() {
       setLoading(true);
       setFeedError("");
       try {
-        const [bootstrapResponse, fixtureResponse, sportsbookResponse] =
-          await Promise.all([
-            fetch("/api/fpl/bootstrap", { cache: "no-store" }),
-            fetch("/api/fpl/fixtures", { cache: "no-store" }),
-            fetch("/api/sportsbook", { cache: "no-store" }),
-          ]);
-        if (!bootstrapResponse.ok || !fixtureResponse.ok)
-          throw new Error("Live FPL feed unavailable");
-        const bootstrapData =
-          (await bootstrapResponse.json()) as BootstrapPayload;
-        const fixtureData = (await fixtureResponse.json()) as {
-          fixtures: FplFixture[];
-        };
+        const [bootstrapResponse, fixtureResponse, sportsbookResponse] = await Promise.all([
+          fetch("/api/fpl/bootstrap", { cache: "no-store" }),
+          fetch("/api/fpl/fixtures", { cache: "no-store" }),
+          fetch("/api/sportsbook", { cache: "no-store" }),
+        ]);
+        if (!bootstrapResponse.ok || !fixtureResponse.ok) throw new Error("Live FPL feed unavailable");
+        const bootstrapData = (await bootstrapResponse.json()) as BootstrapPayload;
+        const fixtureData = (await fixtureResponse.json()) as { fixtures: FplFixture[] };
         if (!cancelled) {
           setBootstrap(bootstrapData);
           setFixtures(fixtureData.fixtures ?? []);
-          if (sportsbookResponse.ok)
-            setSportsbook(
-              (await sportsbookResponse.json()) as SportsbookPayload,
-            );
+          if (sportsbookResponse.ok) setSportsbook((await sportsbookResponse.json()) as SportsbookPayload);
         }
         try {
-          const historicalResponse = await fetch("/api/fpl/history", {
-            cache: "no-store",
-          });
-          if (historicalResponse.ok && !cancelled)
-            setHistory((await historicalResponse.json()) as HistoricalPayload);
+          const historicalResponse = await fetch("/api/fpl/history", { cache: "no-store" });
+          if (historicalResponse.ok && !cancelled) setHistory((await historicalResponse.json()) as HistoricalPayload);
         } catch {
           // Historical priors are optional. The current-season model remains usable without them.
         }
       } catch {
-        if (!cancelled)
-          setFeedError(
-            "Live FPL data is temporarily unavailable. Refresh in a moment.",
-          );
+        if (!cancelled) setFeedError("FPL data could not be loaded. Older data is kept if it was already loaded; try Refresh in a moment.");
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
     void load();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [refreshKey]);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const queryTeam = params.get("team")?.trim() ?? "";
-    if (/^\d+$/.test(queryTeam)) {
-      setTeamId(queryTeam);
-      window.localStorage.setItem("fpl-risk-team-id", queryTeam);
-    }
-  }, []);
-
-  const players = bootstrap?.elements ?? [];
-  const teams = bootstrap?.teams ?? [];
-  const events = bootstrap?.events ?? [];
+  const players = useMemo(() => bootstrap?.elements ?? [], [bootstrap]);
+  const teams = useMemo(() => bootstrap?.teams ?? [], [bootstrap]);
+  const events = useMemo(() => bootstrap?.events ?? [], [bootstrap]);
   const liveEventId = events.find((event) => event.is_current)?.id ?? events.find((event) => event.is_next)?.id;
   const transferEventId = events.find((event) => event.is_next)?.id ?? events.find((event) => event.is_current)?.id;
   const historicalProfiles = history?.players;
+  const nextEvent = events.find((event) => event.is_next) ?? events.find((event) => event.is_current);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function hydrateSavedTeamId() {
-      let accountTeamId = "";
-      try {
-        const { data: { user } } = await createSupabaseClient().auth.getUser();
-        const metadataTeamId = user?.user_metadata?.fpl_team_id;
-        if (typeof metadataTeamId === "string" && /^\d+$/.test(metadataTeamId.trim())) {
-          accountTeamId = metadataTeamId.trim();
-        }
-      } catch {
-        // Auth is optional; fall back to the browser's saved guest preference.
-      }
-      if (cancelled) return;
-      const savedTeamId = accountTeamId || window.localStorage.getItem("fpl-risk-team-id")?.trim() || "";
-      if (savedTeamId && /^\d+$/.test(savedTeamId)) {
-        setTeamId((current) => current || savedTeamId);
-        window.localStorage.setItem("fpl-risk-team-id", savedTeamId);
-      }
-    }
-    void hydrateSavedTeamId();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // The projection engine forecasts the next Gameweeks that still have
+  // unfinished fixtures. Name them so every horizon has a real label.
+  const projectionEvents = useMemo<HorizonEvent[]>(() => {
+    const ids = [...new Set(fixtures.filter((f) => !f.finished && f.event != null).map((f) => f.event as number))]
+      .sort((a, b) => a - b)
+      .slice(0, 5);
+    return ids.map((id) => ({ id, name: events.find((event) => event.id === id)?.name ?? `Gameweek ${id}` }));
+  }, [events, fixtures]);
+  const horizonSpan = (count: number) => {
+    const slice = projectionEvents.slice(0, count);
+    if (!slice.length) return `${count} GW`;
+    if (slice.length === 1) return `GW${slice[0].id}`;
+    return `GW${slice[0].id}–${slice[slice.length - 1].id}`;
+  };
 
   useEffect(() => {
     if (!liveEventId) return;
@@ -298,15 +215,15 @@ export default function LiveRefreshV12() {
       try {
         const response = await fetch(`/api/fpl/live/${liveEventId}`, { cache: "no-store" });
         if (!response.ok) return;
-        const payload = await response.json() as LivePointsPayload;
+        const payload = (await response.json()) as LivePointsPayload;
         if (cancelled) return;
         setLivePoints(Object.fromEntries(payload.elements.map((player) => [player.id, { points: player.points, played: player.played }])));
       } catch {
-        // Keep the last successful snapshot; live points are an enhancement to the model view.
+        // Keep the last successful snapshot.
       }
     };
     void refreshLivePoints();
-    const interval = window.setInterval(refreshLivePoints, 60 * 1_000);
+    const interval = window.setInterval(refreshLivePoints, 60_000);
     return () => { cancelled = true; window.clearInterval(interval); };
   }, [liveEventId, refreshKey]);
 
@@ -321,7 +238,7 @@ export default function LiveRefreshV12() {
       try {
         const response = await fetch(`/modelbook/data/gw${liveEventId}-locked.json`, { cache: "no-store" });
         if (!response.ok) throw new Error("No locked snapshot");
-        const artifact = await response.json() as { gameweek?: number; snapshot?: { gameweek?: number; rows?: LockedProjectionRow[] }; rows?: LockedProjectionRow[] };
+        const artifact = (await response.json()) as { gameweek?: number; snapshot?: { gameweek?: number; rows?: LockedProjectionRow[] }; rows?: LockedProjectionRow[] };
         const snapshot = artifact.snapshot ?? artifact;
         const eventId = Number(snapshot.gameweek ?? artifact.gameweek);
         const rows = snapshot.rows ?? [];
@@ -339,206 +256,95 @@ export default function LiveRefreshV12() {
     void loadLockedSnapshot();
     return () => { cancelled = true; };
   }, [liveEventId, refreshKey]);
-  const marketPriceFloor = useMemo(() => {
-    if (!players.length) return 40;
-    const liveMinimum = Math.min(...players.map((player) => player.now_cost));
-    return Math.max(0, Math.floor(liveMinimum / 5) * 5);
-  }, [players]);
-  const marketPriceCeiling = useMemo(() => {
-    if (!players.length) return 150;
-    const liveMaximum = Math.max(...players.map((player) => player.now_cost));
-    return Math.max(150, Math.ceil(liveMaximum / 5) * 5);
-  }, [players]);
-  const effectiveMarketMaxPrice = marketMaxPrice ?? marketPriceCeiling;
-  const teamMap = useMemo(
-    () => new Map(teams.map((team) => [team.id, team])),
-    [teams],
-  );
-  const playerMap = useMemo(
-    () => new Map(players.map((player) => [player.id, player])),
-    [players],
-  );
+
+  // ---------- Projections ----------
+
+  const teamMap = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
+  const playerMap = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
 
   const projectionRows = useMemo<ProjectionRow[]>(() => {
     if (!bootstrap || !fixtures.length) return [];
     return players.map((player) => {
-      const one = projectPlayer(
-        player,
-        fixtures,
-        teams,
-        1,
-        historicalProfiles,
-        sportsbook,
-        undefined,
-        true,
-      );
-      const three = projectPlayer(
-        player,
-        fixtures,
-        teams,
-        3,
-        historicalProfiles,
-        sportsbook,
-        undefined,
-        true,
-      );
-      const five = projectPlayer(
-        player,
-        fixtures,
-        teams,
-        5,
-        historicalProfiles,
-        sportsbook,
-        undefined,
-        true,
-      );
+      const one = projectPlayer(player, fixtures, teams, 1, historicalProfiles, sportsbook, undefined, true);
+      const three = projectPlayer(player, fixtures, teams, 3, historicalProfiles, sportsbook, undefined, true);
+      const five = projectPlayer(player, fixtures, teams, 5, historicalProfiles, sportsbook, undefined, true);
+      // Value keeps a £3.5m floor on the denominator, as the engine always has.
       const price = Math.max(player.now_cost / 10, 3.5);
       return { player, one, three, five, value: five.expected / price };
     });
   }, [bootstrap, fixtures, historicalProfiles, players, sportsbook, teams]);
 
-  const projectionMap = useMemo(
-    () => new Map(projectionRows.map((row) => [row.player.id, row])),
-    [projectionRows],
-  );
+  const projectionMap = useMemo(() => new Map(projectionRows.map((row) => [row.player.id, row])), [projectionRows]);
   const projectableMarket = useMemo(
-    () =>
-      projectionRows
-        .filter(({ player }) => !["u", "n", "s"].includes(player.status))
-        .filter(({ five }) => five.expected > 0.1),
+    () => projectionRows
+      .filter(({ player }) => !["u", "n", "s"].includes(player.status))
+      .filter(({ five }) => five.expected > 0.1),
     [projectionRows],
   );
-  const bestNow = useMemo(
-    () =>
-      [...projectableMarket]
-        .sort((a, b) => b.one.expected - a.one.expected)
-        .slice(0, 10),
+  const topNext = useMemo(
+    () => [...projectableMarket].sort((a, b) => b.one.expected - a.one.expected).slice(0, 8),
     [projectableMarket],
   );
 
+  const marketPriceFloor = useMemo(() => (players.length ? Math.max(0, Math.floor(Math.min(...players.map((p) => p.now_cost)) / 5) * 5) : 40), [players]);
+  const marketPriceCeiling = useMemo(() => (players.length ? Math.max(150, Math.ceil(Math.max(...players.map((p) => p.now_cost)) / 5) * 5) : 150), [players]);
+  const effectiveMarketMaxPrice = marketMaxPrice ?? marketPriceCeiling;
+
+  // ---------- Imported squad ----------
+
   const squad = useMemo<SquadItem[]>(
-    () =>
-      manager?.picks
-        .map((pick) => {
-          const player = playerMap.get(pick.element);
-          const row = player ? projectionMap.get(player.id) : null;
-          return player && row
-            ? { pick, player, one: row.one, three: row.three, five: row.five }
-            : null;
-        })
-        .filter((item): item is SquadItem => Boolean(item)) ?? [],
+    () => manager?.picks
+      .map((pick) => {
+        const player = playerMap.get(pick.element);
+        const row = player ? projectionMap.get(player.id) : null;
+        return player && row ? { pick, player, one: row.one, three: row.three, five: row.five } : null;
+      })
+      .filter((item): item is SquadItem => Boolean(item)) ?? [],
     [manager, playerMap, projectionMap],
   );
 
-  const hasLockedScoringComparison = Boolean(
-    manager && lockedEventId === manager.eventId && Object.keys(lockedProjectionRows).length,
-  );
+  const hasLockedScoringComparison = Boolean(manager && lockedEventId === manager.eventId && Object.keys(lockedProjectionRows).length);
   const scoringSquad = useMemo<SquadItem[]>(() => {
     if (!manager || lockedEventId !== manager.eventId) return squad;
     return squad.map((item) => {
       const locked = lockedProjectionRows[item.player.id];
       if (!locked) return item;
-      const existingBands = item.one.distribution?.bands ?? { bust: 0, floor: 0, middle: 0, haul: 0 };
-      return {
-        ...item,
-        one: {
-          ...item.one,
-          expected: locked.projected,
-          volatility: locked.volatility,
-          risk: locked.risk,
-          confidence: locked.confidence,
-          dataQuality: locked.dataQuality,
-          fixtureLabels: [locked.fixture],
-          fixtureMeans: [locked.projected],
-          fixtureContexts: [],
-          components: { ...item.one.components, ...locked.components },
-          distribution: {
-            p10: locked.floor,
-            median: locked.median,
-            p90: locked.ceiling,
-            standardDeviation: locked.volatility,
-            sharpe: locked.sharpe,
-            bands: locked.probabilities ?? existingBands,
-            simulations: locked.simulations ?? item.one.distribution?.simulations ?? 0,
-          },
-        },
-      };
+      return { ...item, one: { ...item.one, expected: locked.projected, fixtureLabels: [locked.fixture] } };
     });
   }, [lockedEventId, lockedProjectionRows, manager, squad]);
 
-  // Transfer Lab is a next-Gameweek decision surface. Re-project the one-GW
-  // tile view against the next event so each player's fixture matches the
-  // week the user is deciding on, while the five-GW optimizer remains intact.
-  const transferSquad = useMemo<SquadItem[]>(
-    () => {
-      if (!transferEventId) return squad;
-      return squad.map((item) => ({
-        ...item,
-        one: projectPlayer(
-          item.player,
-          fixtures,
-          teams,
-          1,
-          historicalProfiles,
-          sportsbook,
-          [transferEventId],
-          true,
-        ),
-      }));
-    },
-    [fixtures, historicalProfiles, squad, sportsbook, teams, transferEventId],
-  );
+  // Decisions are about the next deadline, so the one-Gameweek view of the
+  // squad is projected against that event specifically.
+  const nextSquad = useMemo<SquadItem[]>(() => {
+    if (!transferEventId) return squad;
+    return squad.map((item) => ({
+      ...item,
+      one: projectPlayer(item.player, fixtures, teams, 1, historicalProfiles, sportsbook, [transferEventId], true),
+    }));
+  }, [fixtures, historicalProfiles, squad, sportsbook, teams, transferEventId]);
 
   const squadPlayers = useMemo(() => squad.map((item) => item.player), [squad]);
+  // Public FPL picks do not include personal selling prices, so the listed
+  // price is used whenever the pick has none. This is disclosed in the UI.
   const sellingPrices = useMemo(
-    () =>
-      new Map(
-        squad.map((item) => [
-          item.player.id,
-          item.pick.selling_price ?? item.player.now_cost,
-        ]),
-      ),
+    () => new Map(squad.map((item) => [item.player.id, item.pick.selling_price ?? item.player.now_cost])),
     [squad],
   );
-  const starters = useMemo(
-    () => squad.filter((item) => item.pick.position <= 11),
-    [squad],
-  );
-  const bench = useMemo(
-    () => squad.filter((item) => item.pick.position > 11),
-    [squad],
-  );
+  const usesListedPrices = squad.some((item) => item.pick.selling_price == null);
+  const starters = useMemo(() => squad.filter((item) => item.pick.position <= 11), [squad]);
+  const bench = useMemo(() => squad.filter((item) => item.pick.position > 11), [squad]);
+  const nextStarters = useMemo(() => nextSquad.filter((item) => item.pick.position <= 11), [nextSquad]);
 
-  const teamOneGw = useMemo(
-    () =>
-      starters.reduce(
-        (total, item) =>
-          total + item.one.expected * Math.max(item.pick.multiplier, 1),
-        0,
-      ),
-    [starters],
+  const xiNextWithCaptain = useMemo(
+    () => nextStarters.reduce((total, item) => total + item.one.expected * Math.max(item.pick.multiplier, 1), 0),
+    [nextStarters],
   );
-  const teamFiveGw = useMemo(
-    () => starters.reduce((total, item) => total + item.five.expected, 0),
-    [starters],
-  );
-  const teamRisk = useMemo(() => {
-    if (!starters.length) return "—";
-    const averageCv =
-      starters.reduce(
-        (sum, item) =>
-          sum + item.one.volatility / Math.max(item.one.expected, 1),
-        0,
-      ) / starters.length;
-    return averageCv < 0.52 ? "Low" : averageCv < 0.7 ? "Medium" : "High";
-  }, [starters]);
+  const xiFive = useMemo(() => starters.reduce((total, item) => total + item.five.expected, 0), [starters]);
+  const captainPick = squad.find((item) => item.pick.is_captain);
+
   const portfolioRisk = useMemo(
     () => analyzePortfolioRisk(
-      starters.map((item) => ({
-        player: item.player,
-        projection: item.five,
-        weight: Math.max(item.pick.multiplier, 1),
-      })),
+      starters.map((item) => ({ player: item.player, projection: item.five, weight: Math.max(item.pick.multiplier, 1) })),
       teams,
     ),
     [starters, teams],
@@ -546,46 +352,26 @@ export default function LiveRefreshV12() {
 
   const autoRecommendation = useMemo<Recommendation | null>(() => {
     if (!manager || !squadPlayers.length) return null;
-    const candidates = squadPlayers.flatMap((outgoing) =>
-      recommendReplacements({
-        players,
-        squad: squadPlayers,
-        fixtures,
-        teams,
-        outgoing,
-        bank: manager.bank ?? 0,
-        sellingPrice: sellingPrices.get(outgoing.id),
-        horizon: 5,
-        limit: 1,
-        history: historicalProfiles,
-        freeTransfers,
-        sportsbook,
-        riskMode: decisionContext,
-      }),
-    );
+    const candidates = squadPlayers.flatMap((outgoing) => recommendReplacements({
+      players,
+      squad: squadPlayers,
+      fixtures,
+      teams,
+      outgoing,
+      bank: manager.bank ?? 0,
+      sellingPrice: sellingPrices.get(outgoing.id),
+      horizon: TRANSFER_HORIZON,
+      limit: 1,
+      history: historicalProfiles,
+      freeTransfers,
+      sportsbook,
+      riskMode: decisionContext,
+    }));
     if (!candidates.length) return null;
     const best = candidates.sort((a, b) => b.score - a.score)[0];
-    const minimumEdge =
-      freeTransfers === 0
-        ? 0.9
-        : freeTransfers >= 5
-          ? 0.3
-          : freeTransfers >= 2
-            ? 0.55
-            : 0.9;
+    const minimumEdge = freeTransfers === 0 ? 0.9 : freeTransfers >= 5 ? 0.3 : freeTransfers >= 2 ? 0.55 : 0.9;
     return best.expectedGain > minimumEdge && best.score > 0.15 ? best : null;
-  }, [
-    fixtures,
-    freeTransfers,
-    historicalProfiles,
-    manager,
-    players,
-    sellingPrices,
-    sportsbook,
-    squadPlayers,
-    teams,
-    decisionContext,
-  ]);
+  }, [decisionContext, fixtures, freeTransfers, historicalProfiles, manager, players, sellingPrices, sportsbook, squadPlayers, teams]);
 
   const chipAdvice = useMemo(() => {
     if (!manager || !bootstrap || !squad.length) return [];
@@ -601,20 +387,7 @@ export default function LiveRefreshV12() {
       chipsUsed: manager.chipsUsed,
       freeTransfers,
     });
-  }, [
-    bench,
-    bootstrap,
-    events,
-    fixtures,
-    freeTransfers,
-    historicalProfiles,
-    manager,
-    players,
-    squad,
-    squadPlayers,
-    starters,
-    teams,
-  ]);
+  }, [bench, bootstrap, events, fixtures, freeTransfers, historicalProfiles, manager, players, squad, squadPlayers, starters, teams]);
 
   const jointPlan = useMemo(() => {
     if (!manager || !selectedOut.length) return null;
@@ -629,20 +402,9 @@ export default function LiveRefreshV12() {
       freeTransfers,
       history: historicalProfiles,
       sportsbook,
-      horizon: 5,
+      horizon: TRANSFER_HORIZON,
     });
-  }, [
-    fixtures,
-    freeTransfers,
-    historicalProfiles,
-    manager,
-    players,
-    selectedOut,
-    sellingPrices,
-    sportsbook,
-    squadPlayers,
-    teams,
-  ]);
+  }, [fixtures, freeTransfers, historicalProfiles, manager, players, selectedOut, sellingPrices, sportsbook, squadPlayers, teams]);
 
   const singleAlternatives = useMemo(() => {
     if (!manager || selectedOut.length !== 1) return [];
@@ -656,46 +418,33 @@ export default function LiveRefreshV12() {
       outgoing,
       bank: manager.bank ?? 0,
       sellingPrice: sellingPrices.get(outgoing.id),
-      horizon: 5,
-      limit: 4,
+      horizon: TRANSFER_HORIZON,
+      limit: 5,
       history: historicalProfiles,
       freeTransfers,
       sportsbook,
       riskMode: decisionContext,
     });
-  }, [
-    fixtures,
-    freeTransfers,
-    historicalProfiles,
-    manager,
-    playerMap,
-    players,
-    selectedOut,
-    sellingPrices,
-    sportsbook,
-    squadPlayers,
-    teams,
-    decisionContext,
-  ]);
+  }, [decisionContext, fixtures, freeTransfers, historicalProfiles, manager, playerMap, players, selectedOut, sellingPrices, sportsbook, squadPlayers, teams]);
+
+  const captainOptions = useMemo(
+    () => [...nextStarters].sort((a, b) => b.one.expected - a.one.expected).slice(0, 3),
+    [nextStarters],
+  );
+  const availabilityFlags = useMemo(
+    () => squad.filter((item) => officialAvailability(item.player).flagged),
+    [squad],
+  );
+  const weakest = useMemo(() => [...squad].sort((a, b) => a.five.expected - b.five.expected).slice(0, 3), [squad]);
+
+  // ---------- Player research ----------
 
   const marketRows = useMemo(() => {
     const query = marketQuery.trim().toLowerCase();
-    const teamQuery = marketTeamQuery.trim().toLowerCase();
     const filtered = projectableMarket.filter(({ player }) => {
-      if (
-        query &&
-        !`${player.web_name} ${player.first_name} ${player.second_name}`
-          .toLowerCase()
-          .includes(query)
-      )
-        return false;
-      if (marketPosition && player.element_type !== marketPosition)
-        return false;
-      if (
-        teamQuery &&
-        !teamDisplayName(teamMap.get(player.team)).toLowerCase().includes(teamQuery)
-      )
-        return false;
+      if (query && !`${player.web_name} ${player.first_name} ${player.second_name}`.toLowerCase().includes(query)) return false;
+      if (marketPosition && player.element_type !== marketPosition) return false;
+      if (marketTeam && player.team !== marketTeam) return false;
       if (player.now_cost > effectiveMarketMaxPrice) return false;
       return true;
     });
@@ -705,122 +454,48 @@ export default function LiveRefreshV12() {
       if (marketSort === "five") return b.five.expected - a.five.expected;
       if (marketSort === "value") return b.value - a.value;
       if (marketSort === "price") return b.player.now_cost - a.player.now_cost;
-      if (marketSort === "risk")
-        return riskRank[a.five.risk] - riskRank[b.five.risk];
-      if (marketSort === "sharpe")
-        return (b.five.distribution?.sharpe ?? 0) - (a.five.distribution?.sharpe ?? 0);
-      return (
-        Number.parseFloat(b.player.selected_by_percent || "0") -
-        Number.parseFloat(a.player.selected_by_percent || "0")
-      );
+      if (marketSort === "risk") return riskRank[a.five.risk] - riskRank[b.five.risk] || b.five.expected - a.five.expected;
+      if (marketSort === "sharpe") return (b.five.distribution?.sharpe ?? 0) - (a.five.distribution?.sharpe ?? 0);
+      return Number.parseFloat(b.player.selected_by_percent || "0") - Number.parseFloat(a.player.selected_by_percent || "0");
     });
-  }, [
-    effectiveMarketMaxPrice,
-    marketPosition,
-    marketQuery,
-    marketSort,
-    marketTeamQuery,
-    projectableMarket,
-    teamMap,
-  ]);
+  }, [effectiveMarketMaxPrice, marketPosition, marketQuery, marketSort, marketTeam, projectableMarket]);
+  const displayedMarketRows = useMemo(() => marketRows.slice(0, marketVisibleCount), [marketRows, marketVisibleCount]);
+  const filtersActive = Boolean(marketQuery || marketPosition || marketTeam || marketMaxPrice != null);
 
-  const marketLeaders = useMemo(() => {
-    const topExpected = marketRows[0] ?? null;
-    const topSharpe = [...marketRows].sort(
-      (a, b) => (b.five.distribution?.sharpe ?? 0) - (a.five.distribution?.sharpe ?? 0),
-    )[0] ?? null;
-    const topCeiling = [...marketRows].sort(
-      (a, b) => (b.one.distribution?.p90 ?? 0) - (a.one.distribution?.p90 ?? 0),
-    )[0] ?? null;
-    const bestValue = [...marketRows].sort((a, b) => b.value - a.value)[0] ?? null;
-    return { topExpected, topSharpe, topCeiling, bestValue };
-  }, [marketRows]);
+  function resetFilters() {
+    setMarketQuery("");
+    setMarketPosition(0);
+    setMarketTeam(0);
+    setMarketMaxPrice(null);
+    setMarketVisibleCount(50);
+  }
 
+  // Market signals always describe the whole player list, never the filtered view.
   const marketSignals = useMemo(() => {
-    const priceRiser = [...marketRows]
-      .filter(({ player }) => Number.isFinite(player.cost_change_event) && (player.cost_change_event ?? 0) > 0)
-      .sort((a, b) => (b.player.cost_change_event ?? 0) - (a.player.cost_change_event ?? 0))[0] ?? null;
-    const priceFaller = [...marketRows]
-      .filter(({ player }) => Number.isFinite(player.cost_change_event) && (player.cost_change_event ?? 0) < 0)
-      .sort((a, b) => (a.player.cost_change_event ?? 0) - (b.player.cost_change_event ?? 0))[0] ?? null;
-    const transferLeader = [...marketRows]
-      .sort((a, b) => {
-        const netB = (b.player.transfers_in_event ?? 0) - (b.player.transfers_out_event ?? 0);
-        const netA = (a.player.transfers_in_event ?? 0) - (a.player.transfers_out_event ?? 0);
-        return netB - netA;
-      })[0] ?? null;
-    const haulLeader = [...marketRows]
-      .sort((a, b) => (b.one.distribution?.bands.haul ?? 0) - (a.one.distribution?.bands.haul ?? 0))[0] ?? null;
-    const gameweekLeader = [...marketRows]
-      .filter(({ player }) => Number.isFinite(player.event_points))
-      .sort((a, b) => (b.player.event_points ?? 0) - (a.player.event_points ?? 0))[0] ?? null;
-    const gameweekRank = gameweekLeader
-      ? [...marketRows]
-          .filter(({ player }) => Number.isFinite(player.event_points))
-          .sort((a, b) => (b.player.event_points ?? 0) - (a.player.event_points ?? 0))
-          .findIndex(({ player }) => player.id === gameweekLeader.player.id) + 1
-      : null;
-    return { priceRiser, priceFaller, transferLeader, haulLeader, gameweekLeader, gameweekRank };
-  }, [marketRows]);
+    const all = projectionRows;
+    const byDesc = (score: (row: ProjectionRow) => number) => [...all].sort((a, b) => score(b) - score(a))[0] ?? null;
+    const riser = byDesc((row) => row.player.cost_change_event ?? 0);
+    const faller = byDesc((row) => -(row.player.cost_change_event ?? 0));
+    const inflow = byDesc((row) => (row.player.transfers_in_event ?? 0) - (row.player.transfers_out_event ?? 0));
+    const outflow = byDesc((row) => (row.player.transfers_out_event ?? 0) - (row.player.transfers_in_event ?? 0));
+    const haul = [...projectableMarket].sort((a, b) => (b.one.distribution?.bands.haul ?? 0) - (a.one.distribution?.bands.haul ?? 0))[0] ?? null;
+    const scorer = byDesc((row) => row.player.event_points ?? -1);
+    return {
+      riser: riser && (riser.player.cost_change_event ?? 0) > 0 ? riser : null,
+      faller: faller && (faller.player.cost_change_event ?? 0) < 0 ? faller : null,
+      inflow,
+      outflow,
+      haul,
+      scorer: scorer && Number.isFinite(scorer.player.event_points) ? scorer : null,
+    };
+  }, [projectableMarket, projectionRows]);
 
-  const selectedMarketRow = useMemo(
-    () =>
-      marketRows.find((row) => row.player.id === selectedMarketId) ??
-      marketLeaders.topExpected,
-    [marketLeaders.topExpected, marketRows, selectedMarketId],
-  );
-  const displayedMarketRows = useMemo(
-    () => marketRows.slice(0, marketVisibleCount),
-    [marketRows, marketVisibleCount],
-  );
+  // ---------- Team import ----------
 
-  const riskNotes = useMemo(() => {
-    if (!manager) return [];
-    const notes: Array<{
-      title: string;
-      detail: string;
-      tone: "good" | "warn" | "neutral";
-    }> = [];
-    const availabilityConcerns = squad.filter((item) =>
-      ["i", "d", "s", "u", "n"].includes(item.player.status),
-    );
-    notes.push({
-      title: availabilityConcerns.length
-        ? `${availabilityConcerns.length} availability flag${availabilityConcerns.length === 1 ? "" : "s"}`
-        : "Availability looks clean",
-      detail: availabilityConcerns.length
-        ? availabilityConcerns
-            .map((item) => item.player.web_name)
-            .slice(0, 4)
-            .join(", ")
-        : "No imported squad player currently carries a major public availability flag.",
-      tone: availabilityConcerns.length ? "warn" : "good",
-    });
-    const weak = [...squad].sort(
-      (a, b) => a.five.expected - b.five.expected,
-    )[0];
-    if (weak)
-      notes.push({
-        title: `${weak.player.web_name} is the weakest 5-GW projection`,
-        detail: `${weak.five.expected.toFixed(1)} xPts over five Gameweeks. Transfer Lab can compare legal upgrades.`,
-        tone: "neutral",
-      });
-    const captain = [...starters].sort(
-      (a, b) => b.one.expected - a.one.expected,
-    )[0];
-    if (captain)
-      notes.push({
-        title: `${captain.player.web_name} leads captaincy`,
-        detail: `${captain.one.expected.toFixed(1)} one-GW xPts before the captain multiplier.`,
-        tone: "good",
-      });
-    return notes;
-  }, [manager, squad, starters]);
-
-  async function loadTeam(teamIdOverride = teamId) {
-    const requestedTeamId = teamIdOverride.trim();
-    if (!/^\d+$/.test(requestedTeamId)) {
-      setTeamError("Enter the numeric Team ID from your FPL URL.");
+  async function loadTeam(requested: string, options: { sample?: boolean } = {}) {
+    const requestedTeamId = requested.trim();
+    if (!/^\d{1,12}$/.test(requestedTeamId)) {
+      setTeamError("Team IDs are numbers only, for example 123456. Copy it from your FPL team page address.");
       return;
     }
     setLoadingTeam(true);
@@ -832,23 +507,33 @@ export default function LiveRefreshV12() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ teamId: requestedTeamId }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not import team");
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 429) {
+        const wait = Number(response.headers.get("Retry-After"));
+        throw new Error(`Too many imports in a short time. Try again${Number.isFinite(wait) && wait > 0 ? ` in ${wait} seconds` : " shortly"}.`);
+      }
+      if (!response.ok) throw new Error(data.error || "Could not import that team.");
+      const sample = Boolean(options.sample);
       setManager(data as ManagerPayload);
+      setIsSample(sample);
       setSelectedOut([]);
-      window.localStorage.setItem("fpl-risk-team-id", requestedTeamId);
-      // A reload or a trip through the planner should reopen this squad.
-      // Read the latest view in case navigation changed during the request.
+      setShowImport(false);
+      setTeamId(sample ? "" : requestedTeamId);
+      if (!sample) window.localStorage.setItem("fpl-risk-team-id", requestedTeamId);
+      // Keep the squad in the URL so reloads and navigation reopen it.
       if (window.location.pathname === "/dashboard") {
-        const currentParams = new URLSearchParams(window.location.search);
-        currentParams.set("team", requestedTeamId);
-        if (requestedTeamId !== "1") currentParams.delete("demo");
-        router.replace(dashboardHref(dashboardView(currentParams.toString()), currentParams.toString()), { scroll: false });
+        const params = new URLSearchParams(window.location.search);
+        if (sample) {
+          params.set("demo", "1");
+          params.delete("team");
+        } else {
+          params.set("team", requestedTeamId);
+          params.delete("demo");
+        }
+        router.replace(dashboardHref(dashboardView(params.toString()), params.toString()), { scroll: false });
       }
     } catch (error) {
-      setTeamError(
-        error instanceof Error ? error.message : "Could not import that team.",
-      );
+      setTeamError(error instanceof Error ? error.message : "Could not import that team.");
     } finally {
       setLoadingTeam(false);
     }
@@ -856,1597 +541,968 @@ export default function LiveRefreshV12() {
 
   function importTeam(event: FormEvent) {
     event.preventDefault();
-    void loadTeam();
+    void loadTeam(teamId);
   }
 
   function refreshDashboard() {
     setRefreshKey((value) => value + 1);
-    if (manager && /^\d+$/.test(teamId.trim())) void loadTeam(teamId);
+    if (manager) void loadTeam(String(manager.id), { sample: isSample });
   }
 
+  // Entry: ?demo=1 opens the sample, ?team= opens that squad, otherwise the
+  // remembered Team ID (account first, then this device) is reopened.
   useEffect(() => {
+    let cancelled = false;
     const params = new URLSearchParams(window.location.search);
     const queryTeam = params.get("team")?.trim() ?? "";
-    const isDemo = params.get("demo") === "1";
-    const demoTeam = "1";
-    if (isDemo && !/^\d+$/.test(queryTeam)) {
-      setTeamId(demoTeam);
-      void loadTeam(demoTeam);
-    } else if (/^\d+$/.test(queryTeam)) {
-      void loadTeam(queryTeam);
+    if (params.get("demo") === "1" && !/^\d+$/.test(queryTeam)) {
+      void loadTeam(SAMPLE_TEAM_ID, { sample: true });
+      return;
     }
-    // The query is only an entry point; after loading, the saved Team ID remains
-    // available for the normal dashboard flow.
+    if (/^\d+$/.test(queryTeam)) {
+      setTeamId(queryTeam);
+      void loadTeam(queryTeam);
+      return;
+    }
+    async function reopenSavedTeam() {
+      let accountTeamId = "";
+      try {
+        const { data: { user } } = await createSupabaseClient().auth.getUser();
+        const metadataTeamId = user?.user_metadata?.fpl_team_id;
+        if (typeof metadataTeamId === "string" && /^\d+$/.test(metadataTeamId.trim())) accountTeamId = metadataTeamId.trim();
+      } catch {
+        // Accounts are optional; fall back to this device's saved Team ID.
+      }
+      if (cancelled) return;
+      const saved = accountTeamId || window.localStorage.getItem("fpl-risk-team-id")?.trim() || "";
+      if (/^\d+$/.test(saved)) {
+        setTeamId(saved);
+        void loadTeam(saved);
+      }
+    }
+    void reopenSavedTeam();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function toggleOutgoing(id: number) {
-    setSelectedOut((current) =>
-      current.includes(id)
-        ? current.filter((playerId) => playerId !== id)
-        : [...current, id],
-    );
+    setSelectedOut((current) => (current.includes(id) ? current.filter((playerId) => playerId !== id) : [...current, id]));
   }
 
-  function showWhy(item: SquadPitchPlayer | ProjectionRow) {
-    if ("pick" in item)
-      setWhyPlayer({
-        player: item.player,
-        one: item.one,
-        three: item.three,
-        five: item.five,
-        value: item.five.expected / Math.max(item.player.now_cost / 10, 3.5),
-      });
-    else setWhyPlayer(item);
+  function openDetail(item: { player: FplPlayer }, horizon: Horizon = "one") {
+    const row = projectionMap.get(item.player.id);
+    if (row) setDetail({ row, horizon });
   }
 
-  useEffect(() => {
-    if (!whyPlayer) return;
-    const prior = document.activeElement as HTMLElement | null;
-    const panel = whyDialogRef.current;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    panel?.focus();
-    const keydown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setWhyPlayer(null);
-      if (event.key === "Tab" && panel) {
-        const buttons = Array.from(
-          panel.querySelectorAll<HTMLElement>(
-            'button, a[href], input, select, [tabindex="0"]',
-          ),
-        );
-        const first = buttons[0],
-          last = buttons[buttons.length - 1];
-        if (
-          event.shiftKey &&
-          (document.activeElement === first || document.activeElement === panel)
-        ) {
-          event.preventDefault();
-          last?.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first?.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", keydown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", keydown);
-      prior?.focus();
-    };
-  }, [whyPlayer]);
+  // ---------- Shared pieces ----------
 
-  const nextEvent =
-    events.find((event) => event.is_next) ??
-    events.find((event) => event.is_current);
-  // Keep forecast and scoring contexts separate. The dashboard's decision
-  // surfaces should point at the next scheduled Gameweek, while the live
-  // points and highest-scorer ticker can still describe the current/last feed.
-  const activeEvent =
-    events.find((event) => event.is_current) ?? nextEvent;
-  const scoringGameweekLabel = activeEvent?.name ?? "Current Gameweek";
-  const forecastGameweekLabel = nextEvent?.name ?? scoringGameweekLabel;
-  const trainingThroughGameweek = nextEvent
-    ? Math.max(0, nextEvent.id - 1)
-    : null;
-  const modelDataUpdatedAt = bootstrap?.fetchedAt ?? history?.fetchedAt;
-  const historicalPriorLabel = history
-    ? `${history.seasons.length} completed-season priors`
-    : "historical priors loading";
-  const trainingStatusLabel = trainingThroughGameweek == null
-    ? "Training status pending"
-    : `Trained through GW${trainingThroughGameweek} · live target ${nextEvent?.name ?? `GW${nextEvent?.id}`}`;
-  const autoOutgoing = autoRecommendation
-    ? playerMap.get(autoRecommendation.outgoingId)
-    : null;
-  const autoIncoming = autoRecommendation
-    ? playerMap.get(autoRecommendation.incomingId)
-    : null;
+  const importForm = (id: string, autoFocus = false) => (
+    <form onSubmit={importTeam} className="stack-sm" noValidate>
+      <div className="field">
+        <label htmlFor={id}>FPL Team ID</label>
+        <div className="inline-form">
+          <input
+            id={id}
+            className="input"
+            inputMode="numeric"
+            autoComplete="off"
+            value={teamId}
+            onChange={(event) => setTeamId(event.target.value)}
+            placeholder="e.g. 123456"
+            aria-invalid={Boolean(teamError)}
+            aria-describedby={`${id}-hint${teamError ? ` ${id}-error` : ""}`}
+            autoFocus={autoFocus}
+          />
+          <button className="btn btn-primary" disabled={loadingTeam}>{loadingTeam ? "Importing…" : "Import squad"}</button>
+        </div>
+      </div>
+      <p id={`${id}-hint`} className="field-hint">
+        Find it in your FPL points page address: fantasy.premierleague.com/entry/<strong>123456</strong>/event/7 (example ID).
+        Only public squad data is read. Never enter your FPL password.
+      </p>
+      {teamError && (
+        <p id={`${id}-error`} className="field-error" role="alert">
+          {teamError}
+          {manager && ` Still showing ${manager.teamName}, fetched at ${formatClock(manager.fetchedAt)}.`}
+        </p>
+      )}
+    </form>
+  );
+
+  const needSquad = (task: string) => (
+    <div className={`card ${styles.needSquad}`}>
+      <h2>Import a squad to {task}</h2>
+      <p className="muted" style={{ marginTop: 4, marginBottom: 14 }}>A public Team ID is enough. Nothing is changed in your FPL account.</p>
+      {importForm(`import-${tab}`)}
+      <p className="small" style={{ marginTop: 12 }}>
+        <button type="button" className="link-button" onClick={() => void loadTeam(SAMPLE_TEAM_ID, { sample: true })} disabled={loadingTeam}>
+          Use a sample squad instead
+        </button>
+      </p>
+    </div>
+  );
+
+  const playerCell = (player: FplPlayer, onClick?: () => void) => (
+    <div className={styles.playerCell}>
+      {onClick ? (
+        <button type="button" className="link-button" onClick={onClick}>{player.web_name}</button>
+      ) : <strong>{player.web_name}</strong>}
+      <span className="muted tiny">{teamMap.get(player.team)?.short_name ?? ""} · {positionShort(player.element_type)}</span>
+    </div>
+  );
+
+  const deadlineIn = timeUntil(nextEvent?.deadline_time);
+  const squadView = tab === "overview" || tab === "team" || tab === "transfer";
+
+  // ---------- Render ----------
 
   return (
     <main className={styles.shell}>
-      <header className={styles.workspaceStatus} aria-label="Current tool and data status">
-        <strong>{tabLabels[tab]}</strong>
-        <div className={styles.liveStatusGroup}>
-          <div className={styles.liveStatus}>
-            <i />{" "}
-            {loading
-              ? "Refreshing live data"
-              : feedError
-                ? "Feed issue"
-                : forecastGameweekLabel}
-          </div>
-          <button
-            className={styles.refreshButton}
-            type="button"
-            onClick={refreshDashboard}
-            disabled={loading || loadingTeam}
-            aria-label="Refresh live data and imported team"
-          >
-            ↻ {loading || loadingTeam ? "Refreshing" : "Refresh all"}
-          </button>
-        </div>
-      </header>
-
-      {feedError && <div className={styles.errorBanner}>{feedError}</div>}
-
-      {tab === "overview" && (
-        <div className={styles.page} role="region" aria-label="Overview">
-          <details className={styles.overviewMarketTape} aria-label="Live player market signals">
-            <summary className={styles.overviewPulseSummary}>
-              <span className={styles.overviewPulseKicker}>GAMEWEEK PULSE</span>
-              <strong>Market notes</strong>
-              <span className={styles.overviewPulseLead}>
-                {marketSignals.priceRiser
-                  ? `${marketSignals.priceRiser.player.web_name} · ${signedPriceChange(marketSignals.priceRiser.player.cost_change_event)}`
-                  : "Prices, transfers and projected hauls"}
-              </span>
-              <span className={styles.overviewPulseAction}>Five live signals <i aria-hidden="true" /></span>
-            </summary>
-            <div className={styles.overviewTicker}>
-              <span className={styles.overviewTickerSignal}>
-                <i className={styles.overviewTickerIcon} aria-hidden="true">↗</i>
-                <b>PRICE RISE</b>
-                {marketSignals.priceRiser ? (
-                  <>
-                    <strong>{marketSignals.priceRiser.player.web_name}</strong>
-                    <em>{signedPriceChange(marketSignals.priceRiser.player.cost_change_event)}</em>
-                  </>
-                ) : (
-                    <strong>No confirmed rise</strong>
-                )}
-              </span>
-
-              <span className={`${styles.overviewTickerSignal} ${styles.overviewTickerSignalDown}`}>
-                <i className={styles.overviewTickerIcon} aria-hidden="true">↘</i>
-                <b>PRICE FALL</b>
-                {marketSignals.priceFaller ? (
-                  <>
-                    <strong>{marketSignals.priceFaller.player.web_name}</strong>
-                    <em>{signedPriceChange(marketSignals.priceFaller.player.cost_change_event)}</em>
-                  </>
-                ) : (
-                    <strong>No confirmed fall</strong>
-                )}
-              </span>
-
-              <span className={styles.overviewTickerSignalNeutral}>
-                <i className={styles.overviewTickerIcon} aria-hidden="true">⇄</i>
-                <b>TRANSFER FLOW</b>
-                {marketSignals.transferLeader ? (
-                  <>
-                    <strong>{marketSignals.transferLeader.player.web_name}</strong>
-                    <em>{signedCompactNumber((marketSignals.transferLeader.player.transfers_in_event ?? 0) - (marketSignals.transferLeader.player.transfers_out_event ?? 0))}</em>
-                  </>
-                ) : (
-                  <strong>Live feed pending</strong>
-                )}
-              </span>
-
-              <span className={styles.overviewTickerSignalNeutral}>
-                <i className={styles.overviewTickerIcon} aria-hidden="true">⚡</i>
-                <b>HAUL PROBABILITY</b>
-                {marketSignals.haulLeader?.one.distribution ? (
-                  <>
-                    <strong>{marketSignals.haulLeader.player.web_name}</strong>
-                    <em>{Math.round(marketSignals.haulLeader.one.distribution.bands.haul)}%</em>
-                  </>
-                ) : (
-                  <strong>Model pending</strong>
-                )}
-              </span>
-
-              <span className={styles.overviewTickerSignalNeutral}>
-                <i className={styles.overviewTickerIcon} aria-hidden="true">#</i>
-                <b>GAMEWEEK HIGHEST SCORER · {scoringGameweekLabel}</b>
-                {marketSignals.gameweekLeader && marketSignals.gameweekRank ? (
-                  <>
-                    <strong>#{marketSignals.gameweekRank} {marketSignals.gameweekLeader.player.web_name}</strong>
-                    <em>{marketSignals.gameweekLeader.player.event_points ?? 0} pts</em>
-                  </>
-                ) : (
-                  <strong>Live feed pending</strong>
-                )}
-              </span>
-            </div>
-          </details>
-          <section className={styles.hero}>
-            <div className={styles.heroCopy}>
-              <span className={styles.eyebrow}>FPL DECISION PREVIEW</span>
-              <h1>Know the range before <em>you transfer.</em></h1>
-              <p>
-                Import your squad to compare expected points and downside, then
-                test legal moves before the deadline.
-              </p>
-              <div className={styles.heroMeta}>
-                <span>{nextEvent?.name ?? "Next gameweek"}</span>
-                <span>Expected points · risk · transfers</span>
-              </div>
-              <form className={styles.importCard} onSubmit={importTeam}>
-                <span className={styles.eyebrow}>ANALYZE YOUR SQUAD</span>
-                <h2>Enter your FPL Team ID</h2>
-                <p>Use the number at the end of your public FPL team URL.</p>
-                <div className={styles.importRow}>
-                  <input
-                    value={teamId}
-                    onChange={(event) => setTeamId(event.target.value)}
-                    placeholder="e.g. 123456"
-                    inputMode="numeric"
-                    aria-label="FPL Team ID"
-                  />
-                  <button disabled={loadingTeam}>
-                    {loadingTeam ? "Loading…" : manager ? "Reload" : "Analyze"}
-                  </button>
-                </div>
-                {teamId && (
-                  <button
-                    type="button"
-                    className={styles.textButton}
-                    onClick={() => {
-                      setTeamId("");
-                      setTeamError("");
-                    }}
-                  >
-                    Use a different Team ID
-                  </button>
-                )}
-                {teamError && (
-                  <small className={styles.formError}>{teamError}</small>
-                )}
-                {manager && (
-                  <button
-                    type="button"
-                    className={styles.textButton}
-                    onClick={() => setTab("team")}
-                  >
-                    Open My Team →
-                  </button>
-                )}
-              </form>
-            </div>
-            <DecisionPreview
-              rows={bestNow}
-              gameweek={nextEvent?.name ?? "Next gameweek"}
-              onWhy={showWhy}
-              onMarket={() => setTab("market")}
-            />
-          </section>
-
-          <details className={styles.contextDisclosure}>
-            <summary>
-              <span className={styles.contextDisclosureCopy}>
-                <small>DECISION POSTURE</small>
-                <strong>{decisionContextCopy[decisionContext].label}</strong>
-                <span>{decisionContextCopy[decisionContext].detail}</span>
-              </span>
-              <span className={styles.contextDisclosureAction}>Adjust approach <i aria-hidden="true" /></span>
-            </summary>
-            <div className={styles.contextDisclosureBody}>
-              <div>
-                <span className={styles.eyebrow}>YOUR GAMEWEEK STRATEGY</span>
-                <h2 id="decision-context-title">Choose your risk balance</h2>
-                <p>The projections stay the same; this setting changes how the model weighs uncertainty.</p>
-              </div>
-              <div className={styles.contextChoices} role="radiogroup" aria-label="Risk tolerance">
-                {(Object.keys(decisionContextCopy) as RiskMode[]).map((mode) => (
-                  <button
-                    type="button"
-                    key={mode}
-                    className={decisionContext === mode ? styles.contextChoiceActive : styles.contextChoice}
-                    onClick={() => setDecisionContext(mode)}
-                    role="radio"
-                    aria-checked={decisionContext === mode}
-                  >
-                    {decisionContextCopy[mode].label}
-                  </button>
-                ))}
-              </div>
-              <p className={styles.contextHint}>{decisionContextCopy[decisionContext].detail}</p>
-            </div>
-          </details>
-
-          <section className={styles.marketSection}>
-            <div className={styles.sectionTitle}>
-              <div>
-                <span className={styles.eyebrow}>LIVE MARKET</span>
-                <h2>Leading forecasts</h2>
-                <p>
-                  Three players to start the comparison. The full market is one click away.
-                </p>
-              </div>
-              <button onClick={() => setTab("market")}>
-                Explore every player →
-              </button>
-            </div>
-            <div className={styles.railViewport}>
-              <div className={styles.projectionRail}>
-                {bestNow.slice(0, 3).map((row) => {
-                  const team = teamMap.get(row.player.team);
-                  return (
-                    <article
-                      className={styles.projectionCard}
-                      key={row.player.id}
-                    >
-                      <div className={styles.cardTop}>
-                        <span className={styles.teamBubble}>
-                          {team?.short_name ?? "FPL"}
-                        </span>
-                        <span
-                          className={`${styles.confidence} ${styles[row.one.confidence.toLowerCase()]}`}
-                        >
-                          {row.one.confidence}
-                        </span>
-                      </div>
-                      <h3>{row.player.web_name}</h3>
-                      <p>
-                        {team?.short_name ?? "—"} ·{" "}
-                        {row.one.fixtureLabels[0] ?? "BLANK"}
-                      </p>
-                      <div className={styles.cardBottom}>
-                        <strong>
-                          {row.one.expected.toFixed(1)} <small>xPTS</small>
-                        </strong>
-                        <button onClick={() => showWhy(row)}>Why this pick</button>
-                      </div>
-                      <div className={styles.cardRisk}>
-                        <span>Range {row.one.distribution ? `${row.one.distribution.p10.toFixed(1)}–${row.one.distribution.p90.toFixed(1)}` : "—"}</span>
-                        <span>Sharpe {row.one.distribution?.sharpe.toFixed(2) ?? "—"}</span>
-                      </div>
-                    </article>
-                  );
-                })}
-                {!bestNow.length &&
-                  Array.from({ length: 3 }).map((_, index) => (
-                    <div className={styles.projectionSkeleton} key={index} />
-                  ))}
-              </div>
-            </div>
-            <p className={styles.railHint}>
-              Explore a player to see the thinking behind their forecast.
-            </p>
-          </section>
-
-          <details className={styles.dashboardDisclosure}>
-            <summary>
+      {/* Context: which squad, which deadline, how fresh. Shown on every dashboard view. */}
+      <div className={styles.context}>
+        <div className={styles.contextInner}>
+          <div className={styles.contextItem}>
+            <span className="label">{isSample ? "Sample squad" : "Squad"}</span>
+            {manager ? (
               <span>
-                <strong>How today&apos;s model was built</strong>
-                <small>Inputs, data quality and weekly training status</small>
+                <strong>{manager.teamName}</strong>
+                <span className="muted"> · {isSample ? "public demo team, not yours" : manager.managerName} · picks as of GW{manager.eventId}</span>
+                {" "}
+                <button type="button" className="link-button small" onClick={() => setShowImport((open) => !open)} aria-expanded={showImport}>
+                  {showImport ? "Cancel" : "Change"}
+                </button>
               </span>
-              <em>View details</em>
-            </summary>
-          <section className={styles.modelSnapshot}>
-            <div className={styles.sectionTitle}>
-              <div>
-                <span className={styles.eyebrow}>MODEL SNAPSHOT</span>
-                <h2>What the engine is reading</h2>
-              </div>
-              <div className={styles.modelSnapshotTools}>
-                <span className={styles.modelPill}>{trainingStatusLabel}</span>
-                <button onClick={() => setTab("model")}>
-                  How the model works →
-                </button>
-              </div>
-            </div>
-            <div className={styles.snapshotGrid}>
-              <div>
-                <span>PLAYER ROLE</span>
-                <strong>Minutes mixture</strong>
-                <p>
-                  Starts, historical role and current availability set the
-                  playing-time foundation, with p10–p90 minutes and rotation
-                  risk kept separate from scoring-rate uncertainty.
-                </p>
-              </div>
-              <div>
-                <span>UNDERLYING</span>
-                <strong>xG + xA</strong>
-                <p>
-                  Player attacking rates are sample-size shrunk rather than
-                  extrapolated from short-term points.
-                </p>
-              </div>
-              <div>
-                <span>FIXTURE</span>
-                <strong>Team + opponent</strong>
-                <p>
-                  Home/away strength, xG/xGA, recent form, Elo and FDR shape
-                  each fixture context.
-                </p>
-              </div>
-              <div>
-                <span>MARKET PRIOR</span>
-                <strong>
-                  {sportsbook?.available
-                    ? sportsbook.configuredWeight > 0
-                      ? "Sportsbook active"
-                      : "Feed connected"
-                    : "Optional"}
-                </strong>
-                <p>
-                  {sportsbook?.note ??
-                    "The sportsbook layer fails open: no market data means the core model is unchanged."}
-                </p>
-              </div>
-            </div>
-            <div className={styles.trainingCallout}>
-              <div>
-                <span className={styles.eyebrow}>WEEKLY MODEL UPDATE</span>
-                <strong>{trainingStatusLabel}</strong>
-              </div>
-              <p>
-                Current-season minutes, starts and underlying rates are blended
-                into stable multi-season priors as new Gameweeks finish. The
-                latest feed was refreshed {formatDataTimestamp(modelDataUpdatedAt)};
-                confidence rises when role, news and fixture evidence agree.
-              </p>
-            </div>
-          </section>
-          </details>
-        </div>
-      )}
-
-      {tab === "team" && (
-        <div className={styles.page} role="region" aria-label="My Team">
-          <div className={styles.pageHeading}>
-            <div>
-              <span className={styles.eyebrow}>MY TEAM</span>
-              <h1>Your squad, in one focused workspace.</h1>
-              <p>
-                Squad shape, projections, chip guidance and the model's
-                recommended move live here — separate from the rest of the app.
-              </p>
-            </div>
-            {manager && (
-              <div className={styles.managerBadge}>
-                <strong>{manager.teamName}</strong>
-                <span>{money(manager.bank)} bank</span>
-              </div>
-            )}
-          </div>
-
-          {!manager ? (
-            <section className={styles.loadPanel}>
-              <span className={styles.eyebrow}>LOAD YOUR TEAM</span>
-              <h2>Import your 15-player squad</h2>
-              <p>
-                Your public Team ID is enough. No password or FPL login is
-                required.
-              </p>
-              <form className={styles.importRow} onSubmit={importTeam}>
-                <input
-                  value={teamId}
-                  onChange={(event) => setTeamId(event.target.value)}
-                  placeholder="FPL Team ID"
-                  inputMode="numeric"
-                />
-                <button disabled={loadingTeam}>
-                  {loadingTeam ? "Loading…" : "Load team"}
-                </button>
-              </form>
-              {teamError && (
-                <small className={styles.formError}>{teamError}</small>
-              )}
-            </section>
-          ) : (
-            <>
-              <section className={styles.summarySection}>
-                <div className={styles.sectionTitle}>
-                  <div>
-                    <span className={styles.eyebrow}>TEAM SNAPSHOT</span>
-                    <h2>{manager.teamName}</h2>
-                    <p>
-                      {manager.managerName} · imported from the public FPL API
-                    </p>
-                  </div>
-                  <button onClick={() => setTab("transfer")}>
-                    Open Transfer Lab →
-                  </button>
-                </div>
-                <div className={styles.summaryGrid}>
-                  <div>
-                    <span>PROJECTED GW</span>
-                    <strong>{teamOneGw.toFixed(1)}</strong>
-                    <small>includes current captain multiplier</small>
-                  </div>
-                  <div>
-                    <span>STARTING XI · 5GW</span>
-                    <strong>{teamFiveGw.toFixed(1)}</strong>
-                    <small>pre-transfer expectation</small>
-                  </div>
-                  <div>
-                    <span>TEAM RISK</span>
-                    <strong>{teamRisk}</strong>
-                    <small>average starting-XI volatility</small>
-                  </div>
-                  <div>
-                    <span>BANK</span>
-                    <strong>{money(manager.bank)}</strong>
-                    <small>
-                      {freeTransfers} free transfer
-                      {freeTransfers === 1 ? "" : "s"} assumed
-                    </small>
-                  </div>
-                  <div>
-                    <span>TEAM VALUE</span>
-                    <strong>{money(manager.teamValue)}</strong>
-                    <small>latest public FPL value</small>
-                  </div>
-                </div>
-              </section>
-
-              <section className={styles.portfolioPanel}>
-                <div className={styles.sectionTitle}>
-                  <div>
-                    <span className={styles.eyebrow}>PORTFOLIO RISK</span>
-                    <h2>Where your squad is concentrated</h2>
-                    <p>Covariance is added when players share a club or fixture, so team risk reflects the basket rather than a simple sum.</p>
-                  </div>
-                  <span className={`${styles.riskBadge} ${styles[portfolioRisk.risk.toLowerCase()]}`}>{portfolioRisk.risk}</span>
-                </div>
-                <div className={styles.portfolioGrid}>
-                  <div className={styles.portfolioMetric}><span>PORTFOLIO SD</span><strong>{portfolioRisk.portfolioVolatility.toFixed(1)}</strong><small>5GW simulated points</small></div>
-                  <div className={styles.portfolioMetric}><span>INDEPENDENT SD</span><strong>{portfolioRisk.independentVolatility.toFixed(1)}</strong><small>without covariance</small></div>
-                  <div className={styles.portfolioMetric}><span>COVARIANCE UPLIFT</span><strong>{portfolioRisk.correlationImpact >= 0 ? "+" : ""}{portfolioRisk.correlationImpact.toFixed(1)}</strong><small>shared outcome risk</small></div>
-                  <div className={styles.portfolioMetric}><span>TOP CLUB</span><strong>{portfolioRisk.topTeam}</strong><small>{(portfolioRisk.topTeamShare * 100).toFixed(0)}% of expected points</small></div>
-                  <div className={styles.portfolioMetric}><span>TOP FIXTURE</span><strong>{portfolioRisk.topFixture}</strong><small>{(portfolioRisk.topFixtureShare * 100).toFixed(0)}% of expected points</small></div>
-                </div>
-              </section>
-
-              <section className={styles.pitchSection}>
-                <div className={styles.sectionTitle}>
-                  <div>
-                    <span className={styles.eyebrow}>SQUAD VIEW</span>
-                    <h2>Your actual FPL shape</h2>
-                    <p>
-                      {hasLockedScoringComparison
-                        ? `Gameweek ${manager?.eventId} actual points beside the exact deadline projection. Next-Gameweek fixtures stay in Transfers.`
-                        : "Starting XI, bench order, captaincy and next fixture in one place. Actual points appear only when a matching frozen forecast is available."}
-                    </p>
-                  </div>
-                  <button onClick={() => setTab("transfer")}>
-                    Select transfers →
-                  </button>
-                </div>
-                <SquadPitch
-                  players={scoringSquad}
-                  teams={teams}
-                  mode="inspect"
-                  onPlayerClick={showWhy}
-                  onInspect={showWhy}
-                  actualPoints={hasLockedScoringComparison ? livePoints : undefined}
-                  compact
-                />
-              </section>
-
-              <section className={styles.decisionGrid}>
-                <article className={styles.recommendationHero}>
-                  <div className={styles.panelHead}>
-                    <div>
-                      <span className={styles.eyebrow}>
-                        MODEL SUGGESTED MOVE
-                      </span>
-                      <h2>
-                        {autoRecommendation && autoOutgoing && autoIncoming
-                          ? "One move stands out"
-                          : "Hold is a valid decision"}
-                      </h2>
-                    </div>
-                    <span className={styles.modelPill}>
-                      Model {MODEL_VERSION}
-                    </span>
-                  </div>
-                  {autoRecommendation && autoOutgoing && autoIncoming ? (
-                    <>
-                      <div className={styles.autoSwap}>
-                        <div>
-                          <span>SELL</span>
-                          <strong>{autoOutgoing.web_name}</strong>
-                          <small>
-                            {autoRecommendation.outgoingExpected.toFixed(1)} 5GW
-                            xPts
-                          </small>
-                        </div>
-                        <b>→</b>
-                        <div>
-                          <span>BUY</span>
-                          <strong>{autoIncoming.web_name}</strong>
-                          <small>
-                            {autoRecommendation.incomingExpected.toFixed(1)} 5GW
-                            xPts
-                          </small>
-                        </div>
-                      </div>
-                      <div className={styles.edgeStats}>
-                        <div>
-                          <span>NET 5GW EDGE</span>
-                          <strong>
-                            {autoRecommendation.expectedGain >= 0 ? "+" : ""}
-                            {autoRecommendation.expectedGain.toFixed(1)}
-                          </strong>
-                        </div>
-                        <div>
-                          <span>CONFIDENCE</span>
-                          <strong>{autoRecommendation.confidence}</strong>
-                        </div>
-                        <div>
-                          <span>RISK</span>
-                          <strong>
-                            {autoRecommendation.outgoingRisk} →{" "}
-                            {autoRecommendation.incomingRisk}
-                          </strong>
-                        </div>
-                      </div>
-                      <ul>
-                        {autoRecommendation.reasons.map((reason) => (
-                          <li key={reason}>{reason}</li>
-                        ))}
-                      </ul>
-                      <button
-                        className={styles.primaryButton}
-                        onClick={() => {
-                          setSelectedOut([autoOutgoing.id]);
-                          setTab("transfer");
-                        }}
-                      >
-                        Inspect this transfer →
-                      </button>
-                    </>
-                  ) : (
-                    <div className={styles.holdCard}>
-                      <strong>HOLD</strong>
-                      <p>
-                        No single legal move clears the model's current edge
-                        threshold after transfer cost and uncertainty. Saving
-                        the transfer remains part of the recommendation space.
-                      </p>
-                    </div>
-                  )}
-                </article>
-
-                <article className={styles.chipPanel}>
-                  <div className={styles.panelHead}>
-                    <div>
-                      <span className={styles.eyebrow}>CHIP STRATEGY</span>
-                      <h2>Use it or hold it?</h2>
-                    </div>
-                    <small>2026/27: two sets, one per half</small>
-                  </div>
-                  <div className={styles.chipList}>
-                    {chipAdvice.map((chip) => (
-                      <div className={styles.chipRow} key={chip.key}>
-                        <div>
-                          <strong>{chip.label}</strong>
-                          <small>{chip.headline}</small>
-                        </div>
-                        <span
-                          className={`${styles.chipStatus} ${chipTone(chip.status)}`}
-                        >
-                          {chip.status}
-                        </span>
-                        <p>{chip.reason}</p>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-              </section>
-
-              <section className={styles.opportunitySection}>
-                <div className={styles.sectionTitle}>
-                  <div>
-                    <span className={styles.eyebrow}>SQUAD SIGNALS</span>
-                    <h2>What deserves attention</h2>
-                  </div>
-                </div>
-                <div className={styles.signalGrid}>
-                  {riskNotes.map((note) => (
-                    <article
-                      className={`${styles.signalCard} ${styles[note.tone]}`}
-                      key={note.title}
-                    >
-                      <span>
-                        {note.tone === "warn"
-                          ? "WATCH"
-                          : note.tone === "good"
-                            ? "POSITIVE"
-                            : "MODEL NOTE"}
-                      </span>
-                      <h3>{note.title}</h3>
-                      <p>{note.detail}</p>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            </>
-          )}
-        </div>
-      )}
-
-      {tab === "transfer" && (
-        <div className={styles.page} role="region" aria-label="Transfer Lab">
-          <div className={styles.pageHeading}>
-            <div>
-              <span className={styles.eyebrow}>TRANSFER LAB</span>
-              <h1>Choose players directly from the pitch.</h1>
-              <p>
-                The optimizer evaluates your selected outs together, so shared
-                budget and club constraints stay legal across the whole transfer
-                plan. Player tiles show fixtures for {nextEvent?.name ?? "the next Gameweek"}.
-              </p>
-            </div>
-            {manager && (
-              <div className={styles.managerBadge}>
-                <strong>{manager.teamName}</strong>
-                <span>{money(manager.bank)} bank</span>
-              </div>
-            )}
-          </div>
-
-          {!manager ? (
-            <section className={styles.loadPanel}>
-              <span className={styles.eyebrow}>LOAD YOUR TEAM</span>
-              <h2>Start with your real 15-player squad</h2>
-              <p>
-                Your public Team ID is enough. No password or FPL login is
-                required.
-              </p>
-              <form className={styles.importRow} onSubmit={importTeam}>
-                <input
-                  value={teamId}
-                  onChange={(event) => setTeamId(event.target.value)}
-                  placeholder="FPL Team ID"
-                  inputMode="numeric"
-                />
-                <button disabled={loadingTeam}>
-                  {loadingTeam ? "Loading…" : "Load team"}
-                </button>
-              </form>
-              {teamError && (
-                <small className={styles.formError}>{teamError}</small>
-              )}
-            </section>
-          ) : (
-            <>
-              <section className={styles.transferToolbar}>
-                <div>
-                  <span>FREE TRANSFERS</span>
-                  <div className={styles.ftButtons}>
-                    {[0, 1, 2, 3, 4, 5].map((count) => (
-                      <button
-                        key={count}
-                        className={
-                          freeTransfers === count ? styles.selectedFt : ""
-                        }
-                        onClick={() => {
-                          setFreeTransfers(count);
-                          window.localStorage.setItem("fpl-risk-free-transfers", String(count));
-                        }}
-                      >
-                        {count}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <strong>
-                    {selectedOut.length
-                      ? `${selectedOut.length} selected`
-                      : "Pick player(s) on the pitch"}
-                  </strong>
-                  <button
-                    className={styles.textButton}
-                    onClick={() => setSelectedOut([])}
-                    disabled={!selectedOut.length}
-                  >
-                    Clear
-                  </button>
-                </div>
-              </section>
-
-              <SquadPitch
-                players={transferSquad}
-                teams={teams}
-                mode="transfer"
-                selectedIds={selectedOut}
-                onPlayerClick={(item) => toggleOutgoing(item.player.id)}
-                onInspect={showWhy}
-              />
-
-              <section className={styles.planSection}>
-                <div className={styles.panelHead}>
-                  <div>
-                    <span className={styles.eyebrow}>
-                      JOINT TRANSFER OPTIMIZER
-                    </span>
-                    <h2>
-                      {selectedOut.length
-                        ? "Best legal combination"
-                        : "Select who you want out"}
-                    </h2>
-                  </div>
-                  <span className={styles.modelPill}>
-                    {selectedOut.length
-                      ? `${selectedOut.length} move${selectedOut.length === 1 ? "" : "s"}`
-                      : "Waiting"}
-                  </span>
-                </div>
-                {!selectedOut.length && (
-                  <div className={styles.emptyPlan}>
-                    <p>
-                      Tap one or more players on the pitch. FPL Prism will search
-                      replacements under one shared budget instead of
-                      recommending each transfer independently.
-                    </p>
-                  </div>
-                )}
-                {selectedOut.length > 0 && !jointPlan && (
-                  <div className={styles.emptyPlan}>
-                    <strong>No legal combination found</strong>
-                    <p>
-                      Try removing one selection or changing the transfer set.
-                    </p>
-                  </div>
-                )}
-                {jointPlan && (
+            ) : (
+              <span>
+                <span className="muted">{loadingTeam ? "Importing…" : "None loaded"}</span>
+                {!loadingTeam && tab !== "overview" && (
                   <>
-                    <div className={styles.planSummary}>
-                      <div>
-                        <span>NET 5GW EDGE</span>
-                        <strong>
-                          {jointPlan.expectedGain >= 0 ? "+" : ""}
-                          {jointPlan.expectedGain.toFixed(1)}
-                        </strong>
-                      </div>
-                      <div>
-                        <span>HIT COST</span>
-                        <strong>-{jointPlan.transferCost}</strong>
-                      </div>
-                      <div>
-                        <span>CONFIDENCE</span>
-                        <strong>{jointPlan.confidence}</strong>
-                      </div>
-                      <div>
-                        <span>SHARED BUDGET</span>
-                        <strong>{money(jointPlan.totalBudget)}</strong>
-                      </div>
-                    </div>
-                    <div className={styles.planMoves}>
-                      {jointPlan.moves.map((move) => {
-                        const outgoing = playerMap.get(move.outgoingId);
-                        const incoming = playerMap.get(move.incomingId);
-                        if (!outgoing || !incoming) return null;
-                        return (
-                          <article
-                            key={`${move.outgoingId}-${move.incomingId}`}
-                          >
-                            <div>
-                              <span>OUT</span>
-                              <strong>{outgoing.web_name}</strong>
-                              <small>
-                                {move.outgoingExpected.toFixed(1)} xPts
-                              </small>
-                            </div>
-                            <b>→</b>
-                            <div>
-                              <span>IN</span>
-                              <strong>{incoming.web_name}</strong>
-                              <small>
-                                {move.incomingExpected.toFixed(1)} xPts
-                              </small>
-                            </div>
-                            <em>
-                              {move.expectedGain >= 0 ? "+" : ""}
-                              {move.expectedGain.toFixed(1)}
-                            </em>
-                          </article>
-                        );
-                      })}
-                    </div>
-                    <ul className={styles.reasonList}>
-                      {jointPlan.reasons.map((reason) => (
-                        <li key={reason}>{reason}</li>
-                      ))}
-                    </ul>
-                    {jointPlan.expectedGain <= 0 && (
-                      <div className={styles.holdNotice}>
-                        <strong>HOLD still leads on net expectation.</strong>{" "}
-                        The optimizer is showing the best legal combination, but
-                        it does not currently beat doing nothing.
-                      </div>
-                    )}
+                    {" "}
+                    <button type="button" className="link-button small" onClick={() => setShowImport((open) => !open)} aria-expanded={showImport}>
+                      Import
+                    </button>
                   </>
                 )}
-              </section>
+              </span>
+            )}
+          </div>
+          <div className={styles.contextItem}>
+            <span className="label">Next deadline</span>
+            <span>
+              <strong>{nextEvent?.name ?? "—"}</strong>
+              <span className="muted"> · {formatDeadline(nextEvent?.deadline_time)}{deadlineIn ? ` (${deadlineIn})` : ""}</span>
+            </span>
+          </div>
+          <div className={`${styles.contextItem} ${styles.contextData}`}>
+            <span className="label">FPL data</span>
+            <span>
+              {loading ? <span className="muted">Updating…</span>
+                : feedError && !bootstrap ? <span className="neg">Unavailable</span>
+                  : <span className="muted">Fetched {formatClock(bootstrap?.fetchedAt)}</span>}
+              {" "}
+              <button type="button" className="link-button small" onClick={refreshDashboard} disabled={loading || loadingTeam}>Refresh</button>
+            </span>
+          </div>
+        </div>
+        {showImport && (
+          <div className={styles.contextImport}>
+            {importForm("context-team-id", true)}
+          </div>
+        )}
+      </div>
 
-              {selectedOut.length === 1 && singleAlternatives.length > 1 && (
-                <section className={styles.alternativeSection}>
-                  <div className={styles.panelHead}>
-                    <div>
-                      <span className={styles.eyebrow}>ALTERNATIVES</span>
-                      <h2>Other legal replacements</h2>
-                    </div>
-                  </div>
-                  <div className={styles.alternativeGrid}>
-                    {singleAlternatives.slice(1).map((pick) => {
-                      const incoming = playerMap.get(pick.incomingId);
-                      return incoming ? (
-                        <article key={pick.incomingId}>
-                          <strong>{incoming.web_name}</strong>
-                          <span>{money(incoming.now_cost)}</span>
-                          <b>
-                            {pick.expectedGain >= 0 ? "+" : ""}
-                            {pick.expectedGain.toFixed(1)} xPts
-                          </b>
-                          <small>{pick.confidence} confidence</small>
-                        </article>
-                      ) : null;
-                    })}
+      <div className="page">
+        {feedError && <div className="notice notice-bad" role="alert" style={{ marginBottom: 16 }}>{feedError}</div>}
+        {!showImport && teamError && manager && (
+          <div className="notice notice-warn" role="alert" style={{ marginBottom: 16 }}>
+            Squad refresh failed: {teamError} Still showing {manager.teamName}, fetched at {formatClock(manager.fetchedAt)}.
+          </div>
+        )}
+        {isSample && manager && squadView && (
+          <div className="notice notice-neutral" style={{ marginBottom: 16 }}>
+            You are viewing a sample squad (a public FPL team used for demonstration). <button type="button" className="link-button" onClick={() => setShowImport(true)}>Import your own squad</button>
+          </div>
+        )}
+
+        {manager?.activeChip === "freehit" && squadView && (
+          <div className="notice notice-warn" style={{ marginBottom: 16 }}>
+            <strong>These are Free Hit picks.</strong> Free Hit was active in GW{manager.eventId}, so this squad is temporary and reverts to the
+            previous squad for the next deadline. FPL does not publish that squad until after the next deadline, so projections and transfer
+            suggestions here describe the Free Hit team, not the one you will actually field.
+          </div>
+        )}
+
+        {/* ============ OVERVIEW ============ */}
+        {tab === "overview" && (
+          <div className="stack-lg">
+            {!manager ? (
+              <div className={styles.overviewIntro}>
+                <section className="card">
+                  <h1>Start with your squad</h1>
+                  <p className="muted" style={{ marginTop: 6, marginBottom: 18 }}>
+                    Import your public FPL squad to see its projected points, availability issues and whether a transfer beats holding.
+                  </p>
+                  {loadingTeam ? <p className="muted">Importing squad…</p> : importForm("overview-team-id")}
+                  <hr className="divider" />
+                  <div className="row small">
+                    <button type="button" className="btn btn-sm" onClick={() => void loadTeam(SAMPLE_TEAM_ID, { sample: true })} disabled={loadingTeam}>Try a sample squad</button>
+                    <button type="button" className="btn btn-sm" onClick={() => setTab("market")}>Research players without a squad</button>
                   </div>
                 </section>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {tab === "market" && (
-        <div className={styles.page} role="region" aria-label="Player Market">
-          <section className={styles.marketMasthead}>
-            <div className={styles.marketMastheadTop}>
-              <div>
-                <span className={styles.eyebrow}>PLAYER MARKET FORECAST · {forecastGameweekLabel}</span>
-                <h1>The FPL tape.</h1>
-                <p>
-                  A cleaner view of the live player pool. Scan expected points like a market,
-                  then open the reasoning behind every number.
-                </p>
+                <section className={styles.whatYouGet}>
+                  <h2>What you can do here</h2>
+                  <ul>
+                    <li><strong>My team</strong> — your starting XI, bench and captain with next-Gameweek projections and availability flags.</li>
+                    <li><strong>Transfers</strong> — pick players to sell and compare legal replacements after budget and points hits.</li>
+                    <li><strong>Players</strong> — search every player by club, position and price, and see why each forecast is what it is.</li>
+                    <li><strong>Planner</strong> — compare moving now with rolling a transfer across the next eight Gameweeks.</li>
+                  </ul>
+                  <p className="muted small" style={{ marginTop: 12 }}>
+                    FPL Prism never edits your FPL team. Transfers, captain changes and chips are still made in the official FPL app.
+                  </p>
+                </section>
               </div>
-              <div className={styles.marketLiveBadge}>
-                <i />
-                <span>MARKET OPEN</span>
-                <strong>{marketRows.length}</strong>
-                <small>projectable players</small>
-              </div>
-            </div>
-            <div className={styles.marketTicker}>
-              <span>Model {MODEL_VERSION}</span>
-              <span>Next fixture window {nextEvent?.name ?? "Next gameweek"}</span>
-              <span>{sportsbook?.available ? "Market prior connected" : "Core model · market prior optional"}</span>
-              <span className={styles.marketTickerSignal}>
-                <b>PRICE RISE</b>
-                <strong>
-                  {marketSignals.priceRiser
-                    ? `${marketSignals.priceRiser.player.web_name} ${signedPriceChange(marketSignals.priceRiser.player.cost_change_event)}`
-                    : "No confirmed rise"}
-                </strong>
-              </span>
-              <span className={`${styles.marketTickerSignal} ${styles.marketTickerSignalDown}`}>
-                <b>PRICE FALL</b>
-                <strong>
-                  {marketSignals.priceFaller
-                    ? `${marketSignals.priceFaller.player.web_name} ${signedPriceChange(marketSignals.priceFaller.player.cost_change_event)}`
-                    : "No confirmed fall"}
-                </strong>
-              </span>
-              <span className={styles.marketTickerSignal}>
-                <b>TRANSFER FLOW</b>
-                <strong>
-                  {marketSignals.transferLeader
-                    ? `${marketSignals.transferLeader.player.web_name} ${signedCompactNumber((marketSignals.transferLeader.player.transfers_in_event ?? 0) - (marketSignals.transferLeader.player.transfers_out_event ?? 0))}`
-                    : "Live feed pending"}
-                </strong>
-              </span>
-              <span className={styles.marketTickerSignal}>
-                <b>HAUL PROBABILITY</b>
-                <strong>
-                  {marketSignals.haulLeader?.one.distribution
-                    ? `${marketSignals.haulLeader.player.web_name} ${Math.round(marketSignals.haulLeader.one.distribution.bands.haul)}%`
-                    : "Model pending"}
-                </strong>
-              </span>
-              <span className={styles.marketTickerSignal}>
-                <b>GAMEWEEK HIGHEST SCORER · {scoringGameweekLabel}</b>
-                <strong>
-                  {marketSignals.gameweekLeader && marketSignals.gameweekRank
-                    ? `#${marketSignals.gameweekRank} ${marketSignals.gameweekLeader.player.web_name} · ${marketSignals.gameweekLeader.player.event_points ?? 0} pts`
-                    : "Live feed pending"}
-                </strong>
-              </span>
-            </div>
-          </section>
+            ) : (
+              <>
+                <div className="page-head" style={{ marginBottom: 0 }}>
+                  <div>
+                    <h1>{nextEvent?.name ?? "Next Gameweek"} at a glance</h1>
+                    <p className="muted">Projections for {manager.teamName}. Deadline {formatDeadline(nextEvent?.deadline_time)}.</p>
+                  </div>
+                </div>
 
-          <section className={styles.marketMetricStrip} aria-label="Market summary">
-            <article>
-              <span>TOP 1GW xPTS</span>
-              <strong>{marketLeaders.topExpected?.one.expected.toFixed(1) ?? "—"}</strong>
-              <small>{marketLeaders.topExpected?.player.web_name ?? "Live feed pending"}</small>
-            </article>
-            <article>
-              <span>BEST SHARPE</span>
-              <strong>{marketLeaders.topSharpe?.five.distribution?.sharpe.toFixed(2) ?? "—"}</strong>
-              <small>{marketLeaders.topSharpe?.player.web_name ?? "Live feed pending"}</small>
-            </article>
-            <article>
-              <span>HIGHEST CEILING</span>
-              <strong>{marketLeaders.topCeiling?.one.distribution?.p90.toFixed(1) ?? "—"}</strong>
-              <small>{marketLeaders.topCeiling?.player.web_name ?? "Live feed pending"}</small>
-            </article>
-            <article>
-              <span>BEST 5GW VALUE</span>
-              <strong>{marketLeaders.bestValue?.value.toFixed(2) ?? "—"}</strong>
-              <small>{marketLeaders.bestValue?.player.web_name ?? "Live feed pending"}</small>
-            </article>
-          </section>
+                <section className={`card ${styles.decision}`}>
+                  <span className="label">Suggested transfer · next {TRANSFER_HORIZON} Gameweeks ({horizonSpan(TRANSFER_HORIZON)})</span>
+                  {autoRecommendation ? (() => {
+                    const out = playerMap.get(autoRecommendation.outgoingId);
+                    const into = playerMap.get(autoRecommendation.incomingId);
+                    return (
+                      <>
+                        <h2 className={styles.decisionTitle}>
+                          Sell {out?.web_name}, buy {into?.web_name}
+                        </h2>
+                        <p>
+                          <strong className="pos">{signed(autoRecommendation.expectedGain)} projected points</strong> over {TRANSFER_HORIZON} Gameweeks
+                          {autoRecommendation.transferCost ? ` after a ${autoRecommendation.transferCost}-point hit` : " using a free transfer"}
+                          {" "}({pts(autoRecommendation.outgoingExpected)} → {pts(autoRecommendation.incomingExpected)}). Confidence: {autoRecommendation.confidence.toLowerCase()}.
+                        </p>
+                        <div className="row" style={{ marginTop: 12 }}>
+                          <button type="button" className="btn btn-primary" onClick={() => { setSelectedOut([autoRecommendation.outgoingId]); setTab("transfer"); }}>
+                            Review in Transfers
+                          </button>
+                          <span className="muted small">Assumes {freeTransfers} free transfer{freeTransfers === 1 ? "" : "s"} and listed prices.</span>
+                        </div>
+                      </>
+                    );
+                  })() : (
+                    <>
+                      <h2 className={styles.decisionTitle}>Hold — no single transfer clears the bar</h2>
+                      <p className="muted">
+                        No one-for-one move gains enough projected points after {freeTransfers ? "using a free transfer" : "a 4-point hit"} to be worth it under these assumptions.
+                        Rolling the transfer keeps flexibility for later weeks.
+                      </p>
+                      <div className="row" style={{ marginTop: 12 }}>
+                        <button type="button" className="btn" onClick={() => setTab("transfer")}>Test your own transfers</button>
+                        <Link className="btn" href="/planner">Compare rolling in the Planner</Link>
+                      </div>
+                    </>
+                  )}
+                </section>
 
-          {selectedMarketRow && (
-            <section className={styles.marketFocusCard} aria-label="Selected player snapshot">
-              <div className={styles.marketFocusIdentity}>
-                <span className={styles.marketFocusRank}>#{String(marketRows.indexOf(selectedMarketRow) + 1).padStart(2, "0")}</span>
+                <div className="stats">
+                  <div className="stat">
+                    <span className="label">Starting XI · {nextEvent ? `GW${nextEvent.id}` : "next GW"}</span>
+                    <div className="stat-value">{pts(xiNextWithCaptain)}</div>
+                    <div className="stat-note">projected, captain counted ×{captainPick?.pick.multiplier ?? 2}</div>
+                  </div>
+                  <div className="stat">
+                    <span className="label">Starting XI · {horizonSpan(5)}</span>
+                    <div className="stat-value">{pts(xiFive)}</div>
+                    <div className="stat-note">projected, no captain bonus</div>
+                  </div>
+                  <div className="stat">
+                    <span className="label">Bank</span>
+                    <div className="stat-value">{money(manager.bank)}</div>
+                    <div className="stat-note">as of the last deadline</div>
+                  </div>
+                  <div className="stat">
+                    <span className="label">Free transfers</span>
+                    <div className="stat-value">{freeTransfers}</div>
+                    <div className="stat-note">your assumption · <button type="button" className="link-button" onClick={() => setTab("transfer")}>change</button></div>
+                  </div>
+                </div>
+
+                <div className="grid-2">
+                  <section className="card">
+                    <div className="card-head">
+                      <div>
+                        <h3>Captain options</h3>
+                        <p>Highest projected starters for {nextEvent?.name ?? "the next Gameweek"}, before the captain multiplier.</p>
+                      </div>
+                    </div>
+                    <CaptainList items={captainOptions} onOpen={(item) => openDetail(item)} />
+                  </section>
+                  <section className="card">
+                    <div className="card-head">
+                      <div>
+                        <h3>Availability</h3>
+                        <p>Official FPL flags in your squad.</p>
+                      </div>
+                    </div>
+                    <AvailabilityList items={availabilityFlags} onOpen={(item) => openDetail(item)} />
+                  </section>
+                </div>
+              </>
+            )}
+
+            <section>
+              <div className="row-between" style={{ marginBottom: 10 }}>
                 <div>
-                  <span className={styles.eyebrow}>SELECTED PLAYER</span>
-                  <h2>{selectedMarketRow.player.web_name}</h2>
-                  <p>
-                    {teamDisplayName(teamMap.get(selectedMarketRow.player.team)) || "—"} ·{" "}
-                    {positionName(selectedMarketRow.player.element_type)} ·{" "}
-                    {money(selectedMarketRow.player.now_cost)} · {selectedMarketRow.player.selected_by_percent}% owned
+                  <h2>Highest projected players · {projectionEvents[0]?.name ?? "next Gameweek"}</h2>
+                  <p className="muted small">Across all clubs. Select a name to see how the forecast is built.</p>
+                </div>
+                <button type="button" className="btn btn-sm" onClick={() => setTab("market")}>All players</button>
+              </div>
+              {topNext.length ? (
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead><tr><th>Player</th><th>Fixture</th><th className="r">Price</th><th className="r">Expected pts</th><th className="r">Likely range</th><th>Risk</th></tr></thead>
+                    <tbody>
+                      {topNext.map((row) => (
+                        <tr key={row.player.id}>
+                          <td>{playerCell(row.player, () => setDetail({ row, horizon: "one" }))}</td>
+                          <td>{row.one.fixtureLabels[0] === "BLANK" ? "Blank" : row.one.fixtureLabels[0]}</td>
+                          <td className="r">{money(row.player.now_cost)}</td>
+                          <td className="r strong">{pts(row.one.expected)}</td>
+                          <td className="r">{range(row.one.distribution?.p10, row.one.distribution?.p90)}</td>
+                          <td><span className={riskBadge(row.one.risk)}>{row.one.risk}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="empty">{loading ? "Loading forecasts…" : "Forecasts are unavailable until FPL data loads."}</div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {/* ============ MY TEAM ============ */}
+        {tab === "team" && (
+          !manager ? needSquad("see your team") : (
+            <div className="stack-lg">
+              <div className="page-head" style={{ marginBottom: 0 }}>
+                <div>
+                  <h1>{manager.teamName}</h1>
+                  <p className="muted">
+                    {isSample ? "Sample squad" : manager.managerName} · squad as published for the GW{manager.eventId} deadline.
+                    Transfers you have made since then are not visible until FPL publishes them.
                   </p>
                 </div>
               </div>
-              <div className={styles.marketFocusStats}>
-                <div><span>1GW</span><strong>{selectedMarketRow.one.expected.toFixed(1)}</strong></div>
-                <div><span>1GW RANGE</span><strong>{selectedMarketRow.one.distribution ? `${selectedMarketRow.one.distribution.p10.toFixed(1)}–${selectedMarketRow.one.distribution.p90.toFixed(1)}` : "—"}</strong></div>
-                <div><span>5GW</span><strong>{selectedMarketRow.five.expected.toFixed(1)}</strong></div>
-                <div><span>SHARPE</span><strong>{selectedMarketRow.five.distribution?.sharpe.toFixed(2) ?? "—"}</strong></div>
-              </div>
-              <button className={styles.marketFocusAction} onClick={() => showWhy(selectedMarketRow)}>
-                Open reasoning ↗
-              </button>
-            </section>
-          )}
 
-          <section className={styles.marketControls}>
-            <label className={styles.marketSearch}>
-              <span>SEARCH</span>
-              <input
-                value={marketQuery}
-                onChange={(event) => { setMarketQuery(event.target.value); setMarketVisibleCount(40); }}
-                placeholder="Search player"
-                aria-label="Search player"
-              />
-            </label>
-            <label>
-              <span>POSITION</span>
-              <select
-                value={marketPosition}
-                onChange={(event) => { setMarketPosition(Number(event.target.value)); setMarketVisibleCount(40); }}
-                aria-label="Position"
-              >
-                <option value={0}>All positions</option>
-                <option value={1}>Goalkeepers</option>
-                <option value={2}>Defenders</option>
-                <option value={3}>Midfielders</option>
-                <option value={4}>Forwards</option>
-              </select>
-            </label>
-            <label className={styles.marketSearch}>
-              <span>TEAM</span>
-              <input
-                value={marketTeamQuery}
-                onChange={(event) => { setMarketTeamQuery(event.target.value); setMarketVisibleCount(40); }}
-                placeholder="Search full team name"
-                aria-label="Search team by full name"
-                list="fpl-team-names"
-              />
-              <datalist id="fpl-team-names">
-                {teams.map((team) => (
-                  <option value={teamDisplayName(team)} key={team.id} />
-                ))}
-              </datalist>
-            </label>
-            <label className={styles.marketPriceControl}>
-              <span>MAX PRICE <strong>{money(effectiveMarketMaxPrice)}</strong></span>
-              <input
-                type="range"
-                min={marketPriceFloor}
-                max={marketPriceCeiling}
-                step={1}
-                value={effectiveMarketMaxPrice}
-                onChange={(event) => { setMarketMaxPrice(Number(event.target.value)); setMarketVisibleCount(40); }}
-                aria-label="Maximum player price"
-              />
-            </label>
-            <label>
-              <span>SORT BY</span>
-              <select
-                value={marketSort}
-                onChange={(event) => { setMarketSort(event.target.value as MarketSort); setMarketVisibleCount(40); }}
-                aria-label="Sort player market"
-              >
-                <option value="five">5GW xPts</option>
-                <option value="one">1GW xPts</option>
-                <option value="three">3GW xPts</option>
-                <option value="value">Value</option>
-                <option value="price">Price</option>
-                <option value="risk">Lowest risk</option>
-                <option value="sharpe">Sharpe ratio</option>
-                <option value="ownership">Ownership</option>
-              </select>
-            </label>
-          </section>
+              <div className="stats">
+                <div className="stat"><span className="label">Overall points</span><div className="stat-value">{manager.overallPoints ?? "—"}</div><div className="stat-note">official, to date</div></div>
+                <div className="stat"><span className="label">Overall rank</span><div className="stat-value">{manager.overallRank ? compact(manager.overallRank) : "—"}</div><div className="stat-note">official</div></div>
+                <div className="stat"><span className="label">GW{manager.eventId} points</span><div className="stat-value">{manager.gameweekPoints ?? "—"}</div><div className="stat-note">official{events.find((event) => event.id === manager.eventId)?.finished ? "" : ", provisional"}</div></div>
+                <div className="stat"><span className="label">Bank</span><div className="stat-value">{money(manager.bank)}</div><div className="stat-note">last deadline</div></div>
+                <div className="stat"><span className="label">Team value</span><div className="stat-value">{money(manager.teamValue)}</div><div className="stat-note">last deadline</div></div>
+              </div>
 
-          <section className={styles.marketTableShell} aria-label="Player market rankings">
-            <div className={styles.marketTableMeta}>
-              <div>
-                <span className={styles.eyebrow}>MARKET RANKING</span>
-                <strong>Showing {displayedMarketRows.length} of {marketRows.length} players</strong>
-                <small>Select a player to pin their snapshot. Use Why this pick to inspect the model inputs.</small>
+              <div className={styles.teamLayout}>
+                <section className="stack-sm">
+                  <div className="row-between">
+                    <h2>Squad</h2>
+                    {hasLockedScoringComparison ? (
+                      <div className="segmented" role="group" aria-label="Pitch numbers">
+                        <button type="button" aria-pressed={teamMode === "next"} onClick={() => setTeamMode("next")}>{nextEvent ? `GW${nextEvent.id}` : "Next"} forecast</button>
+                        <button type="button" aria-pressed={teamMode === "result"} onClick={() => setTeamMode("result")}>GW{manager.eventId} result</button>
+                      </div>
+                    ) : null}
+                  </div>
+                  <SquadPitch
+                    players={teamMode === "result" && hasLockedScoringComparison ? scoringSquad : nextSquad}
+                    teams={teams}
+                    metric={teamMode === "result" && hasLockedScoringComparison ? "result" : "next"}
+                    actualPoints={livePoints}
+                    onInspect={(item) => openDetail(item)}
+                  />
+                  <p className="muted small">
+                    {teamMode === "result" && hasLockedScoringComparison
+                      ? `Official GW${manager.eventId} points beside the forecast preserved at the deadline. "Not played" means no minutes recorded yet.`
+                      : `Numbers are projected points for ${nextEvent?.name ?? "the next Gameweek"} (before captaincy). C = captain, V = vice-captain, ! = official availability flag. Select a player for details.`}
+                  </p>
+                </section>
+
+                <div className="stack">
+                  <section className="card">
+                    <div className="card-head"><div><h3>Captain options</h3><p>{nextEvent?.name ?? "Next Gameweek"}, before the multiplier.</p></div></div>
+                    <CaptainList items={captainOptions} onOpen={(item) => openDetail(item)} />
+                  </section>
+                  <section className="card">
+                    <div className="card-head"><div><h3>Availability</h3><p>Official FPL flags.</p></div></div>
+                    <AvailabilityList items={availabilityFlags} onOpen={(item) => openDetail(item)} />
+                  </section>
+                  <section className="card">
+                    <div className="card-head"><div><h3>Weakest over {horizonSpan(5)}</h3><p>Lowest projected points across all 15.</p></div></div>
+                    <ul className={styles.plainList}>
+                      {weakest.map((item) => (
+                        <li key={item.player.id}>
+                          <button type="button" className="link-button" onClick={() => openDetail(item, "five")}>{item.player.web_name}</button>
+                          <span className="num">{pts(item.five.expected)} pts</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="card-foot">
+                      <button type="button" className="link-button" onClick={() => { setSelectedOut(weakest[0] ? [weakest[0].player.id] : []); setTab("transfer"); }}>
+                        Compare replacements for {weakest[0]?.player.web_name}
+                      </button>
+                    </div>
+                  </section>
+                </div>
               </div>
-              <div className={styles.marketTableLegend} aria-label="Market column guide">
-                <span><i className={styles.legendDot} /> Higher xPts</span>
-                <span><i className={`${styles.legendDot} ${styles.legendDotMuted}`} /> Lower risk</span>
-              </div>
-            </div>
-            <div className={styles.marketTable} aria-label="Player market table">
-              <div className={styles.marketHeader}>
-              <span>#</span>
-              <span>Player</span>
-              <span>Price</span>
-              <span>Next</span>
-              <span>1GW</span>
-              <span>3GW</span>
-              <span>5GW</span>
-              <span>1GW range</span>
-              <span>5GW range</span>
-              <span>Sharpe</span>
-              <span>1GW bust / haul</span>
-              <span>Risk</span>
-              <span>Ownership</span>
-              <span>Reason</span>
-              </div>
-              {displayedMarketRows.map((row, index) => (
-              <div
-                className={`${styles.marketRow} ${selectedMarketId === row.player.id ? styles.marketRowSelected : ""}`}
-                key={row.player.id}
-              >
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <button
-                  type="button"
-                  className={styles.marketPlayerCell}
-                  onClick={() => setSelectedMarketId(row.player.id)}
-                  aria-pressed={selectedMarketId === row.player.id}
-                  aria-label={`Select ${row.player.web_name}`}
-                >
-                  <span className={styles.marketPlayerDot}>{teamMap.get(row.player.team)?.short_name?.slice(0, 2) ?? "FPL"}</span>
+
+              <section className="card">
+                <div className="card-head">
                   <div>
-                    <strong>{row.player.web_name}</strong>
-                    <small>{teamDisplayName(teamMap.get(row.player.team))} · {positionName(row.player.element_type)} · {row.player.selected_by_percent}% owned</small>
+                    <h2>Chips</h2>
+                    <p>Based on your public chip history and current squad. These are prompts to consider a chip, not a calculation of the points it would add.</p>
                   </div>
-                </button>
-                <span>{money(row.player.now_cost)}</span>
-                <span>{row.one.fixtureLabels[0] ?? "BLANK"}</span>
-                <b>{row.one.expected.toFixed(1)}</b>
-                <b>{row.three.expected.toFixed(1)}</b>
-                <b>{row.five.expected.toFixed(1)}</b>
-                <span>{row.one.distribution ? `${row.one.distribution.p10.toFixed(1)}–${row.one.distribution.p90.toFixed(1)}` : "—"}</span>
-                <span>{row.five.distribution ? `${row.five.distribution.p10.toFixed(1)}–${row.five.distribution.p90.toFixed(1)}` : "—"}</span>
-                <span>{row.five.distribution?.sharpe.toFixed(2) ?? "—"}</span>
-                <span className={styles.bandInline} title="Single-Gameweek probability of 0–2 points / 10+ points">
-                  {row.one.distribution ? `${Math.round(row.one.distribution.bands.bust)}% / ${Math.round(row.one.distribution.bands.haul)}%` : "—"}
-                </span>
-                <span className={`${styles.riskBadge} ${styles[row.five.risk.toLowerCase()]}`}>{row.five.risk}</span>
-                <span>{row.player.selected_by_percent}%</span>
-                <button onClick={(event) => { event.stopPropagation(); showWhy(row); }}>Why this pick</button>
-              </div>
-              ))}
-            </div>
-            {displayedMarketRows.length < marketRows.length && (
-              <button
-                type="button"
-                className={styles.marketShowMore}
-                onClick={() => setMarketVisibleCount((count) => Math.min(count + 40, marketRows.length))}
-              >
-                Show 40 more players
-              </button>
-            )}
-          </section>
-        </div>
-      )}
+                </div>
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead><tr><th>Chip</th><th>Assessment</th><th>Window</th><th>Why</th></tr></thead>
+                    <tbody>
+                      {chipAdvice.map((chip) => (
+                        <tr key={chip.key}>
+                          <td className="strong nowrap">{chip.label}</td>
+                          <td><span className={toneBadge(chipStatus[chip.status].tone)}>{chipStatus[chip.status].label}</span></td>
+                          <td className="nowrap">{chip.status === "USED" || chip.status === "UNAVAILABLE" ? "—" : chip.targetGw ? `GW${chip.targetGw}` : "None yet"}</td>
+                          <td className="small">{chip.headline}. {chip.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {manager.activeChip && <p className="small" style={{ marginTop: 10 }}>Chip active on the GW{manager.eventId} picks: <strong>{chipNames[manager.activeChip] ?? manager.activeChip}</strong>.</p>}
+              </section>
 
-      {tab === "model" && (
-        <div className={styles.page} role="region" aria-label="Model">
-          <div className={styles.pageHeading}>
-            <div>
-              <span className={styles.eyebrow}>MODEL TRANSPARENCY</span>
-              <h1>Risk Model {MODEL_VERSION}</h1>
-              <p>
-                The number is not a black box. FPL Prism builds expected points
-                from role, rates, fixtures, uncertainty and an optional external
-                market prior. Each weekly update uses new FPL evidence while
-                retaining historical priors until the current sample is large
-                enough to justify more weight.
-              </p>
-            </div>
-            <span className={styles.modelPill}>{trainingStatusLabel}</span>
-          </div>
-
-          <div className={styles.trainingCallout}>
-            <div>
-              <span className={styles.eyebrow}>DATA QUALITY + CONFIDENCE</span>
-              <strong>{trainingStatusLabel}</strong>
-            </div>
-            <p>
-              Source: official live FPL data plus {historicalPriorLabel}. The engine weights current-season
-              minutes and role certainty more as evidence accumulates, and
-              keeps uncertainty wide when coverage, injury news or fixture
-              context is incomplete. Feed refreshed {formatDataTimestamp(modelDataUpdatedAt)}.
-            </p>
-          </div>
-
-          <section className={styles.modelFlow}>
-            {[
-              "Live FPL player data",
-              "Minutes mixture",
-              "Rotation + substitution risk",
-              "Shrunk xG / xA rates",
-              "Team + opponent context",
-              "Sportsbook market prior",
-              "FPL scoring components",
-              "Fixture-level uncertainty",
-              "P10 / P90 + Sharpe",
-              "Bust / haul bands",
-              "Portfolio covariance",
-              "xPts + transfer decision",
-            ].map((item, index) => (
-              <div key={item}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <strong>{item}</strong>
-              </div>
-            ))}
-          </section>
-
-          <section className={styles.modelSection}>
-            <div className={styles.sectionTitle}>
-              <div>
-                <span className={styles.eyebrow}>COMPONENT MODEL</span>
-                <h2>What contributes to xPts</h2>
-              </div>
-            </div>
-            <div className={styles.componentCards}>
-              <article>
-                <strong>Minutes uncertainty</strong>
-                <p>
-                  Every fixture is a start, cameo or no-appearance mixture.
-                  Expected minutes, p10–p90, variance and rotation risk feed
-                  both the player range and transfer simulations. Official FPL
-                  news, status and chance-of-playing fields adjust the mixture
-                  before scoring is sampled.
-                </p>
-              </article>
-              <article>
-                <strong>Goals</strong>
-                <p>
-                  Expected-goal rate, minutes and fixture-adjusted team attack.
-                </p>
-              </article>
-              <article>
-                <strong>Assists</strong>
-                <p>
-                  Expected-assist rate blended with historical and positional
-                  priors.
-                </p>
-              </article>
-              <article>
-                <strong>Clean sheets</strong>
-                <p>
-                  Opponent attack, team defence, xGA and fixture-specific goal
-                  expectation.
-                </p>
-              </article>
-              <article>
-                <strong>Saves + DefCon</strong>
-                <p>
-                  Position-specific rates contribute directly under current FPL
-                  scoring.
-                </p>
-              </article>
-              <article>
-                <strong>Bonus</strong>
-                <p>
-                  Bonus rate is sample-size shrunk and kept subordinate to the
-                  component model.
-                </p>
-              </article>
-              <article>
-                <strong>Discipline</strong>
-                <p>
-                  Yellow-card expectation creates a small negative component.
-                </p>
-              </article>
-              <article>
-                <strong>Historical priors</strong>
-                <p>
-                  Prior seasons matter early and decay toward zero as current
-                  minutes accumulate.
-                </p>
-              </article>
-              <article>
-                <strong>Risk-adjusted range</strong>
-                <p>Monte Carlo simulations show the 10th percentile floor, 90th percentile ceiling and a Sharpe-style points-to-variance ratio.</p>
-              </article>
-              <article>
-                <strong>Outcome bands</strong>
-                <p>Every player carries probabilities for a bust (0–2), floor (3–5), middle (6–9) and haul (10+) outcome.</p>
-              </article>
-            </div>
-          </section>
-
-          <section className={styles.modelSplit}>
-            <article>
-              <span className={styles.eyebrow}>SPORTSBOOK SIGNAL</span>
-              <h2>External prior, not the model</h2>
-              <p>
-                Current EPL h2h and totals prices are converted to de-vigged
-                probabilities. Total-goal odds are translated into an implied
-                goal mean, then blended only when a calibrated model weight is
-                configured.
-              </p>
-              <div className={styles.modelStatus}>
-                <span>Provider</span>
-                <strong>
-                  {sportsbook?.provider === "the-odds-api"
-                    ? "The Odds API"
-                    : "Not configured"}
-                </strong>
-                <span>Matching fixtures</span>
-                <strong>{sportsbook?.fixtures.length ?? 0}</strong>
-                <span>Configured weight</span>
-                <strong>
-                  {((sportsbook?.configuredWeight ?? 0) * 100).toFixed(0)}%
-                </strong>
-                <span>Status</span>
-                <strong>
-                  {sportsbook?.calibrationStatus ?? "disabled-until-calibrated"}
-                </strong>
-              </div>
-              <small>{sportsbook?.note}</small>
-            </article>
-            <article>
-              <span className={styles.eyebrow}>UNCERTAINTY</span>
-              <h2>Minutes first, scoring second</h2>
-              <p>
-                Most FPL variance starts with whether a player starts, comes on
-                or is rotated out. Each projected Gameweek carries its own
-                minutes mixture, substitution variance and fixture scoring
-                range. Multi-fixture Gameweeks are aggregated from their
-                underlying contexts rather than receiving one generic risk
-                label after the fact.
-              </p>
-              <div className={styles.modelStatus}>
-                <span>Low risk</span>
-                <strong>Tighter relative range</strong>
-                <span>High risk</span>
-                <strong>Wider outcome range</strong>
-                <span>Rotation risk</span>
-                <strong>Bench and substitution uncertainty</strong>
-                <span>Confidence</span>
-                <strong>Data coverage + signal quality</strong>
-                <span>Portfolio</span>
-                <strong>Club and fixture covariance</strong>
-              </div>
-            </article>
-          </section>
-
-          <section className={styles.modelSection}>
-            <div className={styles.sectionTitle}>
-              <div>
-                <span className={styles.eyebrow}>DECISION LAYER</span>
-                <h2>From xPts to actual FPL choices</h2>
-              </div>
-            </div>
-            <div className={styles.componentCards}>
-              <article>
-                <strong>Transfer legality</strong>
-                <p>
-                  Same-position replacement, shared bank, selling prices,
-                  duplicates and three-per-club are enforced.
-                </p>
-              </article>
-              <article>
-                <strong>Joint optimization</strong>
-                <p>
-                  Multiple selected transfers are solved together so two moves
-                  cannot spend the same money or buy the same player.
-                </p>
-              </article>
-              <article>
-                <strong>Hold is allowed</strong>
-                <p>
-                  The automatic recommendation can return no transfer when the
-                  edge does not justify the move.
-                </p>
-              </article>
-              <article>
-                <strong>Chip strategy</strong>
-                <p>
-                  Current and near-term squad projections drive Wildcard, Free
-                  Hit, Bench Boost and Triple Captain guidance.
-                </p>
-              </article>
-            </div>
-          </section>
-
-          <section className={styles.validationPanel}>
-            <div>
-              <span className={styles.eyebrow}>VALIDATION</span>
-              <h2>No invented accuracy numbers</h2>
-              <p>
-                The repository has deterministic model-invariant checks. A
-                proper walk-forward historical backtest is the next quantitative
-                gate before publishing RMSE, calibration or hit-rate claims.
-              </p>
-            </div>
-            <div>
-              <strong>Current rule</strong>
-              <p>
-                Engineering checks can say the model behaves consistently. They
-                cannot be marketed as proven predictive accuracy.
-              </p>
-            </div>
-          </section>
-        </div>
-      )}
-
-      {whyPlayer && (
-        <div
-          className={styles.modalBackdrop}
-          onClick={() => setWhyPlayer(null)}
-          role="presentation"
-        >
-          <section
-            ref={whyDialogRef}
-            tabIndex={-1}
-            className={styles.whyModal}
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${whyPlayer.player.web_name} projection explanation`}
-          >
-            <button
-              aria-label="Close player details"
-              className={styles.closeButton}
-              onClick={() => setWhyPlayer(null)}
-            >
-              ×
-            </button>
-            <span className={styles.eyebrow}>WHY THIS PROJECTION?</span>
-            <div className={styles.whyTitle}>
-              <div>
-                <h2>{whyPlayer.player.web_name}</h2>
-                <p>
-                  {teamDisplayName(teamMap.get(whyPlayer.player.team)) || "—"} ·{" "}
-                  {positionName(whyPlayer.player.element_type)} ·{" "}
-                  {money(whyPlayer.player.now_cost)} ·{" "}
-                  {availabilityLabel(whyPlayer.player)}
-                </p>
-              </div>
-              <span
-                className={`${styles.confidence} ${styles[whyPlayer.five.confidence.toLowerCase()]}`}
-              >
-                {whyPlayer.five.confidence} confidence
-              </span>
-            </div>
-            {whyPlayer.player.news && (
-              <p className={styles.whyFooter}>
-                <strong>Official FPL news:</strong> {whyPlayer.player.news}
-              </p>
-            )}
-            <div className={styles.horizonGrid}>
-              <div>
-                <span>1 GW</span>
-                <strong>{whyPlayer.one.expected.toFixed(1)}</strong>
-              </div>
-              <div>
-                <span>3 GW</span>
-                <strong>{whyPlayer.three.expected.toFixed(1)}</strong>
-              </div>
-              <div>
-                <span>5 GW</span>
-                <strong>{whyPlayer.five.expected.toFixed(1)}</strong>
-              </div>
-              <div>
-                <span>RISK</span>
-                <strong>{whyPlayer.five.risk}</strong>
-              </div>
-            </div>
-            <div className={styles.distributionPanel}>
-              <div className={styles.distributionMetric}><span>1 GW RANGE</span><strong>{whyPlayer.one.distribution ? `${whyPlayer.one.distribution.p10.toFixed(1)}–${whyPlayer.one.distribution.p90.toFixed(1)}` : "—"}</strong><small>single-gameweek P10 to P90</small></div>
-              <div className={styles.distributionMetric}><span>5 GW FLOOR · P10</span><strong>{whyPlayer.five.distribution?.p10.toFixed(1) ?? "—"}</strong><small>10% of five-Gameweek simulations land below this</small></div>
-              <div className={styles.distributionMetric}><span>5 GW MEDIAN</span><strong>{whyPlayer.five.distribution?.median.toFixed(1) ?? "—"}</strong><small>central five-Gameweek outcome</small></div>
-              <div className={styles.distributionMetric}><span>5 GW CEILING · P90</span><strong>{whyPlayer.five.distribution?.p90.toFixed(1) ?? "—"}</strong><small>90% of five-Gameweek simulations land below this</small></div>
-              <div className={styles.distributionMetric}><span>5 GW SHARPE-STYLE</span><strong>{whyPlayer.five.distribution?.sharpe.toFixed(2) ?? "—"}</strong><small>mean points per unit of spread</small></div>
-            </div>
-            <div className={styles.distributionPanel} aria-label="Minutes projection uncertainty">
-              <div className={styles.distributionMetric}><span>EXPECTED MINUTES</span><strong>{whyPlayer.one.minutes.expected.toFixed(0)}</strong><small>playing-time expectation for the next fixture</small></div>
-              <div className={styles.distributionMetric}><span>MINUTES P10–P90</span><strong>{whyPlayer.one.minutes.p10.toFixed(0)}–{whyPlayer.one.minutes.p90.toFixed(0)}</strong><small>rotation and substitution range</small></div>
-              <div className={styles.distributionMetric}><span>START PROBABILITY</span><strong>{((whyPlayer.one.minutesByFixture[0]?.startProbability ?? 0) * 100).toFixed(0)}%</strong><small>probability of starting</small></div>
-              <div className={styles.distributionMetric}><span>CAMEO PROBABILITY</span><strong>{((whyPlayer.one.minutesByFixture[0]?.cameoProbability ?? 0) * 100).toFixed(0)}%</strong><small>probability of a bench appearance</small></div>
-              <div className={styles.distributionMetric}><span>ROTATION RISK</span><strong>{(whyPlayer.one.minutes.rotationRisk * 100).toFixed(0)}%</strong><small>chance of not starting</small></div>
-            </div>
-            <p className={styles.whyFooter}>
-              Minutes are sampled before scoring: starter, cameo or no appearance. This keeps rotation and substitutions visible instead of hiding them inside generic performance volatility.
-            </p>
-            <div className={styles.bandGrid} aria-label="Single-Gameweek simulated outcome bands">
-              {[
-                ["1GW · 0–2 BUST", whyPlayer.one.distribution?.bands.bust],
-                ["1GW · 3–5 FLOOR", whyPlayer.one.distribution?.bands.floor],
-                ["1GW · 6–9 MIDDLE", whyPlayer.one.distribution?.bands.middle],
-                ["1GW · 10+ HAUL", whyPlayer.one.distribution?.bands.haul],
-              ].map(([label, value]) => (
-                <div className={styles.bandCell} key={label as string}><span>{label}</span><strong>{value == null ? "—" : `${Math.round(value as number)}%`}</strong></div>
-              ))}
-            </div>
-            <div className={styles.whyFixture}>
-              <strong>
-                {whyPlayer.one.fixtureLabels[0] ?? "No upcoming fixture"}
-              </strong>
-              <span>
-                {whyPlayer.one.fixtureContexts[0]
-                  ? `Attack factor ${whyPlayer.one.fixtureContexts[0].attackFactor.toFixed(2)} · CS ${(whyPlayer.one.fixtureContexts[0].cleanSheetProbability * 100).toFixed(0)}%`
-                  : "Blank Gameweek"}
-              </span>
-            </div>
-            <h3>One-Gameweek scoring components</h3>
-            <div className={styles.componentGrid}>
-              {Object.entries(whyPlayer.one.components).map(
-                ([label, value]) => (
-                  <div key={label}>
-                    <span>{label.replace(/([A-Z])/g, " $1")}</span>
-                    <strong>
-                      {value >= 0 ? "+" : ""}
-                      {value.toFixed(2)}
-                    </strong>
+              <details className="disclosure">
+                <summary>
+                  <span>Squad concentration<small>How much your starting XI depends on the same clubs and matches over {horizonSpan(5)}.</small></span>
+                </summary>
+                <div className="disclosure-body stack">
+                  <div className="stats">
+                    <div className="stat"><span className="label">Biggest club share</span><div className="stat-value">{portfolioRisk.topTeam}</div><div className="stat-note">{Math.round(portfolioRisk.topTeamShare * 100)}% of the XI&apos;s expected points</div></div>
+                    <div className="stat"><span className="label">Biggest single match share</span><div className="stat-value small">{portfolioRisk.topFixture}</div><div className="stat-note">{Math.round(portfolioRisk.topFixtureShare * 100)}% of the XI&apos;s expected points</div></div>
+                    <div className="stat"><span className="label">Spread of XI total</span><div className="stat-value">±{pts(portfolioRisk.portfolioVolatility)}</div><div className="stat-note">one standard deviation, with shared outcomes</div></div>
+                    <div className="stat"><span className="label">Shared-outcome effect</span><div className="stat-value">{signed(portfolioRisk.correlationImpact)}</div><div className="stat-note">vs ±{pts(portfolioRisk.independentVolatility)} if players were independent</div></div>
                   </div>
-                ),
+                  <p className="small muted">
+                    Teammates and players in the same match tend to score or blank together. {portfolioRisk.correlationImpact >= 0
+                      ? "Here that widens the likely spread of your XI total."
+                      : "Here your picks partly offset each other, narrowing the spread."}{" "}
+                    Shares are of expected points (captain weighted), not squad slots or money. The links between players are model assumptions, not measured correlations.
+                    Overall concentration: <strong>{portfolioRisk.risk}</strong>. High concentration is context, not a reason to sell on its own.
+                  </p>
+                </div>
+              </details>
+            </div>
+          )
+        )}
+
+        {/* ============ TRANSFERS ============ */}
+        {tab === "transfer" && (
+          !manager ? needSquad("compare transfers") : (
+            <div className="stack-lg">
+              <div className="page-head" style={{ marginBottom: 0 }}>
+                <div>
+                  <h1>Transfers</h1>
+                  <p className="muted">
+                    Select the players you want to sell. FPL Prism finds the best legal replacements under one shared budget,
+                    compared over the next {TRANSFER_HORIZON} Gameweeks ({horizonSpan(TRANSFER_HORIZON)}).
+                  </p>
+                </div>
+              </div>
+
+              <section className={`card card-tight ${styles.assumptions}`}>
+                <div className="field">
+                  <span id="ft-label">Free transfers available</span>
+                  <div className="segmented" role="radiogroup" aria-labelledby="ft-label">
+                    {[0, 1, 2, 3, 4, 5].map((count) => (
+                      <button key={count} type="button" role="radio" aria-checked={freeTransfers === count} onClick={() => chooseFreeTransfers(count)}>{count}</button>
+                    ))}
+                  </div>
+                  <span className="field-hint">Your assumption — FPL&apos;s public data doesn&apos;t include it. Each extra transfer costs 4 points.</span>
+                </div>
+                <div className="field">
+                  <span>Budget</span>
+                  <strong className="num">{money(manager.bank)} in the bank</strong>
+                  <span className="field-hint">From the last deadline.</span>
+                </div>
+                <div className="field">
+                  <span>Sale prices</span>
+                  <strong>{usesListedPrices ? "Listed prices used" : "Your selling prices"}</strong>
+                  <span className="field-hint">{usesListedPrices ? "Public data has no sale prices. Yours may be lower; check in FPL before acting." : "From your picks."}</span>
+                </div>
+              </section>
+
+              <div className={styles.transferLayout}>
+                <section className="stack-sm">
+                  <div className="row-between">
+                    <h2>Your squad</h2>
+                    <span className="small muted">
+                      {selectedOut.length ? `${selectedOut.length} selected to sell` : "Tap players to sell"}
+                      {selectedOut.length > 0 && <> · <button type="button" className="link-button" onClick={() => setSelectedOut([])}>Clear</button></>}
+                    </span>
+                  </div>
+                  <SquadPitch
+                    players={squad}
+                    teams={teams}
+                    mode="transfer"
+                    metric="five"
+                    selectedIds={selectedOut}
+                    onSelect={(item) => toggleOutgoing(item.player.id)}
+                    onInspect={(item) => openDetail(item, "five")}
+                  />
+                  <p className="muted small">Numbers are projected points over {horizonSpan(TRANSFER_HORIZON)}.</p>
+                </section>
+
+                <section className="card" aria-live="polite">
+                  {!selectedOut.length ? (
+                    <>
+                      <h2>Nothing selected</h2>
+                      <p className="muted" style={{ marginTop: 6 }}>
+                        Select one or more players on the pitch. Multiple sales are solved together, so two moves can&apos;t spend the same money or buy the same player.
+                      </p>
+                      {autoRecommendation && (
+                        <p style={{ marginTop: 12 }}>
+                          Suggested starting point:{" "}
+                          <button type="button" className="link-button" onClick={() => setSelectedOut([autoRecommendation.outgoingId])}>
+                            sell {playerMap.get(autoRecommendation.outgoingId)?.web_name}
+                          </button>
+                        </p>
+                      )}
+                    </>
+                  ) : !jointPlan ? (
+                    <>
+                      <h2>No legal replacement found</h2>
+                      <p className="muted" style={{ marginTop: 6 }}>
+                        This search found no combination that fits your budget, keeps the same positions and stays within three players per club.
+                        The search checks the top candidates for each position, so try selling a different or more expensive player.
+                      </p>
+                    </>
+                  ) : (
+                    <TransferResult
+                      plan={jointPlan}
+                      playerMap={playerMap}
+                      freeTransfers={freeTransfers}
+                      usesListedPrices={usesListedPrices}
+                      sellingPrices={sellingPrices}
+                      onOpen={(player) => openDetail({ player }, "five")}
+                    />
+                  )}
+                </section>
+              </div>
+
+              {selectedOut.length === 1 && singleAlternatives.length > 0 && (
+                <section className="card">
+                  <div className="card-head">
+                    <div>
+                      <h2>Other replacements for {playerMap.get(selectedOut[0])?.web_name}</h2>
+                      <p>Ranked by your ranking preference. Points are over {horizonSpan(TRANSFER_HORIZON)}; net gain includes any hit.</p>
+                    </div>
+                    <div className="field">
+                      <span id="pref-label">Ranking preference</span>
+                      <div className="segmented" role="radiogroup" aria-labelledby="pref-label">
+                        {(Object.keys(rankingPreferences) as RiskMode[]).map((mode) => (
+                          <button key={mode} type="button" role="radio" aria-checked={decisionContext === mode} onClick={() => chooseDecisionContext(mode)}>
+                            {rankingPreferences[mode].label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="small muted" style={{ marginBottom: 10 }}>
+                    {rankingPreferences[decisionContext].detail} This changes this list and the suggested transfer, not the forecasts or the joint search above.
+                  </p>
+                  <div className="table-wrap">
+                    <table className="table">
+                      <thead><tr><th>Player</th><th className="r">Price</th><th className="r">Projected</th><th className="r">Net gain</th><th>Risk</th><th>Confidence</th></tr></thead>
+                      <tbody>
+                        {singleAlternatives.map((pick) => {
+                          const incoming = playerMap.get(pick.incomingId);
+                          if (!incoming) return null;
+                          return (
+                            <tr key={pick.incomingId}>
+                              <td>{playerCell(incoming, () => openDetail({ player: incoming }, "five"))}</td>
+                              <td className="r">{money(incoming.now_cost)}</td>
+                              <td className="r">{pts(pick.incomingExpected)}</td>
+                              <td className={`r strong ${pick.expectedGain > 0 ? "pos" : "neg"}`}>{signed(pick.expectedGain)}</td>
+                              <td><span className={riskBadge(pick.incomingRisk)}>{pick.incomingRisk}</span></td>
+                              <td>{pick.confidence}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
               )}
             </div>
-            <div className={styles.whyFooter}>
-              <span>Data quality {whyPlayer.one.dataQuality}/100</span>
-              <span>
-                {whyPlayer.one.sportsbook.applied
-                  ? `Market prior applied at ${(whyPlayer.one.sportsbook.effectiveWeight * 100).toFixed(1)}% effective weight`
-                  : sportsbook?.available
-                    ? "Market feed present; model weight currently disabled or unmatched"
-                    : "Core model only"}
-              </span>
-            </div>
-          </section>
-        </div>
-      )}
+          )
+        )}
 
-      <footer className={styles.footer}>
-        <span>FPL Prism · Model {MODEL_VERSION}</span>
-        <span>Independent project · Not affiliated with, endorsed by or sponsored by the Premier League.</span>
-      </footer>
+        {/* ============ PLAYERS ============ */}
+        {tab === "market" && (
+          <div className="stack">
+            <div className="page-head" style={{ marginBottom: 0 }}>
+              <div>
+                <h1>Players</h1>
+                <p className="muted">
+                  Forecasts for {horizonSpan(5)}. Lists {projectableMarket.length || "—"} players with projected minutes;
+                  injured-out, suspended and departed players are left out.
+                </p>
+              </div>
+            </div>
+
+            <section className={`card card-tight ${styles.filters}`} aria-label="Filters">
+              <div className="field">
+                <label htmlFor="market-search">Name</label>
+                <input id="market-search" className="input" value={marketQuery} placeholder="e.g. Saka"
+                  onChange={(event) => { setMarketQuery(event.target.value); setMarketVisibleCount(50); }} />
+              </div>
+              <div className="field">
+                <label htmlFor="market-position">Position</label>
+                <select id="market-position" className="select" value={marketPosition}
+                  onChange={(event) => { setMarketPosition(Number(event.target.value)); setMarketVisibleCount(50); }}>
+                  <option value={0}>All positions</option>
+                  <option value={1}>Goalkeepers</option>
+                  <option value={2}>Defenders</option>
+                  <option value={3}>Midfielders</option>
+                  <option value={4}>Forwards</option>
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="market-club">Club</label>
+                <select id="market-club" className="select" value={marketTeam}
+                  onChange={(event) => { setMarketTeam(Number(event.target.value)); setMarketVisibleCount(50); }}>
+                  <option value={0}>All clubs</option>
+                  {[...teams].sort((a, b) => teamDisplayName(a).localeCompare(teamDisplayName(b))).map((team) => (
+                    <option key={team.id} value={team.id}>{teamDisplayName(team)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="market-price">Max price: <span className="num">{money(effectiveMarketMaxPrice)}</span></label>
+                <input id="market-price" type="range" min={marketPriceFloor} max={marketPriceCeiling} step={1} value={effectiveMarketMaxPrice}
+                  onChange={(event) => { setMarketMaxPrice(Number(event.target.value)); setMarketVisibleCount(50); }} />
+              </div>
+              <div className="field">
+                <label htmlFor="market-sort">Sort by</label>
+                <select id="market-sort" className="select" value={marketSort}
+                  onChange={(event) => { setMarketSort(event.target.value as MarketSort); setMarketVisibleCount(50); }}>
+                  {(Object.keys(sortLabels) as MarketSort[]).map((key) => <option key={key} value={key}>{sortLabels[key]}</option>)}
+                </select>
+              </div>
+            </section>
+
+            <div className="row-between">
+              <p className="small muted" aria-live="polite">
+                {marketRows.length ? `Showing ${displayedMarketRows.length} of ${marketRows.length} matching players` : ""}
+                {filtersActive && <> · <button type="button" className="link-button" onClick={resetFilters}>Reset filters</button></>}
+              </p>
+              <div className="row small">
+                <span className="muted" id="range-label">Range and risk for</span>
+                <div className="segmented" role="group" aria-labelledby="range-label">
+                  {(["one", "three", "five"] as Horizon[]).map((h) => (
+                    <button key={h} type="button" aria-pressed={marketHorizon === h} onClick={() => setMarketHorizon(h)}>{horizonCount[h]} GW</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {!projectableMarket.length ? (
+              <div className="empty">{loading ? "Loading forecasts…" : "Forecasts are unavailable until FPL data loads."}</div>
+            ) : !marketRows.length ? (
+              <div className="empty">
+                <strong>No players match these filters</strong>
+                <button type="button" className="btn btn-sm" style={{ marginTop: 8 }} onClick={resetFilters}>Reset filters</button>
+              </div>
+            ) : (
+              <>
+                <div className={`table-wrap ${styles.marketTable}`}>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Player</th>
+                        <th className="r">Price</th>
+                        <th>Next</th>
+                        <th className="r">{projectionEvents[0] ? `GW${projectionEvents[0].id}` : "1 GW"}</th>
+                        <th className="r">3 GW</th>
+                        <th className="r">5 GW</th>
+                        <th className="r">Likely range · {horizonCount[marketHorizon]} GW</th>
+                        <th>Risk</th>
+                        {marketSort === "value" && <th className="r">Pts per £m</th>}
+                        {marketSort === "sharpe" && <th className="r">Pts ÷ spread</th>}
+                        <th className="r">Owned</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayedMarketRows.map((row) => {
+                        const h = row[marketHorizon];
+                        const flag = officialAvailability(row.player);
+                        return (
+                          <tr key={row.player.id}>
+                            <td>
+                              <div className={styles.playerCell}>
+                                <button type="button" className="link-button" onClick={() => setDetail({ row, horizon: marketHorizon })}>{row.player.web_name}</button>
+                                <span className="muted tiny">
+                                  {teamMap.get(row.player.team)?.short_name} · {positionShort(row.player.element_type)}
+                                  {flag.flagged && <> · <span className={flag.tone === "bad" ? "neg" : styles.warnText}>{flag.short}</span></>}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="r">{money(row.player.now_cost)}</td>
+                            <td className="nowrap">{row.one.fixtureLabels[0] === "BLANK" ? <span className="muted">Blank</span> : row.one.fixtureLabels[0]}</td>
+                            <td className={`r ${marketSort === "one" ? "strong" : ""}`}>{pts(row.one.expected)}</td>
+                            <td className={`r ${marketSort === "three" ? "strong" : ""}`}>{pts(row.three.expected)}</td>
+                            <td className={`r ${marketSort === "five" ? "strong" : ""}`}>{pts(row.five.expected)}</td>
+                            <td className="r">{range(h.distribution?.p10, h.distribution?.p90)}</td>
+                            <td><span className={riskBadge(h.risk)}>{h.risk}</span></td>
+                            {marketSort === "value" && <td className="r strong">{row.value.toFixed(2)}</td>}
+                            {marketSort === "sharpe" && <td className="r strong">{row.five.distribution?.sharpe.toFixed(2) ?? "—"}</td>}
+                            <td className="r">{row.player.selected_by_percent}%</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {displayedMarketRows.length < marketRows.length && (
+                  <button type="button" className="btn" style={{ alignSelf: "center" }}
+                    onClick={() => setMarketVisibleCount((count) => Math.min(count + 50, marketRows.length))}>
+                    Show 50 more
+                  </button>
+                )}
+                {(marketSort === "value" || marketSort === "sharpe") && (
+                  <p className="small muted">
+                    {marketSort === "value"
+                      ? "Value = 5-Gameweek expected points ÷ price in £m, with prices under £3.5m counted as £3.5m."
+                      : "Points ÷ spread = 5-Gameweek expected points divided by the forecast's standard deviation. Higher means steadier for the points, not risk-free."}
+                  </p>
+                )}
+              </>
+            )}
+
+            <details className="disclosure">
+              <summary><span>Market signals<small>Price changes, transfer activity and the biggest scorer, across all players.</small></span></summary>
+              <div className="disclosure-body">
+                <dl className="kv">
+                  <dt>Biggest price rise this Gameweek</dt>
+                  <dd>{marketSignals.riser ? `${marketSignals.riser.player.web_name} (+£${((marketSignals.riser.player.cost_change_event ?? 0) / 10).toFixed(1)}m)` : "No rises yet"}</dd>
+                  <dt>Biggest price fall this Gameweek</dt>
+                  <dd>{marketSignals.faller ? `${marketSignals.faller.player.web_name} (−£${(Math.abs(marketSignals.faller.player.cost_change_event ?? 0) / 10).toFixed(1)}m)` : "No falls yet"}</dd>
+                  <dt>Most net transfers in</dt>
+                  <dd>{marketSignals.inflow ? `${marketSignals.inflow.player.web_name} (${compact((marketSignals.inflow.player.transfers_in_event ?? 0) - (marketSignals.inflow.player.transfers_out_event ?? 0))})` : "—"}</dd>
+                  <dt>Most net transfers out</dt>
+                  <dd>{marketSignals.outflow ? `${marketSignals.outflow.player.web_name} (${compact((marketSignals.outflow.player.transfers_out_event ?? 0) - (marketSignals.outflow.player.transfers_in_event ?? 0))})` : "—"}</dd>
+                  <dt>Highest chance of 10+ pts, {projectionEvents[0] ? `GW${projectionEvents[0].id}` : "next GW"} (model)</dt>
+                  <dd>{marketSignals.haul?.one.distribution ? `${marketSignals.haul.player.web_name} (${Math.round(marketSignals.haul.one.distribution.bands.haul)}%)` : "Unavailable"}</dd>
+                  <dt>Top scorer, {events.find((e) => e.is_current)?.name ?? "current Gameweek"} (official)</dt>
+                  <dd>{marketSignals.scorer ? `${marketSignals.scorer.player.web_name} (${marketSignals.scorer.player.event_points} pts)` : "Unavailable"}</dd>
+                </dl>
+                <p className="small muted" style={{ marginTop: 10 }}>Price moves and transfer counts are what has already happened, not predictions. Popular transfers aren&apos;t necessarily good value.</p>
+              </div>
+            </details>
+          </div>
+        )}
+
+        {/* ============ MODEL ============ */}
+        {tab === "model" && (
+          <article className="page-narrow prose" style={{ margin: 0 }}>
+            <h1>How the forecasts are made</h1>
+            <p className="lead" style={{ marginTop: 8 }}>
+              Model {MODEL_VERSION}. Trained on completed Gameweeks{nextEvent ? ` through GW${Math.max(0, nextEvent.id - 1)}` : ""}; FPL data fetched {formatClock(bootstrap?.fetchedAt)}.
+              {history ? ` Historical evidence from ${history.seasons.length} previous season${history.seasons.length === 1 ? "" : "s"}${history.partial ? " (partial coverage)" : ""}.` : " Historical evidence is not loaded, so confidence is lower."}
+            </p>
+
+            <h2>What goes into a player&apos;s expected points</h2>
+            <ul>
+              <li><strong>Playing time first.</strong> Each fixture is modelled as a start, a substitute appearance or no appearance, using starts, minutes and official availability.</li>
+              <li><strong>Scoring by position.</strong> Goals, assists, clean sheets, saves, defensive contributions, bonus and cards are scored under FPL rules for that position.</li>
+              <li><strong>Current form, steadied by history.</strong> This season&apos;s underlying numbers (xG, xA) are blended with previous seasons. This season counts for more as minutes build up.</li>
+              <li><strong>Fixture context.</strong> Opponent strength, home or away, and fixture difficulty adjust each match.</li>
+              <li><strong>Double and blank Gameweeks.</strong> A Gameweek with two matches counts both; a blank scores zero.</li>
+            </ul>
+
+            <h2>Expected points, range and median</h2>
+            <p>Expected points is the average outcome, not the most likely exact score. The likely range runs from the 10th to the 90th percentile of simulated outcomes, so roughly 1 in 10 results fall below it and 1 in 10 above. The median is the middle outcome and is often lower than the average because big hauls pull the average up.</p>
+
+            <h2>Risk, confidence and data quality are different</h2>
+            <ul>
+              <li><strong>Risk</strong> describes how wide the range is for that player and horizon.</li>
+              <li><strong>Confidence</strong> describes how strong the evidence behind the forecast is. It is not the chance of being right.</li>
+              <li><strong>Data quality</strong> is a 0–100 coverage score for the inputs. It is not an accuracy percentage.</li>
+            </ul>
+
+            <h2>From forecasts to decisions</h2>
+            <ul>
+              <li><strong>Transfers</strong> compare projected points over five Gameweeks, subtract 4 points per transfer beyond your free ones, and keep budget, positions and the three-per-club rule legal. The search covers the top candidates per position, not every possible squad.</li>
+              <li><strong>Holding is a valid answer.</strong> If the best move doesn&apos;t beat the hit, FPL Prism says so.</li>
+              <li><strong>The Planner</strong> compares rolling with one- and two-transfer moves across eight Gameweeks.</li>
+              <li><strong>Chip guidance</strong> flags plausible windows; it does not calculate the points a chip would add.</li>
+            </ul>
+
+            <h2>Betting-market prior</h2>
+            <p>
+              An optional prior from betting markets can nudge team-level goal and clean-sheet expectations.{" "}
+              {sportsbook?.available && sportsbook.configuredWeight > 0
+                ? `It is currently active at ${(sportsbook.configuredWeight * 100).toFixed(0)}% configured weight.`
+                : "It is not applied in the current forecasts."}
+            </p>
+
+            <h2>Limitations</h2>
+            <p>Team news, rotation, injuries and tactics change after forecasts are made. Players with few minutes have thin evidence. Public data doesn&apos;t include your selling prices or remaining free transfers. Treat every number as an estimate.</p>
+
+            <h2>Track record</h2>
+            <p>Forecasts are preserved at each deadline and compared with official points, including the misses, in the <Link href="/modelbook">Modelbook</Link>.</p>
+          </article>
+        )}
+      </div>
+
+      {detail && (
+        <PlayerDetail
+          key={detail.row.player.id}
+          row={detail.row}
+          team={teamMap.get(detail.row.player.team)}
+          events={projectionEvents}
+          marketPriorAvailable={Boolean(sportsbook?.available)}
+          initialHorizon={detail.horizon}
+          onClose={() => setDetail(null)}
+        />
+      )}
     </main>
+  );
+}
+
+function CaptainList({ items, onOpen }: { items: SquadItem[]; onOpen: (item: SquadItem) => void }) {
+  if (!items.length) return <p className="muted">No projections yet.</p>;
+  return (
+    <ol className={styles.captainList}>
+      {items.map((item) => {
+        const minutes = item.one.minutesByFixture[0];
+        return (
+          <li key={item.player.id}>
+            <div>
+              <button type="button" className="link-button" onClick={() => onOpen(item)}>{item.player.web_name}</button>
+              {item.pick.is_captain && <span className="badge" style={{ marginLeft: 6 }}>Your captain</span>}
+              {item.pick.is_vice_captain && <span className="badge" style={{ marginLeft: 6 }}>Your vice</span>}
+              <div className="muted tiny">
+                {item.one.fixtureLabels[0] === "BLANK" ? "No fixture" : item.one.fixtureLabels[0]}
+                {minutes && item.one.fixtureLabels[0] !== "BLANK" ? ` · ${Math.round(minutes.startProbability * 100)}% to start` : ""}
+                {` · range ${range(item.one.distribution?.p10, item.one.distribution?.p90)}`}
+              </div>
+            </div>
+            <strong className="num">{pts(item.one.expected)}</strong>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function AvailabilityList({ items, onOpen }: { items: SquadItem[]; onOpen: (item: SquadItem) => void }) {
+  if (!items.length) return <p className="muted">No official flags on any of your 15 players.</p>;
+  return (
+    <ul className={styles.plainList}>
+      {items.map((item) => {
+        const status = officialAvailability(item.player);
+        return (
+          <li key={item.player.id}>
+            <div>
+              <button type="button" className="link-button" onClick={() => onOpen(item)}>{item.player.web_name}</button>
+              {item.player.news && <div className="muted tiny">{item.player.news}</div>}
+            </div>
+            <span className={toneBadge(status.tone)}>{status.short}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function TransferResult({
+  plan, playerMap, freeTransfers, usesListedPrices, sellingPrices, onOpen,
+}: {
+  plan: NonNullable<ReturnType<typeof recommendJointTransferPlan>>;
+  playerMap: Map<number, FplPlayer>;
+  freeTransfers: number;
+  usesListedPrices: boolean;
+  sellingPrices: Map<number, number>;
+  onOpen: (player: FplPlayer) => void;
+}) {
+  const improves = plan.expectedGain > 0;
+  const outgoingSale = plan.moves.reduce((sum, move) => sum + (sellingPrices.get(move.outgoingId) ?? 0), 0);
+  const leftOver = plan.totalBudget - plan.totalIncomingCost;
+  return (
+    <div className="stack">
+      <div>
+        <span className={improves ? "badge badge-good" : "badge badge-warn"}>{improves ? "Transfer leads" : "Holding leads"}</span>
+        <h2 style={{ marginTop: 8 }}>
+          {improves
+            ? `${signed(plan.expectedGain)} projected points over ${TRANSFER_HORIZON} Gameweeks`
+            : `Best option is ${signed(plan.expectedGain)} after the hit`}
+        </h2>
+        <p className="muted small" style={{ marginTop: 4 }}>
+          {improves
+            ? `After ${plan.transferCost ? `a ${plan.transferCost}-point hit` : "using free transfers"}. Confidence: ${plan.confidence.toLowerCase()} · data quality ${plan.dataQuality}/100.`
+            : plan.transferCost
+              ? `These are the strongest legal replacements found, but their gain doesn't cover the ${plan.transferCost}-point hit. Keeping your current players has the higher projection.`
+              : "These are the strongest legal replacements found, but they project fewer points than the players you would sell. Keeping your current players has the higher projection."}
+        </p>
+      </div>
+
+      <div className="table-wrap">
+        <table className="table">
+          <thead><tr><th>Sell</th><th>Buy</th><th className="r">Gain</th></tr></thead>
+          <tbody>
+            {plan.moves.map((move) => {
+              const out = playerMap.get(move.outgoingId);
+              const into = playerMap.get(move.incomingId);
+              if (!out || !into) return null;
+              return (
+                <tr key={`${move.outgoingId}-${move.incomingId}`}>
+                  <td>
+                    <button type="button" className="link-button" onClick={() => onOpen(out)}>{out.web_name}</button>
+                    <div className="muted tiny">{pts(move.outgoingExpected)} pts · sells {money(sellingPrices.get(out.id))}{usesListedPrices ? "*" : ""}</div>
+                  </td>
+                  <td>
+                    <button type="button" className="link-button" onClick={() => onOpen(into)}>{into.web_name}</button>
+                    <div className="muted tiny">{pts(move.incomingExpected)} pts · costs {money(into.now_cost)}</div>
+                  </td>
+                  <td className={`r ${move.expectedGain >= 0 ? "pos" : "neg"}`}>{signed(move.expectedGain)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <dl className="kv">
+        <dt>Points gained before hits</dt><dd>{signed(plan.rawExpectedGain)}</dd>
+        <dt>Hit ({Math.max(0, plan.moves.length - freeTransfers)} paid transfer{Math.max(0, plan.moves.length - freeTransfers) === 1 ? "" : "s"})</dt><dd>{plan.transferCost ? `−${plan.transferCost}` : "0"}</dd>
+        <dt><strong>Net gain</strong></dt><dd><strong className={improves ? "pos" : "neg"}>{signed(plan.expectedGain)}</strong></dd>
+        <dt>Money available</dt><dd>{money(plan.totalBudget)} <span className="muted small">(bank + {money(outgoingSale)} from sales)</span></dd>
+        <dt>Spent on new players</dt><dd>{money(plan.totalIncomingCost)}</dd>
+        <dt>Left in the bank</dt><dd>{money(leftOver)}</dd>
+      </dl>
+
+      {usesListedPrices && (
+        <p className="small muted">* Sale values use current listed prices because public FPL data doesn&apos;t include your selling prices. If you bought a player for less, you may get less back — check affordability in FPL.</p>
+      )}
+      <p className="small muted">Per-move gains are before hits; the hit is counted once for the whole package. Make the transfers yourself in the official FPL app.</p>
+    </div>
   );
 }

@@ -1,25 +1,14 @@
-import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import SiteAnalytics from "@/components/SiteAnalytics";
-import FplVisualEnhancer from "@/components/FplVisualEnhancer";
 import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
-import "./frontdesks-ui-fixes.css";
-import "./geist-typography.css";
-import "./editorial-theme.css";
 
-const plexSans = IBM_Plex_Sans({
+const inter = Inter({
   variable: "--font-app-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-app-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -28,43 +17,48 @@ const siteUrl = getSiteUrl();
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "FPL Prism — Fantasy Premier League Decision Analytics",
+    default: "FPL Prism — Fantasy Premier League decision analytics",
     template: "%s · FPL Prism",
   },
-  description: "Analyze your FPL squad, compare legal transfers and quantify expected upside, downside and uncertainty with an explainable risk model.",
+  description: "Import a public FPL squad, compare legal transfers after hits and budget, and see the expected points and outcome range behind each decision.",
   applicationName: "FPL Prism",
-  keywords: ["FPL", "Fantasy Premier League", "FPL transfers", "FPL analytics", "FPL AI", "FPL planner"],
+  keywords: ["FPL", "Fantasy Premier League", "FPL transfers", "FPL expected points", "FPL planner"],
   alternates: { canonical: "/" },
   icons: {
     icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
       { url: "/favicon.png", type: "image/png", sizes: "64x64" },
-      { url: "/icon.svg", type: "image/svg+xml", sizes: "any" },
     ],
-    shortcut: ["/favicon.png"],
-    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    shortcut: ["/favicon.ico"],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
     type: "website",
     url: "/",
     siteName: "FPL Prism",
-    title: "FPL Prism — Know the risk behind every move",
-    description: "Import your FPL squad, get a model-driven team assessment and simulate the risk behind your next transfer.",
+    title: "FPL Prism — Fantasy Premier League decision analytics",
+    description: "Import a public FPL squad and compare transfers using expected points, outcome ranges, hits and budget.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "FPL Prism — Know the risk behind every move",
-    description: "Model-driven FPL transfer recommendations with explainable risk and Monte Carlo simulation.",
+    title: "FPL Prism — Fantasy Premier League decision analytics",
+    description: "Compare FPL transfers using expected points, outcome ranges, hits and budget.",
   },
   robots: { index: true, follow: true },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#14181d",
+};
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${plexSans.variable} ${ibmPlexMono.variable}`}>
+    <html lang="en-GB" className={inter.variable}>
       <body>
         <SiteHeader />
         <div id="main-content" tabIndex={-1}>{children}</div>
-        <FplVisualEnhancer />
+        <SiteFooter />
         <SiteAnalytics />
       </body>
     </html>

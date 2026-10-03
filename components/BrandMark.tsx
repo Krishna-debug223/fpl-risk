@@ -3,21 +3,18 @@ type Props = {
   title?: string;
 };
 
+/** The FPL Prism mark. Kept in sync with public/icon.svg, which is the browser tab icon. */
 export default function BrandMark({ className, title = "FPL Prism" }: Props) {
   return (
-    <span
-      className={className}
-      role="img"
-      aria-label={title}
-    >
+    <span className={className} role="img" aria-label={title}>
       <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" style={{ width: "100%", height: "100%", display: "block" }}>
-        <rect width="64" height="64" rx="16" fill="#3d283a" />
-        <path d="M32 10 53 21v22L32 54 11 43V21L32 10Z" fill="#4b3948" stroke="#e5dfd3" strokeWidth="1.5" />
-        <path d="M32 10v22L11 21 32 10Z" fill="#78947c" />
-        <path d="M32 32v22L11 43l21-11Z" fill="#755f70" />
-        <path d="m32 32 21-11v22L32 54V32Z" fill="#b08b5b" />
-        <path d="m32 19 10 5.3-10 5.2-10-5.2L32 19Z" fill="#fffefa" opacity=".92" />
-        <path d="m32 29.5 10-5.2v10.4L32 40l-10-5.3V24.3l10 5.2Z" fill="#3d283a" opacity=".9" />
+        <rect width="64" height="64" rx="16" fill="#37003c" />
+        <path d="M32 10 53 21v22L32 54 11 43V21L32 10Z" fill="#51205a" stroke="#e8dff0" strokeWidth="1.5" />
+        <path d="M32 10v22L11 21 32 10Z" fill="#00ff87" />
+        <path d="M32 32v22L11 43l21-11Z" fill="#8c4b93" />
+        <path d="m32 32 21-11v22L32 54V32Z" fill="#04f5ff" />
+        <path d="m32 19 10 5.3-10 5.2-10-5.2L32 19Z" fill="#fff" opacity=".92" />
+        <path d="m32 29.5 10-5.2v10.4L32 40l-10-5.3V24.3l10 5.2Z" fill="#37003c" opacity=".9" />
       </svg>
     </span>
   );

@@ -1,0 +1,33 @@
+.head { padding-right: 44px; }
+.head h2 { font-size: 22px; }
+.head p { margin-top: 2px; }
+
+.availability { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.news { margin-top: 8px; font-size: 14px; color: var(--text-2); }
+
+.qualities {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0 0;
+}
+.qualities div { padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-sm); }
+.qualities dt { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; }
+.qualities dd { margin: 4px 0 0; color: var(--text-3); font-size: 12.5px; line-height: 1.4; }
+
+.section { margin-top: 22px; }
+
+.bands {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+.bands strong { display: block; font-size: 18px; margin: 2px 0 6px; }
+
+.totalRow td { font-weight: 600; background: var(--surface-2); }
+
+@media (max-width: 640px) {
+  .qualities { grid-template-columns: 1fr; }
+  .bands { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
