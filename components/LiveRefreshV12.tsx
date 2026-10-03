@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { dashboardHref, dashboardView, type DashboardView as Tab } from "@/lib/navigation";
 
 import DecisionPreview from "./DecisionPreview";
 import SquadPitch, { type SquadPitchPlayer } from "./SquadPitch";
@@ -28,7 +30,6 @@ import {
 import { analyzePortfolioRisk } from "@/lib/portfolio-risk";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 
-type Tab = "overview" | "transfer" | "team" | "market" | "model";
 type ProjectionRow = {
   player: FplPlayer;
   one: MarketProjection;
@@ -153,7 +154,10 @@ function chipTone(status: string) {
 
 export default function LiveRefreshV12() {
   const whyDialogRef = useRef<HTMLElement>(null);
-  const [tab, setTab] = useState<Tab>("overview");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tab = dashboardView(searchParams.toString());
+  const setTab = (view: Tab) => router.push(dashboardHref(view, searchParams.toString()), { scroll: false });
   const [bootstrap, setBootstrap] = useState<BootstrapPayload | null>(null);
   const [fixtures, setFixtures] = useState<FplFixture[]>([]);
   const [history, setHistory] = useState<HistoricalPayload | null>(null);
@@ -179,7 +183,6 @@ export default function LiveRefreshV12() {
   const [livePoints, setLivePoints] = useState<Record<number, { points: number; played: boolean }>>({});
   const [lockedEventId, setLockedEventId] = useState<number | null>(null);
   const [lockedProjectionRows, setLockedProjectionRows] = useState<Record<number, LockedProjectionRow>>({});
-  const hydratedViewRef = useRef(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem("fpl-risk-decision-context") as RiskMode | null;
@@ -194,27 +197,6 @@ export default function LiveRefreshV12() {
     const saved = Number(window.localStorage.getItem("fpl-risk-free-transfers"));
     if (Number.isInteger(saved) && saved >= 0 && saved <= 5) setFreeTransfers(saved);
   }, []);
-
-  useEffect(() => {
-    const validTabs = new Set<Tab>(["overview", "team", "transfer", "market", "model"]);
-    const readView = () => {
-      const view = new URLSearchParams(window.location.search).get("view") as Tab | null;
-      if (view && validTabs.has(view)) setTab(view);
-      else setTab("overview");
-    };
-    readView();
-    hydratedViewRef.current = true;
-    window.addEventListener("popstate", readView);
-    return () => window.removeEventListener("popstate", readView);
-  }, []);
-
-  useEffect(() => {
-    if (!hydratedViewRef.current) return;
-    const url = new URL(window.location.href);
-    if (tab === "overview") url.searchParams.delete("view");
-    else url.searchParams.set("view", tab);
-    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [tab]);
 
   useEffect(() => {
     let cancelled = false;
@@ -855,6 +837,14 @@ export default function LiveRefreshV12() {
       setManager(data as ManagerPayload);
       setSelectedOut([]);
       window.localStorage.setItem("fpl-risk-team-id", requestedTeamId);
+      // A reload or a trip through the planner should reopen this squad.
+      // Read the latest view in case navigation changed during the request.
+      if (window.location.pathname === "/dashboard") {
+        const currentParams = new URLSearchParams(window.location.search);
+        currentParams.set("team", requestedTeamId);
+        if (requestedTeamId !== "1") currentParams.delete("demo");
+        router.replace(dashboardHref(dashboardView(currentParams.toString()), currentParams.toString()), { scroll: false });
+      }
     } catch (error) {
       setTeamError(
         error instanceof Error ? error.message : "Could not import that team.",
@@ -976,30 +966,8 @@ export default function LiveRefreshV12() {
 
   return (
     <main className={styles.shell}>
-      <header className={styles.header} aria-label="Dashboard workspace">
-        <button className={styles.workspaceIdentity} onClick={() => setTab("overview")}>
-          <span>Dashboard</span>
-          <small>Decision desk</small>
-        </button>
-        <nav
-          className={styles.nav}
-          aria-label="Dashboard views"
-          role="tablist"
-        >
-          {(["overview", "team", "transfer", "market", "model"] as Tab[]).map(
-            (item) => (
-              <button
-                key={item}
-                className={tab === item ? styles.activeNav : ""}
-                onClick={() => setTab(item)}
-                role="tab"
-                aria-selected={tab === item}
-              >
-                {tabLabels[item]}
-              </button>
-            ),
-          )}
-        </nav>
+      <header className={styles.workspaceStatus} aria-label="Current tool and data status">
+        <strong>{tabLabels[tab]}</strong>
         <div className={styles.liveStatusGroup}>
           <div className={styles.liveStatus}>
             <i />{" "}
@@ -1024,11 +992,19 @@ export default function LiveRefreshV12() {
       {feedError && <div className={styles.errorBanner}>{feedError}</div>}
 
       {tab === "overview" && (
-        <div className={styles.page} role="tabpanel" aria-label="Overview">
-          <section className={styles.overviewMarketTape} aria-label="Live player market signals">
+        <div className={styles.page} role="region" aria-label="Overview">
+          <details className={styles.overviewMarketTape} aria-label="Live player market signals">
+            <summary className={styles.overviewPulseSummary}>
+              <span className={styles.overviewPulseKicker}>GAMEWEEK PULSE</span>
+              <strong>Market notes</strong>
+              <span className={styles.overviewPulseLead}>
+                {marketSignals.priceRiser
+                  ? `${marketSignals.priceRiser.player.web_name} · ${signedPriceChange(marketSignals.priceRiser.player.cost_change_event)}`
+                  : "Prices, transfers and projected hauls"}
+              </span>
+              <span className={styles.overviewPulseAction}>Five live signals <i aria-hidden="true" /></span>
+            </summary>
             <div className={styles.overviewTicker}>
-              <span className={styles.overviewTickerLabel}>LIVE MARKET TAPE</span>
-
               <span className={styles.overviewTickerSignal}>
                 <i className={styles.overviewTickerIcon} aria-hidden="true">↗</i>
                 <b>PRICE RISE</b>
@@ -1094,30 +1070,18 @@ export default function LiveRefreshV12() {
                 )}
               </span>
             </div>
-          </section>
+          </details>
           <section className={styles.hero}>
             <div className={styles.heroCopy}>
-              <span className={styles.eyebrow}>LIVE FPL DECISION ENGINE</span>
-              <h1>
-                Know the risk
-                <br />
-                behind <em>every move.</em>
-              </h1>
+              <span className={styles.eyebrow}>FPL DECISION PREVIEW</span>
+              <h1>Know the range before <em>you transfer.</em></h1>
               <p>
-                Import your squad, understand the model behind every player and
-                compare transfers and chips before you commit.
+                Import your squad to compare expected points and downside, then
+                test legal moves before the deadline.
               </p>
               <div className={styles.heroMeta}>
                 <span>{nextEvent?.name ?? "Next gameweek"}</span>
-                <span>Model {MODEL_VERSION}</span>
-                <span>{trainingThroughGameweek == null ? "Training status pending" : `Trained through GW${trainingThroughGameweek}`}</span>
-                <span>
-                  {sportsbook?.available
-                    ? sportsbook.configuredWeight > 0
-                      ? "Market prior active"
-                      : "Market feed connected"
-                  : "Core model active"}
-                </span>
+                <span>Expected points · risk · transfers</span>
               </div>
               <form className={styles.importCard} onSubmit={importTeam}>
                 <span className={styles.eyebrow}>ANALYZE YOUR SQUAD</span>
@@ -1169,36 +1133,46 @@ export default function LiveRefreshV12() {
             />
           </section>
 
-          <section className={styles.contextSection} aria-labelledby="decision-context-title">
-            <div>
-              <span className={styles.eyebrow}>DECISION POSTURE</span>
-              <h2 id="decision-context-title">What are you playing for?</h2>
-              <p>Use the same projections with a preference that matches your rank situation.</p>
+          <details className={styles.contextDisclosure}>
+            <summary>
+              <span className={styles.contextDisclosureCopy}>
+                <small>DECISION POSTURE</small>
+                <strong>{decisionContextCopy[decisionContext].label}</strong>
+                <span>{decisionContextCopy[decisionContext].detail}</span>
+              </span>
+              <span className={styles.contextDisclosureAction}>Adjust approach <i aria-hidden="true" /></span>
+            </summary>
+            <div className={styles.contextDisclosureBody}>
+              <div>
+                <span className={styles.eyebrow}>YOUR GAMEWEEK STRATEGY</span>
+                <h2 id="decision-context-title">Choose your risk balance</h2>
+                <p>The projections stay the same; this setting changes how the model weighs uncertainty.</p>
+              </div>
+              <div className={styles.contextChoices} role="radiogroup" aria-label="Risk tolerance">
+                {(Object.keys(decisionContextCopy) as RiskMode[]).map((mode) => (
+                  <button
+                    type="button"
+                    key={mode}
+                    className={decisionContext === mode ? styles.contextChoiceActive : styles.contextChoice}
+                    onClick={() => setDecisionContext(mode)}
+                    role="radio"
+                    aria-checked={decisionContext === mode}
+                  >
+                    {decisionContextCopy[mode].label}
+                  </button>
+                ))}
+              </div>
+              <p className={styles.contextHint}>{decisionContextCopy[decisionContext].detail}</p>
             </div>
-            <div className={styles.contextChoices} role="radiogroup" aria-label="Risk tolerance">
-              {(Object.keys(decisionContextCopy) as RiskMode[]).map((mode) => (
-                <button
-                  type="button"
-                  key={mode}
-                  className={decisionContext === mode ? styles.contextChoiceActive : styles.contextChoice}
-                  onClick={() => setDecisionContext(mode)}
-                  role="radio"
-                  aria-checked={decisionContext === mode}
-                >
-                  {decisionContextCopy[mode].label}
-                </button>
-              ))}
-            </div>
-            <p className={styles.contextHint}>{decisionContextCopy[decisionContext].detail}</p>
-          </section>
+          </details>
 
           <section className={styles.marketSection}>
             <div className={styles.sectionTitle}>
               <div>
                 <span className={styles.eyebrow}>LIVE MARKET</span>
-                <h2>Best projections right now</h2>
+                <h2>Leading forecasts</h2>
                 <p>
-                  Next-Gameweek xPts from the same engine used in Transfer Lab.
+                  Three players to start the comparison. The full market is one click away.
                 </p>
               </div>
               <button onClick={() => setTab("market")}>
@@ -1207,7 +1181,7 @@ export default function LiveRefreshV12() {
             </div>
             <div className={styles.railViewport}>
               <div className={styles.projectionRail}>
-                {bestNow.map((row) => {
+                {bestNow.slice(0, 3).map((row) => {
                   const team = teamMap.get(row.player.team);
                   return (
                     <article
@@ -1243,7 +1217,7 @@ export default function LiveRefreshV12() {
                   );
                 })}
                 {!bestNow.length &&
-                  Array.from({ length: 4 }).map((_, index) => (
+                  Array.from({ length: 3 }).map((_, index) => (
                     <div className={styles.projectionSkeleton} key={index} />
                   ))}
               </div>
@@ -1333,7 +1307,7 @@ export default function LiveRefreshV12() {
       )}
 
       {tab === "team" && (
-        <div className={styles.page} role="tabpanel" aria-label="My Team">
+        <div className={styles.page} role="region" aria-label="My Team">
           <div className={styles.pageHeading}>
             <div>
               <span className={styles.eyebrow}>MY TEAM</span>
@@ -1470,7 +1444,7 @@ export default function LiveRefreshV12() {
                   <div className={styles.panelHead}>
                     <div>
                       <span className={styles.eyebrow}>
-                        AI RECOMMENDED MOVE
+                        MODEL SUGGESTED MOVE
                       </span>
                       <h2>
                         {autoRecommendation && autoOutgoing && autoIncoming
@@ -1609,7 +1583,7 @@ export default function LiveRefreshV12() {
       )}
 
       {tab === "transfer" && (
-        <div className={styles.page} role="tabpanel" aria-label="Transfer Lab">
+        <div className={styles.page} role="region" aria-label="Transfer Lab">
           <div className={styles.pageHeading}>
             <div>
               <span className={styles.eyebrow}>TRANSFER LAB</span>
@@ -1836,7 +1810,7 @@ export default function LiveRefreshV12() {
       )}
 
       {tab === "market" && (
-        <div className={styles.page} role="tabpanel" aria-label="Player Market">
+        <div className={styles.page} role="region" aria-label="Player Market">
           <section className={styles.marketMasthead}>
             <div className={styles.marketMastheadTop}>
               <div>
@@ -2099,7 +2073,7 @@ export default function LiveRefreshV12() {
       )}
 
       {tab === "model" && (
-        <div className={styles.page} role="tabpanel" aria-label="Model">
+        <div className={styles.page} role="region" aria-label="Model">
           <div className={styles.pageHeading}>
             <div>
               <span className={styles.eyebrow}>MODEL TRANSPARENCY</span>

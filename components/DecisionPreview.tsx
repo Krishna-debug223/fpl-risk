@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FplPlayer } from "@/lib/types";
 import type { MarketProjection } from "@/lib/risk-v12";
-import BrandMark from "./BrandMark";
 import styles from "./DecisionPreview.module.css";
 
 type Row = {
@@ -17,14 +16,14 @@ type View = "forecast" | "fixtures" | "drivers";
 const views: { id: View; label: string; detail: string; icon: string }[] = [
   {
     id: "forecast",
-    label: "The forecast",
+    label: "Forecast",
     detail: "See the upside",
     icon: "↗",
   },
-  { id: "fixtures", label: "The fixtures", detail: "Look ahead", icon: "▦" },
+  { id: "fixtures", label: "Fixtures", detail: "Look ahead", icon: "▦" },
   {
     id: "drivers",
-    label: "The reasoning",
+    label: "Scoring drivers",
     detail: "Every point explained",
     icon: "◎",
   },
@@ -232,10 +231,9 @@ export default function DecisionPreview({
         </div>
         <div className={styles.preview}>
           <header>
-            <BrandMark className={styles.mark} />
             <div>
-              <strong>Your decision desk</strong>
-              <small>{gameweek} · FPL Prism</small>
+              <strong>Points forecast</strong>
+              <small>{gameweek} · choose a player or horizon</small>
             </div>
             <span className={styles.live} aria-busy={!row}>
               <i /> {row ? "Live data" : "—"}
@@ -253,8 +251,8 @@ export default function DecisionPreview({
             ref={trigger}
             onClick={() => setExpanded(true)}
           >
-            Explore the decision desk <span>↗</span>
-            <small>Open the panels. Inspect every detail.</small>
+            Open the full player breakdown <span>↗</span>
+            <small>Forecast, fixtures and scoring drivers</small>
           </button>
         </div>
         <button

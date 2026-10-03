@@ -1,11 +1,11 @@
 :root {
   --font-app-display: var(--font-app-sans);
-  --pl-purple: #37003c;
-  --pl-purple-dark: #26002b;
-  --fpl-green: #00ff87;
-  --fpl-cyan: #04f5ff;
-  --fpl-pink: #e90052;
-  --fpl-yellow: #ffd400;
+  --pl-purple: #3d283a;
+  --pl-purple-dark: #281d2a;
+  --fpl-green: #78947c;
+  --fpl-cyan: #b08b5b;
+  --fpl-pink: #9d5960;
+  --fpl-yellow: #c2a163;
   --ink: #17121a;
   --ink-soft: #4f4752;
   --muted: #756d78;
@@ -17,7 +17,7 @@
   --positive: #008f4c;
   --negative: #cf003d;
   --warning: #a86800;
-  --pitch: #12865c;
+  --pitch: #4c7459;
 }
 
 * { box-sizing: border-box; }
@@ -1114,9 +1114,9 @@ tbody tr:hover td { background: #faf8fb; }
 .news-scan-list { display: grid; gap: 7px; margin-top: 16px; }
 .news-scan-row { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid #ece7ee; border-radius: 10px; background: #fbfafc; }
 .news-scan-row strong, .news-scan-row span { display: block; }
-.news-scan-row strong { color: #37003c; font-size: 11px; }
+.news-scan-row strong { color: #3d283a; font-size: 11px; }
 .news-scan-row div span { margin-top: 3px; color: #827985; font-size: 10px; line-height: 1.35; }
-.news-scan-row b { color: #37003c; font-size: 14px; }
+.news-scan-row b { color: #3d283a; font-size: 14px; }
 .news-severity { width: 7px; height: 28px; border-radius: 99px; background: #b4aab7; }
 .news-severity.high { background: #b42318; }
 .news-severity.medium { background: #d79d00; }
@@ -1124,3 +1124,38 @@ tbody tr:hover td { background: #faf8fb; }
 .news-scan-empty { margin-top: 16px; padding: 14px; border-radius: 10px; background: #fbfafc; color: #817783; font-size: 11px; }
 .news-scan-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #ece7ee; color: #928995; font-size: 9px; }
 @media (max-width: 680px) { .news-scan-head { align-items: flex-start; flex-direction: column; } .news-scan-foot { flex-direction: column; } }
+
+/* Shared FPL Prism foundation: warm paper, ink, and restrained pitch green. */
+:root {
+  --editorial-paper: #f7f5ef;
+  --editorial-white: #fffefa;
+  --editorial-ink: #28242a;
+  --editorial-muted: #716b70;
+  --editorial-rule: #ded9ce;
+  --editorial-plum: #3d283a;
+  --editorial-pitch: #78947c;
+  --pl-purple: #3d283a;
+  --pl-purple-dark: #281d2a;
+  --fpl-green: #78947c;
+  --fpl-cyan: #b08b5b;
+  --fpl-pink: #9d5960;
+  --fpl-yellow: #c2a163;
+  --ink: #28242a;
+  --ink-soft: #514c51;
+  --muted: #716b70;
+  --canvas: #f7f5ef;
+  --paper: #fffefa;
+  --surface: #fbfaf6;
+  --line: #ded9ce;
+  --line-strong: #c9c2b6;
+  --positive: #477151;
+  --negative: #9d4c55;
+  --warning: #89682f;
+  --pitch: #4c7459;
+}
+
+html, body { background: var(--editorial-paper); color: var(--editorial-ink); }
+body { font-family: var(--font-app-sans), "IBM Plex Sans", sans-serif; }
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline-color: rgba(120, 148, 124, 0.58);
+}

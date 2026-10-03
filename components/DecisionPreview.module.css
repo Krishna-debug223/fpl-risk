@@ -9,7 +9,7 @@
   width: 520px;
   height: 520px;
   max-width: 95%;
-  border: 1px solid #37003c0b;
+  border: 1px solid #3d283a0b;
   border-radius: 50%;
   top: 10px;
   left: 25px;
@@ -19,7 +19,7 @@
   content: "";
   position: absolute;
   inset: 45px;
-  border: 1px solid #37003c0a;
+  border: 1px solid #3d283a0a;
   border-radius: 50%;
 }
 .preview {
@@ -28,8 +28,8 @@
   border: 1px solid #e3dde6;
   border-radius: 26px;
   box-shadow:
-    0 24px 55px #37003c0b,
-    0 4px 8px #37003c05;
+    0 24px 55px #3d283a0b,
+    0 4px 8px #3d283a05;
   transform: rotate(-2deg);
   transition: transform 0.35s;
   overflow: hidden;
@@ -48,8 +48,8 @@
 .mark {
   width: 30px;
   height: 30px;
-  background: #37003c;
-  color: #00ff87;
+  background: #3d283a;
+  color: #78947c;
   display: grid;
   place-items: center;
   border-radius: 9px;
@@ -111,8 +111,8 @@
 .tabs button[aria-selected="true"] {
   background: #fff;
   border-color: #dfd6e4;
-  color: #37003c;
-  box-shadow: 0 3px 8px #37003c09;
+  color: #3d283a;
+  box-shadow: 0 3px 8px #3d283a09;
 }
 .tabs small {
   font-size: 8px;
@@ -154,7 +154,7 @@
   font-size: 52px;
   font-weight: 450;
   letter-spacing: -0.07em;
-  color: #37003c;
+  color: #3d283a;
   text-align: right;
   line-height: 1;
 }
@@ -180,9 +180,9 @@
   cursor: pointer;
 }
 .horizons button[aria-pressed="true"] {
-  background: #37003c;
+  background: #3d283a;
   color: #fff;
-  border-color: #37003c;
+  border-color: #3d283a;
 }
 .playerList {
   display: grid;
@@ -223,7 +223,7 @@
   margin-left: auto;
   font-size: 15px;
   font-weight: 550;
-  color: #37003c;
+  color: #3d283a;
 }
 .playerList b small {
   display: inline;
@@ -253,7 +253,7 @@
   font: inherit;
   font-size: 12px;
   font-weight: 550;
-  color: #37003c;
+  color: #3d283a;
   cursor: pointer;
 }
 .expand small {
@@ -277,10 +277,10 @@
   background: #fff;
   border: 1px solid #e5dfe8;
   border-radius: 19px;
-  box-shadow: 0 10px 25px #37003c09;
+  box-shadow: 0 10px 25px #3d283a09;
   font: inherit;
   text-align: left;
-  color: #37003c;
+  color: #3d283a;
   animation: float 7s ease-in-out infinite alternate;
 }
 .floatCard strong {
@@ -361,7 +361,7 @@
 }
 .fixtures b {
   font-weight: 500;
-  color: #37003c;
+  color: #3d283a;
 }
 .fixtures b small {
   font-weight: 400;
@@ -409,7 +409,7 @@
 .drivers strong {
   font-weight: 500;
   text-align: right;
-  color: #37003c;
+  color: #3d283a;
 }
 .dialog {
   border: 1px solid #e5dfe8;
@@ -419,7 +419,7 @@
   border-radius: 32px;
   overflow: auto;
   background: #fcfafc;
-  color: #37003c;
+  color: #3d283a;
   box-shadow: 0 35px 120px #18001e30;
 }
 .dialog[open] {
@@ -507,15 +507,15 @@
   color: #009750;
 }
 .sidebar > button {
-  background: #37003c;
+  background: #3d283a;
   color: white;
-  border: 1px solid #37003c;
+  border: 1px solid #3d283a;
   border-radius: 30px;
   font: inherit;
   font-size: 12px;
   padding: 15px 10px;
   cursor: pointer;
-  box-shadow: 0 8px 20px #37003c10;
+  box-shadow: 0 8px 20px #3d283a10;
 }
 .sidebar > button.secondary {
   background: transparent;
@@ -650,4 +650,53 @@
   .preview {
     transform: none;
   }
+}
+
+/* Keep the live example useful, but let the forecast itself do the talking. */
+.stage { padding: 0; }
+.orbit, .floatTop, .preview footer { display: none; }
+.preview {
+  border: 1px solid #ded9ce;
+  border-radius: 4px;
+  box-shadow: 0 12px 28px rgba(40, 29, 42, .06);
+  transform: none;
+}
+.preview:hover,
+.preview:focus-within { transform: none; }
+.preview header { gap: 9px; padding: 14px 17px; border-color: #e8e2d8; }
+.mark { width: 27px; height: 27px; border-radius: 3px; }
+.preview header strong { font-size: 12px; }
+.preview header small { color: #716b70; }
+.tabs { gap: 3px; padding: 6px; border-color: #e8e2d8; }
+.tabs button { gap: 6px; padding: 9px 5px; border-radius: 3px; font-size: 9px; }
+.tabs small { display: none; }
+.tabIcon { font-size: 13px; }
+.content { min-height: 190px; padding: 14px; }
+.playerHeading h3 { margin: 5px 0; font-size: 26px; }
+.score { font-size: 43px; }
+.horizons { gap: 5px; margin: 14px 0 8px; }
+.horizons button { border-radius: 3px; padding-block: 7px; }
+.playerList button { gap: 9px; padding-block: 9px; }
+.playerList button[aria-pressed="true"] { border-radius: 3px; }
+.floatBottom {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  justify-content: flex-start;
+  margin-top: 10px;
+  padding: 11px 14px;
+  border: 1px solid #ded9ce;
+  border-radius: 4px;
+  box-shadow: none;
+  animation: none;
+}
+.floatBottom .signal { color: #667b65; font-size: 23px; }
+.floatBottom strong { margin-top: 2px; font-size: 17px; }
+.floatBottom small { font-size: 9px; }
+.expand { padding: 12px 17px; background: #f8f6f0; border-color: #e8e2d8; font-size: 11px; }
+.expand small { color: #716b70; }
+
+@media (max-width: 760px) {
+  .stage { width: 100%; }
+  .content { min-height: 240px; }
 }

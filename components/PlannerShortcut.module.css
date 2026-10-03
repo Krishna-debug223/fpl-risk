@@ -3,14 +3,53 @@
   right: 22px;
   bottom: 22px;
   z-index: 45;
-  filter: drop-shadow(0 16px 28px rgba(55, 0, 60, .16));
+}
+
+.plannerLink {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 14px;
+  border: 1px solid #3d283a;
+  border-left: 3px solid #78947c;
+  border-radius: 3px;
+  background: #3d283a;
+  color: #faf8f2;
+  box-shadow: 0 5px 14px rgba(40, 29, 42, .12);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.plannerLink:hover {
+  transform: translateY(-2px);
+  background: #51394e;
+  box-shadow: 0 8px 18px rgba(40, 29, 42, .15);
+}
+
+.plannerLink:focus-visible {
+  outline: 2px solid #78947c;
+  outline-offset: 3px;
+}
+
+.arrow {
+  color: #c8d4c3;
+  font-size: 14px;
+  transition: transform 160ms ease;
+}
+
+.plannerLink:hover .arrow { transform: translate(2px, -2px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .plannerLink, .arrow { transition: none; }
 }
 
 @media (max-width: 650px) {
   .shortcut {
-    right: 14px;
-    bottom: 14px;
-    transform: scale(.94);
-    transform-origin: bottom right;
+    right: 12px;
+    bottom: 12px;
   }
+  .plannerLink { min-height: 42px; padding: 0 12px; }
 }

@@ -1,5 +1,5 @@
 .wrap {
-  background: #37003c;
+  background: #3d283a;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   color: #fff;
   font-family: var(--font-app-sans), ui-sans-serif, system-ui, sans-serif;
@@ -30,7 +30,7 @@
   height: 34px;
   border-radius: 11px;
   background: #fff;
-  color: #37003c;
+  color: #3d283a;
   font-size: 10px;
   font-weight: 950;
   letter-spacing: .08em;
@@ -48,7 +48,7 @@
 
 .homeCopy small {
   margin-top: 1px;
-  color: #00ff87;
+  color: #78947c;
   font-size: 9px;
   font-weight: 850;
 }
@@ -113,7 +113,7 @@
 .signIn {
   padding: 9px 14px;
   border-radius: 999px;
-  background: #00ff87;
+  background: #78947c;
   color: #1c1a1d;
   font-size: 10px;
   font-weight: 950;

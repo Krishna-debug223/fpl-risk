@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import SiteAnalytics from "@/components/SiteAnalytics";
 import FplVisualEnhancer from "@/components/FplVisualEnhancer";
-import PlannerShortcut from "@/components/PlannerShortcut";
 import SiteHeader from "@/components/SiteHeader";
 import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 import "./frontdesks-ui-fixes.css";
 import "./geist-typography.css";
+import "./editorial-theme.css";
 
 const plexSans = IBM_Plex_Sans({
   variable: "--font-app-sans",
@@ -63,8 +63,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" className={`${plexSans.variable} ${ibmPlexMono.variable}`}>
       <body>
         <SiteHeader />
-        {children}
-        <PlannerShortcut />
+        <div id="main-content" tabIndex={-1}>{children}</div>
         <FplVisualEnhancer />
         <SiteAnalytics />
       </body>

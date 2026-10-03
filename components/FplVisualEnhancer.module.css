@@ -15,7 +15,7 @@
   width: 96px;
   height: 88px;
   overflow: visible;
-  color: #37003c;
+  color: #3d283a;
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -30,7 +30,7 @@
   width: 56px;
   height: 66px;
   color: var(--kit-text, #ffffff);
-  background: var(--kit-body, #37003c);
+  background: var(--kit-body, #3d283a);
   border: 1px solid rgba(20, 22, 28, 0.18);
   border-radius: 9px 9px 13px 13px;
   box-shadow:
@@ -46,7 +46,7 @@
   top: 5px;
   width: 27px;
   height: 34px;
-  background: var(--kit-sleeve, #37003c);
+  background: var(--kit-sleeve, #3d283a);
   border: 1px solid rgba(20, 22, 28, 0.14);
 }
 
