@@ -335,3 +335,15 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+/* ---------- Touch screens: larger tap targets, same layout ---------- */
+
+@media (pointer: coarse) {
+  .btn, .input, .select { min-height: 44px; }
+  .btn-sm { min-height: 40px; }
+  .segmented button, .segmented a { min-height: 38px; }
+  .link-button { padding: 6px 0; }
+  .disclosure > summary { min-height: 44px; }
+  /* iOS zooms into inputs smaller than 16px on focus. */
+  .input, .select { font-size: 16px; }
+}

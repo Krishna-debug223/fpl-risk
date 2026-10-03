@@ -148,3 +148,7 @@
   .armband, .flag { left: 4px; width: 16px; height: 16px; line-height: 16px; font-size: 10px; }
   .flag { left: auto; right: 4px; }
 }
+
+@media (pointer: coarse) {
+  .details { padding: 6px 10px; font-size: 12px; }
+}
