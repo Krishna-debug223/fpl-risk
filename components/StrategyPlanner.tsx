@@ -2,51 +2,19 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
-import type {
-  BootstrapPayload,
-  FplFixture,
-  FplPlayer,
-  HistoricalPayload,
-  ManagerPayload,
-} from "@/lib/types";
+import type { BootstrapPayload, FplFixture, FplPlayer, HistoricalPayload, ManagerPayload } from "@/lib/types";
 import type { SportsbookPayload } from "@/lib/sportsbook";
 import { assessChips, type ChipAdvice } from "@/lib/risk-v12";
-import {
-  buildStrategyPlans,
-  type StrategyMode,
-  type StrategyPlannerResult,
-} from "@/lib/strategy-planner";
+import { buildStrategyPlans, type StrategyMode, type StrategyPlannerResult } from "@/lib/strategy-planner";
+import { chipStatus, formatClock, formatDeadline, money, pts, riskBadge, signed, toneBadge } from "./dashboard/format";
 import styles from "./StrategyPlanner.module.css";
-import LegalFooter from "./LegalFooter";
 
 const modeCopy: Record<StrategyMode, { label: string; detail: string }> = {
-  safe: {
-    label: "Safe",
-    detail: "Prefers stable projections, stronger data and fewer volatile swaps.",
-  },
-  balanced: {
-    label: "Balanced",
-    detail: "Optimizes expected points while keeping uncertainty in the decision.",
-  },
-  aggressive: {
-    label: "Aggressive",
-    detail: "Tolerates more variance when the upside path is stronger.",
-  },
+  safe: { label: "Safe", detail: "Prefers steadier players and stronger evidence; fewer volatile swaps." },
+  balanced: { label: "Balanced", detail: "Maximises projected points while still counting uncertainty." },
+  aggressive: { label: "Aggressive", detail: "Accepts a wider range of outcomes for more upside." },
 };
-
-const money = (value: number | null | undefined) =>
-  value == null ? "—" : `£${(value / 10).toFixed(1)}m`;
-
-function signed(value: number) {
-  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}`;
-}
-
-function chipTone(status: ChipAdvice["status"]) {
-  if (status === "PLAY") return styles.play;
-  if (status === "CONSIDER") return styles.consider;
-  if (status === "USED" || status === "UNAVAILABLE") return styles.muted;
-  return styles.hold;
-}
+const modes: StrategyMode[] = ["safe", "balanced", "aggressive"];
 
 export default function StrategyPlanner() {
   const [bootstrap, setBootstrap] = useState<BootstrapPayload | null>(null);
@@ -60,124 +28,125 @@ export default function StrategyPlanner() {
   const [loading, setLoading] = useState(true);
   const [loadingTeam, setLoadingTeam] = useState(false);
   const [computing, setComputing] = useState(false);
-  const [error, setError] = useState("");
+  const [feedError, setFeedError] = useState("");
+  const [teamError, setTeamError] = useState("");
+  const [planError, setPlanError] = useState("");
   const [result, setResult] = useState<StrategyPlannerResult | null>(null);
+  const [stale, setStale] = useState(false);
   const [chipAdvice, setChipAdvice] = useState<ChipAdvice[]>([]);
 
   useEffect(() => {
-    const remembered = window.localStorage.getItem("fpl-risk-team-id");
-    if (remembered && /^\d+$/.test(remembered)) setTeamId(remembered);
+    const savedMode = window.localStorage.getItem("fpl-risk-strategy-mode");
+    if (savedMode === "safe" || savedMode === "balanced" || savedMode === "aggressive") setMode(savedMode);
+    const savedFt = window.localStorage.getItem("fpl-risk-free-transfers");
+    if (savedFt != null && /^[0-5]$/.test(savedFt)) setFreeTransfers(Number(savedFt));
 
     let cancelled = false;
     async function loadFeeds() {
       setLoading(true);
-      setError("");
+      setFeedError("");
       try {
         const [bootstrapResponse, fixturesResponse, sportsbookResponse] = await Promise.all([
           fetch("/api/fpl/bootstrap", { cache: "no-store" }),
           fetch("/api/fpl/fixtures", { cache: "no-store" }),
           fetch("/api/sportsbook", { cache: "no-store" }),
         ]);
-        if (!bootstrapResponse.ok || !fixturesResponse.ok) {
-          throw new Error("Live FPL feeds are temporarily unavailable.");
-        }
+        if (!bootstrapResponse.ok || !fixturesResponse.ok) throw new Error("FPL data could not be loaded. Try again in a moment.");
         const bootstrapData = (await bootstrapResponse.json()) as BootstrapPayload;
         const fixtureData = (await fixturesResponse.json()) as { fixtures: FplFixture[] };
         if (!cancelled) {
           setBootstrap(bootstrapData);
           setFixtures(fixtureData.fixtures ?? []);
-          if (sportsbookResponse.ok) {
-            setSportsbook((await sportsbookResponse.json()) as SportsbookPayload);
-          }
+          if (sportsbookResponse.ok) setSportsbook((await sportsbookResponse.json()) as SportsbookPayload);
         }
         try {
           const historicalResponse = await fetch("/api/fpl/history", { cache: "no-store" });
-          if (historicalResponse.ok && !cancelled) {
-            setHistory((await historicalResponse.json()) as HistoricalPayload);
-          }
+          if (historicalResponse.ok && !cancelled) setHistory((await historicalResponse.json()) as HistoricalPayload);
         } catch {
-          // Historical priors are optional and the planner can fall back to the live model.
+          // Historical priors are optional.
         }
       } catch (loadError) {
-        if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : "Could not load model feeds.");
-        }
+        if (!cancelled) setFeedError(loadError instanceof Error ? loadError.message : "FPL data could not be loaded.");
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
     void loadFeeds();
-    return () => {
-      cancelled = true;
-    };
+
+    // Reopen the remembered squad so the planner starts where the dashboard left off.
+    const remembered = window.localStorage.getItem("fpl-risk-team-id");
+    if (remembered && /^\d+$/.test(remembered)) {
+      setTeamId(remembered);
+      void importTeamId(remembered);
+    }
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const players = bootstrap?.elements ?? [];
-  const teams = bootstrap?.teams ?? [];
-  const events = bootstrap?.events ?? [];
-  const playerMap = useMemo(
-    () => new Map(players.map((player) => [player.id, player])),
-    [players],
-  );
+  const players = useMemo(() => bootstrap?.elements ?? [], [bootstrap]);
+  const teams = useMemo(() => bootstrap?.teams ?? [], [bootstrap]);
+  const events = useMemo(() => bootstrap?.events ?? [], [bootstrap]);
+  const playerMap = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
   const squad = useMemo(
-    () =>
-      manager?.picks
-        .map((pick) => playerMap.get(pick.element))
-        .filter((player): player is FplPlayer => Boolean(player)) ?? [],
+    () => manager?.picks.map((pick) => playerMap.get(pick.element)).filter((player): player is FplPlayer => Boolean(player)) ?? [],
     [manager, playerMap],
   );
 
-  async function importTeam(event: FormEvent) {
-    event.preventDefault();
-    if (!/^\d+$/.test(teamId.trim())) {
-      setError("Enter the numeric Team ID from your public FPL URL.");
+  function invalidate() {
+    if (result) setStale(true);
+    setResult(null);
+    setChipAdvice([]);
+  }
+
+  async function importTeamId(id: string) {
+    const requested = id.trim();
+    if (!/^\d{1,12}$/.test(requested)) {
+      setTeamError("Team IDs are numbers only, for example 123456.");
       return;
     }
     setLoadingTeam(true);
-    setError("");
-    setResult(null);
+    setTeamError("");
     try {
       const response = await fetch("/api/fpl/entry", {
         method: "POST",
         cache: "no-store",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamId: teamId.trim() }),
+        body: JSON.stringify({ teamId: requested }),
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Could not import that FPL team.");
       setManager(data as ManagerPayload);
-      window.localStorage.setItem("fpl-risk-team-id", teamId.trim());
+      invalidate();
+      window.localStorage.setItem("fpl-risk-team-id", requested);
     } catch (importError) {
-      setError(importError instanceof Error ? importError.message : "Could not import that FPL team.");
+      setTeamError(importError instanceof Error ? importError.message : "Could not import that FPL team.");
     } finally {
       setLoadingTeam(false);
     }
   }
 
+  function importTeam(event: FormEvent) {
+    event.preventDefault();
+    void importTeamId(teamId);
+  }
+
   async function buildPlan() {
     if (!manager || !bootstrap || squad.length !== 15 || !fixtures.length) {
-      setError("Load a complete FPL squad before building the strategy path.");
+      setPlanError("A complete 15-player squad and loaded FPL data are needed to build a plan.");
       return;
     }
     setComputing(true);
-    setError("");
+    setPlanError("");
     setResult(null);
+    setStale(false);
     setChipAdvice([]);
+    // Let the "Building…" state paint before the synchronous search runs.
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
     try {
-      const sellingPrices = new Map(
-        manager.picks.map((pick) => [
-          pick.element,
-          pick.selling_price ?? playerMap.get(pick.element)?.now_cost ?? 0,
-        ]),
-      );
+      const sellingPrices = new Map(manager.picks.map((pick) => [pick.element, pick.selling_price ?? playerMap.get(pick.element)?.now_cost ?? 0]));
       const next = buildStrategyPlans({
-        players,
-        teams,
-        fixtures,
-        events,
-        squad,
+        players, teams, fixtures, events, squad,
         bank: manager.bank ?? 0,
         sellingPrices,
         freeTransfers,
@@ -185,277 +154,272 @@ export default function StrategyPlanner() {
         sportsbook,
         horizon: 8,
       });
-      if (!next) throw new Error("The planner could not construct a legal 8-GW path from this squad.");
+      if (!next) throw new Error("No valid plan could be built from this squad with the current fixtures.");
 
-      const starters = manager.picks
-        .filter((pick) => pick.position <= 11)
+      const byPosition = (inXi: boolean) => manager.picks
+        .filter((pick) => (inXi ? pick.position <= 11 : pick.position > 11))
         .map((pick) => playerMap.get(pick.element))
         .filter((player): player is FplPlayer => Boolean(player));
-      const bench = manager.picks
-        .filter((pick) => pick.position > 11)
-        .map((pick) => playerMap.get(pick.element))
-        .filter((player): player is FplPlayer => Boolean(player));
-
-      setChipAdvice(
-        assessChips({
-          players,
-          squad,
-          starters,
-          bench,
-          fixtures,
-          teams,
-          events,
-          history: history?.players,
-          chipsUsed: manager.chipsUsed,
-          freeTransfers,
-        }),
-      );
+      setChipAdvice(assessChips({
+        players, squad,
+        starters: byPosition(true),
+        bench: byPosition(false),
+        fixtures, teams, events,
+        history: history?.players,
+        chipsUsed: manager.chipsUsed,
+        freeTransfers,
+      }));
       setResult(next);
-    } catch (planError) {
-      setError(planError instanceof Error ? planError.message : "Could not build the strategy path.");
+    } catch (error) {
+      setPlanError(error instanceof Error ? error.message : "Could not build the plan.");
     } finally {
       setComputing(false);
     }
   }
 
+  function chooseMode(next: StrategyMode) {
+    setMode(next);
+    window.localStorage.setItem("fpl-risk-strategy-mode", next);
+  }
+
   const plan = result?.plans[mode] ?? null;
-  const maxStates = result
-    ? Math.max(...Object.values(result.plans).map((item) => item.statesEvaluated))
-    : 0;
+  const deadlineFor = (eventId: number) => result?.events.find((event) => event.id === eventId)?.deadlineTime;
+  const usesListedPrices = manager?.picks.some((pick) => pick.selling_price == null) ?? false;
 
   return (
-    <main className={styles.shell}>
-      <div className={styles.page}>
-        <section className={styles.hero}>
-          <div>
-            <p className={styles.eyebrow}>MULTI-GAMEWEEK STRATEGY</p>
-            <h1>Plan the next move.<br />Then the move after that.</h1>
-            <p className={styles.lead}>
-              Search roll, single-transfer and two-transfer paths across the next eight Gameweeks using FPL Prism&apos;s own xPts model. The planner keeps budget, positions, club limits, hits and banked free transfers legal as the squad evolves.
-            </p>
-          </div>
-          <aside className={styles.heroCard}>
-            <span>WHAT&apos;S NEW</span>
-            <strong>8-GW path search</strong>
-            <p>Safe, Balanced and Aggressive plans all start from the same projection engine, then value uncertainty differently.</p>
-            <div><b>{maxStates || "—"}</b><small>candidate states evaluated when a plan is built</small></div>
-          </aside>
-        </section>
-
-        <section className={styles.setupCard}>
-          <div className={styles.sectionHead}>
-            <div>
-              <p className={styles.eyebrow}>YOUR STARTING STATE</p>
-              <h2>{manager ? manager.teamName : "Import your FPL squad"}</h2>
-            </div>
-            {manager && <span>{manager.managerName} · {money(manager.bank)} bank</span>}
-          </div>
-
-          <div className={styles.setupGrid}>
-            <form onSubmit={importTeam} className={styles.importForm}>
-              <label htmlFor="planner-team-id">FPL Team ID</label>
-              <div>
-                <input
-                  id="planner-team-id"
-                  value={teamId}
-                  onChange={(event) => setTeamId(event.target.value)}
-                  placeholder="e.g. 123456"
-                  inputMode="numeric"
-                />
-                <button disabled={loadingTeam || loading}>
-                  {loadingTeam ? "Loading…" : manager ? "Reload" : "Import"}
-                </button>
-              </div>
-            </form>
-
-            <label className={styles.selectField}>
-              Free transfers now
-              <select
-                value={freeTransfers}
-                onChange={(event) => {
-                  setFreeTransfers(Number(event.target.value));
-                  setResult(null);
-                }}
-              >
-                {[0, 1, 2, 3, 4, 5].map((value) => (
-                  <option value={value} key={value}>{value}</option>
-                ))}
-              </select>
-            </label>
-
-            <button
-              type="button"
-              className={styles.buildButton}
-              onClick={buildPlan}
-              disabled={!manager || loading || computing}
-            >
-              {computing ? "Searching strategy paths…" : "Build 8-GW plan"}
-            </button>
-          </div>
-          {error && <div className={styles.error}>{error}</div>}
-        </section>
-
-        {plan && result && (
-          <>
-            <section className={styles.modeSection}>
-              <div className={styles.sectionHead}>
-                <div>
-                  <p className={styles.eyebrow}>STRATEGY PROFILE</p>
-                  <h2>Choose how much uncertainty you want to carry.</h2>
-                </div>
-                <span>Planner v{result.plannerVersion}</span>
-              </div>
-              <div className={styles.modeTabs}>
-                {(Object.keys(modeCopy) as StrategyMode[]).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    className={mode === item ? styles.activeMode : ""}
-                    onClick={() => setMode(item)}
-                  >
-                    <strong>{modeCopy[item].label}</strong>
-                    <small>{modeCopy[item].detail}</small>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className={styles.metrics}>
-              <article>
-                <span>8-GW NET xPTS</span>
-                <strong>{plan.expectedPoints.toFixed(1)}</strong>
-                <small>captaincy + transfer hits included</small>
-              </article>
-              <article>
-                <span>EDGE VS HOLD</span>
-                <strong className={plan.expectedGain >= 0 ? styles.positive : styles.negative}>{signed(plan.expectedGain)}</strong>
-                <small>same squad, optimized captaincy baseline</small>
-              </article>
-              <article>
-                <span>PLANNED MOVES</span>
-                <strong>{plan.transferCount}</strong>
-                <small>{plan.totalHits ? `${plan.totalHits} hit points` : "no hit points"}</small>
-              </article>
-              <article>
-                <span>PLAN CONFIDENCE</span>
-                <strong>{plan.confidence}</strong>
-                <small>{plan.averageDataQuality.toFixed(0)}% average data quality</small>
-              </article>
-              <article>
-                <span>PLAN RISK</span>
-                <strong>{plan.risk}</strong>
-                <small>lineup uncertainty across the path</small>
-              </article>
-            </section>
-
-            <section className={styles.timelineSection}>
-              <div className={styles.sectionHead}>
-                <div>
-                  <p className={styles.eyebrow}>DECISION PATH</p>
-                  <h2>{modeCopy[mode].label} plan · {plan.horizon} Gameweeks</h2>
-                </div>
-                <span>{plan.statesEvaluated.toLocaleString()} states searched</span>
-              </div>
-
-              <div className={styles.timeline}>
-                {plan.steps.map((step, index) => (
-                  <article className={styles.step} key={`${step.eventId}-${index}`}>
-                    <div className={styles.stepIndex}>{index + 1}</div>
-                    <div className={styles.stepBody}>
-                      <div className={styles.stepTop}>
-                        <div>
-                          <span>{step.eventName}</span>
-                          <strong>{step.action === "ROLL" ? "ROLL TRANSFER" : step.moves.length > 1 ? "DOUBLE MOVE" : "TRANSFER"}</strong>
-                        </div>
-                        <b>{step.projectedPoints.toFixed(1)} xPts</b>
-                      </div>
-                      {step.moves.length ? (
-                        <div className={styles.moves}>
-                          {step.moves.map((move) => (
-                            <div key={`${move.outgoingId}-${move.incomingId}`}>
-                              <span>{move.outgoingName}</span>
-                              <i>→</i>
-                              <strong>{move.incomingName}</strong>
-                              <small>{signed(move.expectedEdge)} remaining-horizon xPts</small>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className={styles.rollCopy}>Bank the transfer because the search values the extra flexibility more than the available immediate swaps.</p>
-                      )}
-                      <div className={styles.stepMeta}>
-                        <span>Captain <b>{step.captainName}</b></span>
-                        <span>Formation <b>{step.formation}</b></span>
-                        <span>Bank <b>{money(step.bankAfter)}</b></span>
-                        <span>Next FT <b>{step.freeTransfersAfter}</b></span>
-                        {step.hitCost > 0 && <span className={styles.hit}>-{step.hitCost} hit</span>}
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <section className={styles.compareSection}>
-              <div className={styles.sectionHead}>
-                <div>
-                  <p className={styles.eyebrow}>PATH COMPARISON</p>
-                  <h2>Same squad. Three different risk budgets.</h2>
-                </div>
-              </div>
-              <div className={styles.compareGrid}>
-                {(Object.keys(result.plans) as StrategyMode[]).map((item) => {
-                  const candidate = result.plans[item];
-                  return (
-                    <button key={item} type="button" onClick={() => setMode(item)} className={mode === item ? styles.selectedPlan : ""}>
-                      <span>{modeCopy[item].label}</span>
-                      <strong>{candidate.expectedPoints.toFixed(1)} xPts</strong>
-                      <b>{signed(candidate.expectedGain)} vs hold</b>
-                      <small>{candidate.transferCount} moves · {candidate.risk} risk · {candidate.confidence} confidence</small>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className={styles.chipSection}>
-              <div className={styles.sectionHead}>
-                <div>
-                  <p className={styles.eyebrow}>CHIP WINDOWS</p>
-                  <h2>Keep chips visible while planning transfers.</h2>
-                </div>
-                <span>Current squad scan</span>
-              </div>
-              <div className={styles.chipGrid}>
-                {chipAdvice.map((chip) => (
-                  <article key={chip.key}>
-                    <div>
-                      <strong>{chip.label}</strong>
-                      <span className={`${styles.chipStatus} ${chipTone(chip.status)}`}>{chip.status}</span>
-                    </div>
-                    <h3>{chip.headline}</h3>
-                    <p>{chip.reason}</p>
-                    <small>{chip.targetGw ? `Strongest current window: GW${chip.targetGw}` : "No target Gameweek yet"}</small>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <div className={styles.methodNote}>
-              <strong>How this improves FPL Prism:</strong> the old Transfer Lab asks whether one move is good over a fixed horizon. Path Planner asks whether making that move now is better than rolling, making a different move later, or combining two transfers once you have banked them. It uses our own projection engine rather than importing another site&apos;s xPts.
-            </div>
-          </>
-        )}
-
-        {!result && manager && !computing && (
-          <section className={styles.emptyState}>
-            <span>READY TO SEARCH</span>
-            <h2>Turn a one-week recommendation into an eight-week strategy.</h2>
-            <p>Build the path to compare rolling, immediate transfers and banked two-transfer packages before committing to the first move.</p>
-          </section>
-        )}
+    <main className="page">
+      <div className="page-head">
+        <div>
+          <h1>Planner</h1>
+          <p className="lead">
+            Compare making a transfer now with rolling it, or making a different move later, across the next eight Gameweeks.
+          </p>
+        </div>
       </div>
-      <LegalFooter />
+
+      {feedError && <div className="notice notice-bad" role="alert" style={{ marginBottom: 16 }}>{feedError}</div>}
+
+      <section className={`card ${styles.setup}`} aria-label="Plan inputs">
+        <div className="stack-sm">
+          <h2>1. Squad</h2>
+          {manager ? (
+            <p>
+              <strong>{manager.teamName}</strong>
+              <span className="muted"> · picks as of GW{manager.eventId} · {money(manager.bank)} in the bank (last deadline)</span>
+            </p>
+          ) : (
+            <p className="muted">{loadingTeam ? "Importing…" : "No squad imported yet."}</p>
+          )}
+          <form onSubmit={importTeam} className="inline-form" noValidate>
+            <label htmlFor="planner-team-id" className="sr-only">FPL Team ID</label>
+            <input
+              id="planner-team-id"
+              className="input"
+              value={teamId}
+              onChange={(event) => setTeamId(event.target.value)}
+              placeholder="FPL Team ID, e.g. 123456"
+              inputMode="numeric"
+              aria-invalid={Boolean(teamError)}
+            />
+            <button className="btn" disabled={loadingTeam || loading}>{loadingTeam ? "Importing…" : manager ? "Re-import" : "Import"}</button>
+          </form>
+          {teamError && <p className="field-error" role="alert">{teamError}</p>}
+          {manager?.activeChip === "freehit" && (
+            <p className="notice notice-warn small">These GW{manager.eventId} picks were a Free Hit squad, which reverts before the next deadline. The plan below starts from the Free Hit team.</p>
+          )}
+        </div>
+
+        <div className="stack-sm">
+          <h2>2. Free transfers now</h2>
+          <div className="segmented" role="radiogroup" aria-label="Free transfers available now">
+            {[0, 1, 2, 3, 4, 5].map((count) => (
+              <button key={count} type="button" role="radio" aria-checked={freeTransfers === count}
+                onClick={() => { setFreeTransfers(count); window.localStorage.setItem("fpl-risk-free-transfers", String(count)); invalidate(); }}>
+                {count}
+              </button>
+            ))}
+          </div>
+          <p className="field-hint">Your assumption. FPL&apos;s public data doesn&apos;t show it.</p>
+        </div>
+
+        <div className="stack-sm">
+          <h2>3. Build</h2>
+          <button type="button" className="btn btn-primary" onClick={buildPlan} disabled={!manager || loading || computing}>
+            {computing ? "Building plans…" : result ? "Rebuild plans" : "Build plans"}
+          </button>
+          <p className="field-hint">Takes a few seconds. Builds Safe, Balanced and Aggressive plans together.</p>
+        </div>
+      </section>
+
+      {planError && <div className="notice notice-bad" role="alert" style={{ marginTop: 16 }}>{planError}</div>}
+      {stale && !result && !computing && (
+        <div className="notice notice-warn" style={{ marginTop: 16 }}>Your inputs changed, so the previous plans were cleared. Build again to see plans for the new inputs.</div>
+      )}
+
+      {!result && !computing && !stale && manager && (
+        <div className="empty" style={{ marginTop: 20 }}>
+          <strong>Ready to build</strong>
+          Uses {manager.teamName}, {money(manager.bank)} in the bank, {freeTransfers} free transfer{freeTransfers === 1 ? "" : "s"}{usesListedPrices ? " and current listed prices as sale values" : ""}.
+        </div>
+      )}
+
+      {result && plan && (
+        <div className="stack-lg" style={{ marginTop: 24 }}>
+          {result.horizon < 8 && (
+            <div className="notice notice-warn">Only {result.horizon} future Gameweek{result.horizon === 1 ? " has" : "s have"} published fixtures, so plans cover {result.horizon} instead of 8.</div>
+          )}
+
+          <section>
+            <div className="row-between" style={{ marginBottom: 10 }}>
+              <div>
+                <h2>Compare the three plans</h2>
+                <p className="muted small">
+                  Over {result.horizon} Gameweeks (GW{result.events[0]?.id}–{result.events[result.events.length - 1]?.id}).
+                  &quot;Hold&quot; keeps your squad with the best lineup and captain each week, and makes no transfers.
+                </p>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Plan</th>
+                    <th className="r">Projected (net of hits)</th>
+                    <th className="r">vs hold</th>
+                    <th className="r">Transfers</th>
+                    <th className="r">Hit points</th>
+                    <th>Risk</th>
+                    <th>Confidence</th>
+                    <th><span className="sr-only">Select</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modes.map((item) => {
+                    const candidate = result.plans[item];
+                    return (
+                      <tr key={item} className={item === mode ? styles.selectedRow : undefined}>
+                        <td>
+                          <strong>{modeCopy[item].label}</strong>
+                          <div className="muted tiny">{modeCopy[item].detail}</div>
+                        </td>
+                        <td className="r strong">{pts(candidate.expectedPoints)}</td>
+                        <td className={`r ${candidate.expectedGain > 0 ? "pos" : candidate.expectedGain < 0 ? "neg" : ""}`}>{signed(candidate.expectedGain)}</td>
+                        <td className="r">{candidate.transferCount}</td>
+                        <td className="r">{candidate.totalHits ? `−${candidate.totalHits}` : "0"}</td>
+                        <td><span className={riskBadge(candidate.risk)}>{candidate.risk}</span></td>
+                        <td>{candidate.confidence}</td>
+                        <td className="r">
+                          {item === mode
+                            ? <span className="badge badge-accent">Showing</span>
+                            : <button type="button" className="btn btn-sm" onClick={() => chooseMode(item)}>Show</button>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="muted small" style={{ marginTop: 6 }}>
+              Hold baseline: {pts(plan.baselinePoints)} points. Projected totals already subtract hit points; don&apos;t subtract them again.
+            </p>
+          </section>
+
+          <section>
+            <div className="row-between" style={{ marginBottom: 10 }}>
+              <div>
+                <h2>{modeCopy[mode].label} plan, week by week</h2>
+                <p className="muted small">
+                  Ends with {money(plan.endingBank)} in the bank and {plan.endingFreeTransfers} free transfer{plan.endingFreeTransfers === 1 ? "" : "s"}.
+                  Average data quality {Math.round(plan.averageDataQuality)}/100.
+                </p>
+              </div>
+            </div>
+            <ol className={styles.steps}>
+              {plan.steps.map((step) => {
+                const deadline = deadlineFor(step.eventId);
+                return (
+                  <li key={step.eventId} className="card card-tight">
+                    <div className={styles.stepHead}>
+                      <div>
+                        <strong>{step.eventName}</strong>
+                        <span className="muted small"> · deadline {formatDeadline(deadline)}</span>
+                      </div>
+                      <span className={step.action === "ROLL" ? "badge" : "badge badge-accent"}>
+                        {step.action === "ROLL" ? "Roll (no transfer)" : `${step.moves.length} transfer${step.moves.length === 1 ? "" : "s"}`}
+                      </span>
+                    </div>
+                    {step.moves.length > 0 && (
+                      <ul className={styles.moves}>
+                        {step.moves.map((move) => (
+                          <li key={`${move.outgoingId}-${move.incomingId}`}>
+                            <span>{move.outgoingName} → <strong>{move.incomingName}</strong></span>
+                            <span className="muted small">{signed(move.expectedEdge)} pts over the rest of the plan</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <dl className={styles.stepMeta}>
+                      <div><dt>Projected (net)</dt><dd>{pts(step.projectedPoints)}</dd></div>
+                      <div><dt>Hit</dt><dd>{step.hitCost ? `−${step.hitCost}` : "0"}</dd></div>
+                      <div><dt>Captain</dt><dd>{step.captainName}</dd></div>
+                      <div><dt>Formation</dt><dd>{step.formation}</dd></div>
+                      <div><dt>Bank after</dt><dd>{money(step.bankAfter)}</dd></div>
+                      <div><dt>Free transfers after</dt><dd>{step.freeTransfersAfter}</dd></div>
+                    </dl>
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="muted small" style={{ marginTop: 8 }}>
+              Weekly projections include the suggested captain and subtract that week&apos;s hit. A move&apos;s gain covers the remaining weeks of the plan, not just that week.
+            </p>
+          </section>
+
+          {chipAdvice.length > 0 && (
+            <section className="card">
+              <div className="card-head">
+                <div>
+                  <h2>Chips</h2>
+                  <p>A separate check of your current squad. Chips are not part of the plans or their point totals above.</p>
+                </div>
+              </div>
+              <div className="table-wrap">
+                <table className="table">
+                  <thead><tr><th>Chip</th><th>Assessment</th><th>Window</th><th>Why</th></tr></thead>
+                  <tbody>
+                    {chipAdvice.map((chip) => (
+                      <tr key={chip.key}>
+                        <td className="strong nowrap">{chip.label}</td>
+                        <td><span className={toneBadge(chipStatus[chip.status].tone)}>{chipStatus[chip.status].label}</span></td>
+                        <td className="nowrap">{chip.status === "USED" || chip.status === "UNAVAILABLE" ? "—" : chip.targetGw ? `GW${chip.targetGw}` : "None yet"}</td>
+                        <td className="small">{chip.headline}. {chip.reason}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          <details className="disclosure">
+            <summary><span>How the plans are searched<small>And what they can&apos;t account for.</small></span></summary>
+            <div className="disclosure-body prose small">
+              <p>
+                Each week the search tries rolling, one transfer and two transfers from a shortlist of strong candidates per position, keeping budget,
+                positions and the three-per-club limit legal. This plan evaluated {result.plans[mode].statesEvaluated.toLocaleString()} candidate squad states.
+                It&apos;s a bounded search, so a better plan could exist outside it.
+              </p>
+              <p>
+                Plans use today&apos;s information. Price changes, injuries, transfers between clubs and postponed matches can make later weeks out of date — rebuild as things change.
+                {usesListedPrices ? " Sale values use current listed prices because public data doesn't include your selling prices." : ""}
+              </p>
+              <p className="muted">Generated {formatClock(result.generatedAt)} · planner v{result.plannerVersion}.</p>
+            </div>
+          </details>
+
+          <p className="muted small">FPL Prism doesn&apos;t make transfers or pick your captain. Make changes in the official FPL app. <Link href="/dashboard?view=transfer">Compare a single move in Transfers</Link>.</p>
+        </div>
+      )}
     </main>
   );
 }
