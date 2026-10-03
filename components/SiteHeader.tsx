@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
-import { dashboardHref, dashboardView, guideLinks, type DashboardView } from "@/lib/navigation";
+import { Suspense, useEffect, useRef, useState, type MouseEvent } from "react";
+import { dashboardHref, dashboardView, guideLinks, isPlainClick, showDashboardView, type DashboardView } from "@/lib/navigation";
 import BrandMark from "./BrandMark";
 import styles from "./SiteHeader.module.css";
 
 const learnLinks = [{ href: "/how-it-works", label: "How FPL Prism works" }, ...guideLinks];
 
-type NavLink = { href: string; label: string; active: boolean };
+type NavLink = { href: string; label: string; active: boolean; inPage?: boolean };
 
 function HeaderContent({ search = "" }: { search?: string }) {
   const pathname = usePathname();
@@ -26,6 +26,21 @@ function HeaderContent({ search = "" }: { search?: string }) {
     href: dashboardHref(target, dashboardSearch),
     label,
     active: onDashboard && view === target,
+    inPage: onDashboard,
+  });
+  // Already on the dashboard: swap the view in place instead of reloading the route.
+  const linkProps = (link: NavLink) => ({
+    href: link.href,
+    "aria-current": link.active ? ("page" as const) : undefined,
+    onClick: link.inPage
+      ? (event: MouseEvent<HTMLAnchorElement>) => {
+        if (!isPlainClick(event)) return;
+        event.preventDefault();
+        setMenuOpen(false);
+        setLearnOpen(false);
+        showDashboardView(link.href);
+      }
+      : undefined,
   });
 
   const primary: NavLink[] = [
@@ -81,9 +96,9 @@ function HeaderContent({ search = "" }: { search?: string }) {
           <span>FPL Prism</span>
         </Link>
 
-        <nav className={styles.primary} aria-label="Main">
+        <nav className={styles.primary} aria-label="Main" data-slide="underline">
           {primary.map((link) => (
-            <Link key={link.label} href={link.href} aria-current={link.active ? "page" : undefined}>{link.label}</Link>
+            <Link key={link.label} {...linkProps(link)}>{link.label}</Link>
           ))}
         </nav>
 
@@ -101,7 +116,7 @@ function HeaderContent({ search = "" }: { search?: string }) {
             {learnOpen && (
               <div className={styles.dropdown} id="learn-menu">
                 {learn.map((link) => (
-                  <Link key={link.href} href={link.href} aria-current={link.active ? "page" : undefined}>{link.label}</Link>
+                  <Link key={link.href} {...linkProps(link)}>{link.label}</Link>
                 ))}
               </div>
             )}
@@ -122,18 +137,19 @@ function HeaderContent({ search = "" }: { search?: string }) {
         </button>
       </div>
 
-      {menuOpen && (
-        <nav className={styles.mobile} id="mobile-menu" aria-label="Main">
+      {/* Always rendered so it can slide open and closed; inert while closed. */}
+      <nav className={styles.mobile} id="mobile-menu" aria-label="Main" data-open={menuOpen || undefined} inert={!menuOpen}>
+        <div className={styles.mobileInner}>
           <div>
             <span className={styles.mobileHeading}>Tools</span>
             {primary.map((link) => (
-              <Link key={link.label} href={link.href} aria-current={link.active ? "page" : undefined}>{link.label}</Link>
+              <Link key={link.label} {...linkProps(link)}>{link.label}</Link>
             ))}
           </div>
           <div>
             <span className={styles.mobileHeading}>Learn</span>
             {learn.map((link) => (
-              <Link key={link.href} href={link.href} aria-current={link.active ? "page" : undefined}>{link.label}</Link>
+              <Link key={link.href} {...linkProps(link)}>{link.label}</Link>
             ))}
           </div>
           <div>
@@ -143,8 +159,8 @@ function HeaderContent({ search = "" }: { search?: string }) {
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
           </div>
-        </nav>
-      )}
+        </div>
+      </nav>
     </header>
   );
 }

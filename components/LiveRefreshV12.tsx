@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { dashboardHref, dashboardView, dashboardViews, type DashboardView as Tab } from "@/lib/navigation";
+import { dashboardHref, dashboardView, dashboardViews, isPlainClick, showDashboardView, type DashboardView as Tab } from "@/lib/navigation";
 
 import SquadPitch, { type SquadPitchPlayer } from "./SquadPitch";
 import PlayerDetail, { type HorizonEvent } from "./dashboard/PlayerDetail";
@@ -93,8 +93,8 @@ export default function LiveRefreshV12() {
   const searchParams = useSearchParams();
   const tab = dashboardView(searchParams.toString());
   const setTab = useCallback(
-    (view: Tab) => router.push(dashboardHref(view, searchParams.toString()), { scroll: true }),
-    [router, searchParams],
+    (view: Tab) => showDashboardView(dashboardHref(view, searchParams.toString())),
+    [searchParams],
   );
 
   const [bootstrap, setBootstrap] = useState<BootstrapPayload | null>(null);
@@ -737,9 +737,19 @@ export default function LiveRefreshV12() {
           </div>
         )}
         {/* The header holds these links on wide screens; below that they live here so switching views is one tap. */}
-        <nav className={styles.viewTabs} aria-label="Dashboard views">
+        <nav className={styles.viewTabs} aria-label="Dashboard views" data-slide="underline">
           {dashboardViews.map(({ view, label }) => (
-            <Link key={view} href={dashboardHref(view, searchParams.toString())} aria-current={tab === view ? "page" : undefined} scroll={false}>
+            <Link
+              key={view}
+              href={dashboardHref(view, searchParams.toString())}
+              aria-current={tab === view ? "page" : undefined}
+              scroll={false}
+              onClick={(event) => {
+                if (!isPlainClick(event)) return;
+                event.preventDefault();
+                showDashboardView(dashboardHref(view, searchParams.toString()), false);
+              }}
+            >
               {label}
               {view === "transfer" && selectedOut.length > 0 && <span className={styles.tabCount}>{selectedOut.length}</span>}
             </Link>
@@ -771,7 +781,7 @@ export default function LiveRefreshV12() {
           </div>
         ))}
 
-        <div key={tab} className="view-enter">
+        <div>
         {/* ============ OVERVIEW ============ */}
         {tab === "overview" && (
           <div className="stack-lg">

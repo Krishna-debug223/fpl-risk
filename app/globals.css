@@ -337,12 +337,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 }
 
 /* ---------- Motion ----------
-   Small and quick: things appear in place rather than travel. All of it is
-   switched off by the prefers-reduced-motion rule above. */
+   Things move where they are going rather than fading in and out. All of it
+   is switched off by the prefers-reduced-motion rule above. */
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes open-down { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
 .btn, .link-button, .input, .select,
 .segmented button, .segmented a,
@@ -351,13 +350,72 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 
-.disclosure[open] > .disclosure-body { animation: open-down 0.2s ease-out; }
+/* Sliding thumb for segmented controls and sliding underline for [data-slide]
+   navs. Positions come from components/SlidingIndicators.tsx; until it runs,
+   the active item is styled directly (above). */
+.segmented, [data-slide] { position: relative; isolation: isolate; }
+.segmented[data-thumb] > button, .segmented[data-thumb] > a { position: relative; z-index: 1; }
+.segmented[data-thumb] > button[aria-pressed="true"],
+.segmented[data-thumb] > button[aria-checked="true"],
+.segmented[data-thumb] > button[aria-selected="true"],
+.segmented[data-thumb] > a[aria-current="page"] { background: transparent; box-shadow: none; color: var(--text-2); }
+.segmented[data-thumb] > [data-thumb-on] { color: var(--text); }
+.segmented[data-thumb]::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  top: var(--thumb-y, 3px);
+  width: var(--thumb-w, 0);
+  height: var(--thumb-h, 0);
+  transform: translateX(var(--thumb-x, 0));
+  opacity: var(--thumb-o, 0);
+  border-radius: 4px;
+  background: var(--surface);
+  box-shadow: var(--shadow), 0 0 0 1px var(--border);
+  pointer-events: none;
+}
+/* Pressing and sliding works like an iPhone segmented control. */
+.segmented[data-thumb] { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.segmented[data-thumb] > a { -webkit-user-drag: none; }
+.segmented[data-pressing]::before { scale: 0.95; }
+
+[data-slide][data-thumb]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: calc(var(--thumb-y, 0px) + var(--thumb-h, 0px) - 2px);
+  width: var(--thumb-w, 0);
+  height: 2px;
+  transform: translateX(var(--thumb-x, 0));
+  opacity: var(--thumb-o, 0);
+  background: var(--accent);
+  pointer-events: none;
+}
+[data-slide][data-thumb] > a[aria-current="page"] { border-bottom-color: transparent; }
+
+.segmented[data-thumb="animate"]::before,
+[data-slide][data-thumb="animate"]::after {
+  transition:
+    transform 0.32s cubic-bezier(0.3, 0.9, 0.3, 1),
+    width 0.32s cubic-bezier(0.3, 0.9, 0.3, 1),
+    opacity 0.15s ease,
+    scale 0.18s ease;
+}
+
+/* Expandable sections open by height where supported, and simply open elsewhere. */
+@supports (interpolate-size: allow-keywords) {
+  :root { interpolate-size: allow-keywords; }
+  .disclosure::details-content {
+    height: 0;
+    overflow: clip;
+    transition: height 0.25s cubic-bezier(0.3, 0.9, 0.3, 1), content-visibility 0.25s allow-discrete;
+  }
+  .disclosure[open]::details-content { height: auto; }
+}
 
 .dialog-backdrop { animation: fade-in 0.18s ease-out; }
 .dialog { animation: rise-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
-
-/* Re-keyed on view change so switching dashboard views or Modelbook weeks settles in gently. */
-.view-enter { animation: fade-in 0.22s ease-out; }
 
 /* ---------- Touch screens: larger tap targets, same layout ---------- */
 

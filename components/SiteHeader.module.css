@@ -71,6 +71,8 @@
 .secondary > a:hover,
 .secondary button:hover { color: var(--text); text-decoration: none; }
 .primary a[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); }
+/* Once the sliding underline is in place (see SlidingIndicators), the link's own border steps aside. */
+.primary[data-thumb] a[aria-current="page"] { border-bottom-color: transparent; }
 
 .secondary {
   display: flex;
@@ -130,15 +132,25 @@
 
 .mobile {
   display: none;
-  border-top: 1px solid var(--border);
-  padding: 8px var(--gutter) 16px;
+  grid-template-rows: 0fr;
   max-height: calc(100vh - 56px);
   max-height: calc(100dvh - 56px);
   overscroll-behavior: contain;
   overflow-y: auto;
+  visibility: hidden;
+  transition: grid-template-rows 0.28s cubic-bezier(0.3, 0.9, 0.3, 1), visibility 0s linear 0.28s;
 }
-.mobile > div { display: flex; flex-direction: column; padding: 8px 0; }
-.mobile > div + div { border-top: 1px solid var(--border); }
+.mobile[data-open] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  border-top: 1px solid var(--border);
+  transition: grid-template-rows 0.28s cubic-bezier(0.3, 0.9, 0.3, 1), visibility 0s;
+}
+.mobileInner { min-height: 0; overflow: hidden; }
+.mobileInner > div { display: flex; flex-direction: column; margin: 0 var(--gutter); padding: 8px 0; }
+.mobileInner > div:first-child { padding-top: 16px; }
+.mobileInner > div:last-child { padding-bottom: 20px; }
+.mobileInner > div + div { border-top: 1px solid var(--border); }
 .mobileHeading { color: var(--text-3); font-size: 12.5px; font-weight: 500; padding: 4px 0; }
 .mobile a { padding: 9px 0; color: var(--text); font-size: 15px; }
 .mobile a[aria-current="page"] { color: var(--accent); font-weight: 600; }
@@ -146,7 +158,7 @@
 @media (max-width: 1020px) {
   .primary, .secondary { display: none; }
   .menuButton { display: inline-flex; align-items: center; }
-  .mobile { display: block; }
+  .mobile { display: grid; }
 }
 
 /* ---------- Motion (disabled globally under prefers-reduced-motion) ---------- */
@@ -167,10 +179,6 @@
 
 .dropdown { transform-origin: top right; animation: drop-in 0.16s ease-out; }
 
-.mobile { animation: drop-in 0.2s ease-out; }
-.mobile > div { animation: drop-in 0.24s ease-out both; }
-.mobile > div:nth-child(2) { animation-delay: 0.03s; }
-.mobile > div:nth-child(3) { animation-delay: 0.06s; }
 
 .menuButton { gap: 8px; }
 .menuIcon {

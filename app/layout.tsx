@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import SiteAnalytics from "@/components/SiteAnalytics";
+import SlidingIndicators from "@/components/SlidingIndicators";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { getSiteUrl } from "@/lib/site-url";
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <div id="main-content" tabIndex={-1}>{children}</div>
         <SiteFooter />
         <SiteAnalytics />
+        <SlidingIndicators />
       </body>
     </html>
   );
