@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
-import styles from "./AccountPanel.module.css";
-import LegalFooter from "./LegalFooter";
 
 type Props = {
   email: string;
@@ -43,7 +41,7 @@ export default function AccountPanel({
     try {
       const normalizedTeamId = teamId.trim();
       if (normalizedTeamId && !/^\d+$/.test(normalizedTeamId)) {
-        throw new Error("FPL Team ID must be numeric.");
+        throw new Error("Team IDs are numbers only, for example 123456.");
       }
       const supabase = createClient();
       const { error: updateError } = await supabase.auth.updateUser({
@@ -59,7 +57,7 @@ export default function AccountPanel({
       else window.localStorage.removeItem("fpl-risk-team-id");
       window.localStorage.setItem("fpl-risk-free-transfers", String(freeTransfers));
       window.localStorage.setItem("fpl-risk-strategy-mode", strategyMode);
-      setMessage("Saved. Your account and this browser now use the same FPL defaults.");
+      setMessage("Saved. This browser and your account now use the same defaults.");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Could not save your settings.");
     } finally {
@@ -82,46 +80,60 @@ export default function AccountPanel({
   }
 
   return (
-    <main className={styles.shell}>
-      <div className={styles.page}>
-        <section className={styles.hero}>
-          <div><p className={styles.eyebrow}>CLOUD SAVE</p><h1>Your FPL Prism setup.</h1><p>Keep the product usable without an account, or save a few defaults here so your planning setup can follow you between sessions.</p></div>
-          <aside><span>CURRENT PLAN</span><strong>Free</strong><p>All current FPL Prism features are included during launch.</p></aside>
-        </section>
-
-        <section className={styles.grid}>
-          <form className={styles.card} onSubmit={save}>
-            <div className={styles.cardHead}><div><span>ACCOUNT DEFAULTS</span><h2>Saved planning setup</h2></div><b>Cloud sync</b></div>
-            <label>Email</label>
-            <div className={styles.readOnly}>{email}</div>
-            <label htmlFor="account-team-id">FPL Team ID</label>
-            <input id="account-team-id" inputMode="numeric" value={teamId} onChange={(event) => setTeamId(event.target.value)} placeholder="e.g. 123456" />
-            <small>Only the public numeric Team ID is saved. Never enter your FPL password.</small>
-
-            <label htmlFor="account-ft">Default free transfers</label>
-            <select id="account-ft" value={freeTransfers} onChange={(event) => setFreeTransfers(Number(event.target.value))}>
-              {[0,1,2,3,4,5].map((value) => <option key={value} value={value}>{value}</option>)}
-            </select>
-
-            <label htmlFor="account-mode">Default planner style</label>
-            <select id="account-mode" value={strategyMode} onChange={(event) => setStrategyMode(event.target.value as "safe" | "balanced" | "aggressive")}>
-              <option value="safe">Safe</option><option value="balanced">Balanced</option><option value="aggressive">Aggressive</option>
-            </select>
-
-            <button type="submit" disabled={busy}>{busy ? "Saving…" : "Save settings"}</button>
-            {message && <div className={styles.success}>{message}</div>}
-            {error && <div className={styles.error}>{error}</div>}
-          </form>
-
-          <div className={styles.side}>
-            <article><span>WHAT IS SAVED</span><h3>Small by design.</h3><p>Your login email is managed by the account provider. FPL Prism stores the Team ID and planning defaults above in account metadata. Your official FPL password is never requested or stored.</p></article>
-            <article><span>CROSS-DEVICE SYNC</span><h3>Your saved defaults follow the account.</h3><p>After you sign in on another browser, opening this account page copies the saved Team ID and planner defaults into that browser for the rest of the FPL Prism experience.</p><Link href="/planner">Open 8-GW Planner →</Link></article>
-            <article><span>GUEST MODE</span><h3>Signing in stays optional.</h3><p>Signing out does not block the model. You can continue using projections, Transfer Lab, Player Market and the Path Planner as a guest.</p><Link href="/dashboard">Open dashboard →</Link></article>
-            <button className={styles.signOut} type="button" onClick={signOut} disabled={busy}>Sign out</button>
-          </div>
-        </section>
+    <main className="page page-narrow">
+      <div className="page-head">
+        <div>
+          <h1>Account</h1>
+          <p className="lead">Signed in as <strong>{email}</strong>. These defaults load automatically on any browser where you sign in.</p>
+        </div>
+        <button type="button" className="btn" onClick={signOut} disabled={busy}>Sign out</button>
       </div>
-      <LegalFooter />
+
+      <form className="card stack" onSubmit={save} noValidate>
+        <h2>Saved defaults</h2>
+        <div className="field">
+          <label htmlFor="account-team-id">FPL Team ID</label>
+          <input id="account-team-id" className="input" inputMode="numeric" value={teamId} onChange={(event) => setTeamId(event.target.value)} placeholder="e.g. 123456" aria-describedby="account-team-hint" />
+          <span id="account-team-hint" className="field-hint">The public number from your FPL Points page. Leave blank to remove it. Never your FPL password.</span>
+        </div>
+        <div className="grid-2">
+          <div className="field">
+            <label htmlFor="account-ft">Free transfers to assume</label>
+            <select id="account-ft" className="select" value={freeTransfers} onChange={(event) => setFreeTransfers(Number(event.target.value))}>
+              {[0, 1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value}</option>)}
+            </select>
+            <span className="field-hint">Public FPL data doesn&apos;t include this, so you set it.</span>
+          </div>
+          <div className="field">
+            <label htmlFor="account-mode">Planner style</label>
+            <select id="account-mode" className="select" value={strategyMode} onChange={(event) => setStrategyMode(event.target.value as "safe" | "balanced" | "aggressive")}>
+              <option value="safe">Safe</option>
+              <option value="balanced">Balanced</option>
+              <option value="aggressive">Aggressive</option>
+            </select>
+            <span className="field-hint">Which plan the planner highlights first.</span>
+          </div>
+        </div>
+        <div className="row">
+          <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? "Saving…" : "Save defaults"}</button>
+          <Link href="/dashboard" className="small">Go to dashboard</Link>
+        </div>
+        {message && <div className="notice notice-good" role="status">{message}</div>}
+        {error && <div className="notice notice-bad" role="alert">{error}</div>}
+      </form>
+
+      <section className="card" style={{ marginTop: 16 }}>
+        <h2>What&apos;s stored</h2>
+        <dl className="kv" style={{ marginTop: 10 }}>
+          <dt>Plan</dt><dd>Free — every current feature is included</dd>
+          <dt>Email</dt><dd>{email}, held by the sign-in provider</dd>
+          <dt>Saved settings</dt><dd>Team ID, free transfers and planner style</dd>
+          <dt>Never stored</dt><dd>Your FPL password or payment details</dd>
+        </dl>
+        <p className="small muted" style={{ marginTop: 12 }}>
+          Signing out doesn&apos;t limit anything — all tools work as a guest. See the <Link href="/privacy">Privacy Policy</Link>.
+        </p>
+      </section>
     </main>
   );
 }

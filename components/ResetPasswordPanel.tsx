@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import styles from "./SignInPanel.module.css";
-import LegalFooter from "./LegalFooter";
 
 export default function ResetPasswordPanel() {
   const router = useRouter();
@@ -22,7 +21,7 @@ export default function ResetPasswordPanel() {
     setMessage("");
 
     if (!configured) {
-      setError("Cloud accounts are not connected to this deployment yet.");
+      setError("Accounts aren't connected on this deployment yet.");
       return;
     }
     if (password.length < 8) {
@@ -52,33 +51,41 @@ export default function ResetPasswordPanel() {
   }
 
   return (
-    <main className={styles.shell}>
-      <section className={styles.layout}>
-        <div className={styles.copy}>
-          <p className={styles.eyebrow}>SECURE RECOVERY</p>
-          <h1>Choose a new<br />password.</h1>
-          <p>This page is only useful after opening the recovery email sent by FPL Prism. Your FPL tools remain available even if you decide not to finish the reset.</p>
-          <Link href="/" className={styles.guest}>Continue as guest →</Link>
-        </div>
+    <main className="page">
+      <div className={styles.layout}>
+        <section className={styles.copy}>
+          <h1>Choose a new password</h1>
+          <p className="lead" style={{ marginTop: 8 }}>
+            This page works after you open the reset link we emailed. It changes your FPL Prism password only — your official FPL login is not affected.
+          </p>
+          <p style={{ marginTop: 16 }}><Link href="/dashboard">Continue without an account</Link></p>
+        </section>
 
-        <div className={styles.card}>
-          <span className={styles.cardEyebrow}>NEW PASSWORD</span>
-          <h2>Reset your FPL Prism password</h2>
-          <p className={styles.cardCopy}>Enter a new password for your optional FPL Prism account.</p>
-          <form onSubmit={submit}>
-            <label htmlFor="new-password">New password</label>
-            <input id="new-password" type="password" autoComplete="new-password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8+ characters" required />
-            <label htmlFor="confirm-password">Confirm password</label>
-            <input id="confirm-password" type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Repeat password" required />
-            <button type="submit" disabled={busy || !configured}>{busy ? "Updating…" : "Update password"}</button>
+        <section className="card">
+          <h2>New FPL Prism password</h2>
+          {!configured && (
+            <div className="notice notice-neutral" style={{ marginTop: 14 }}>
+              Accounts aren&apos;t connected on this deployment yet, so password reset is unavailable.
+            </div>
+          )}
+          <form onSubmit={submit} className="stack" style={{ marginTop: 16 }} noValidate>
+            <div className="field">
+              <label htmlFor="new-password">New password</label>
+              <input id="new-password" className="input" type="password" autoComplete="new-password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" required disabled={!configured} />
+            </div>
+            <div className="field">
+              <label htmlFor="confirm-password">Confirm new password</label>
+              <input id="confirm-password" className="input" type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Repeat it" required disabled={!configured} />
+            </div>
+            <button type="submit" className="btn btn-primary" disabled={busy || !configured}>{busy ? "Updating…" : "Update password"}</button>
           </form>
-          {!configured && <div className={styles.configNotice}><strong>Account backend setup required.</strong><span>Password recovery will activate as soon as the production Supabase project is connected.</span></div>}
-          {error && <div className={styles.error}>{error}</div>}
-          {message && <div className={styles.success}>{message}</div>}
-          <div className={styles.legal}>Didn&apos;t request a reset? You can safely leave this page and <Link href="/">continue as a guest</Link>.</div>
-        </div>
-      </section>
-      <LegalFooter />
+          {error && <div className="notice notice-bad" role="alert" style={{ marginTop: 14 }}>{error}</div>}
+          {message && <div className="notice notice-good" role="status" style={{ marginTop: 14 }}>{message}</div>}
+          <p className="small muted" style={{ marginTop: 14 }}>
+            If the link has expired, <Link href="/sign-in">request a new one</Link> from the sign-in page.
+          </p>
+        </section>
+      </div>
     </main>
   );
 }

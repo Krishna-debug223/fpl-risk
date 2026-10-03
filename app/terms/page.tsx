@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { pageMetadata } from "@/lib/metadata";
 
 export const metadata = pageMetadata({
@@ -10,12 +9,10 @@ export const metadata = pageMetadata({
 export default function TermsPage() {
   const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL;
   return (
-    <main className="legal-shell">
-      <Link href="/" className="legal-back">← Back to FPL Prism</Link>
-      <article className="legal-card">
-        <span className="eyebrow">TERMS</span>
+    <main className="page page-narrow">
+      <article className="legal prose">
         <h1>Terms of Use</h1>
-        <p className="legal-updated">Effective 16 September 2026</p>
+        <p className="effective">Effective 16 September 2026</p>
 
         <h2>Independent decision-support tool</h2>
         <p>FPL Prism is an independent analytics project for Fantasy Premier League managers. It is not affiliated with, endorsed by or sponsored by the Premier League, and it is not an official Premier League product.</p>

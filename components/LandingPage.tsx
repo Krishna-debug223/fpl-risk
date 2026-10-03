@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import styles from "./LandingPage.module.css";
 
 export default function LandingPage() {
@@ -10,78 +10,124 @@ export default function LandingPage() {
   const [teamId, setTeamId] = useState("");
   const [error, setError] = useState("");
 
-  function openDashboard(nextTeamId: string, demo = false) {
-    const normalized = nextTeamId.trim();
-    if (!/^\d+$/.test(normalized)) {
-      setError("Enter the numeric Team ID from your public FPL URL.");
-      return;
-    }
-    window.localStorage.setItem("fpl-risk-team-id", normalized);
-    router.push(`/dashboard?team=${encodeURIComponent(normalized)}${demo ? "&demo=1" : ""}`);
-  }
+  useEffect(() => {
+    const saved = window.localStorage.getItem("fpl-risk-team-id");
+    if (saved && /^\d+$/.test(saved)) setTeamId(saved);
+  }, []);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const normalized = teamId.trim();
+    if (!/^\d{1,12}$/.test(normalized)) {
+      setError("Team IDs are numbers only, for example 123456.");
+      return;
+    }
     setError("");
-    openDashboard(teamId);
+    router.push(`/dashboard?team=${encodeURIComponent(normalized)}`);
   }
 
   return (
-    <main className={styles.shell}>
+    <main className="page">
       <section className={styles.hero}>
-        <div className={styles.heroCopy}>
-          <span className={styles.eyebrow}>PROBABILISTIC FPL DECISIONS</span>
-          <h1>Make the call with the <em>whole range.</em></h1>
-          <p className={styles.lead}>FPL Prism shows the expected points, floor, ceiling and risk behind your next move, so you can choose a safe hold or chase the upside with your eyes open.</p>
-          <div className={styles.heroActions}>
-            <form className={styles.teamForm} onSubmit={submit}>
+        <div>
+          <h1 className={styles.title}>Check your FPL squad and transfers before the deadline</h1>
+          <p className="lead" style={{ marginTop: 12 }}>
+            FPL Prism projects points for every player over the next five Gameweeks, shows how wide the likely range is,
+            and compares legal transfers after budget and points hits. Free, and no account needed.
+          </p>
+
+          <form className={`card ${styles.form}`} onSubmit={submit} noValidate>
+            <div className="field">
               <label htmlFor="landing-team-id">Your FPL Team ID</label>
-              <div className={styles.formRow}>
-                <input id="landing-team-id" value={teamId} onChange={(event) => setTeamId(event.target.value)} placeholder="e.g. 123456" inputMode="numeric" aria-describedby="team-id-note" />
-                <button type="submit">See my team →</button>
+              <div className="inline-form">
+                <input
+                  id="landing-team-id"
+                  className="input"
+                  value={teamId}
+                  onChange={(event) => setTeamId(event.target.value)}
+                  placeholder="e.g. 123456"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  aria-invalid={Boolean(error)}
+                  aria-describedby="landing-team-hint"
+                />
+                <button type="submit" className="btn btn-primary">Open my squad</button>
               </div>
-              <span id="team-id-note" className={styles.formNote}>Read-only public data. Your FPL password is never requested.</span>
-              {error && <span className={styles.formError}>{error}</span>}
-            </form>
-            <button type="button" className={styles.sampleButton} onClick={() => openDashboard("1", true)}>Try a sample squad</button>
-          </div>
-          <details className={styles.idHelp}>
-            <summary>Where do I find my Team ID?</summary>
-            <div className={styles.helpBody}>
-              <p>Open your FPL team page. The number after <code>/entry/</code> in the address bar is your public Team ID.</p>
-              <div className={styles.urlMock} aria-label="Example FPL URL showing the Team ID"><span>fantasy.premierleague.com/entry/</span><b>123456</b><span>/event/5</span></div>
             </div>
-          </details>
+            <p id="landing-team-hint" className="field-hint">
+              On the FPL website, open <em>Points</em>. The number after <code>/entry/</code> in the address is your Team ID —
+              e.g. fantasy.premierleague.com/entry/<strong>123456</strong>/event/7 (example). Public data only; never enter your FPL password.
+            </p>
+            {error && <p className="field-error" role="alert">{error}</p>}
+            <div className="row small" style={{ marginTop: 4 }}>
+              <span className="muted">Or:</span>
+              <Link href="/dashboard?demo=1">try a sample squad</Link>
+              <Link href="/dashboard?view=market">browse player forecasts</Link>
+            </div>
+          </form>
         </div>
 
-        <aside className={styles.exampleCard} aria-label="Illustrative FPL Prism output">
-          <div className={styles.cardHeader}><span className={styles.eyebrow}>ILLUSTRATIVE OUTPUT</span><span className={styles.livePill}><i /> 10K paths</span></div>
-          <h2>Transfer verdict</h2>
-          <div className={styles.move}><span>HOLD</span><b>↗</b><span className={styles.moveAccent}>Mbeumo</span></div>
-          <p className={styles.cardCopy}>A higher median with enough ceiling to chase rank without paying for unnecessary variance.</p>
-          <div className={styles.metricRow}><div><span>Chance to beat hold</span><strong>62%</strong></div><div><span>Expected edge</span><strong className={styles.green}>+2.4</strong></div></div>
-          <div className={styles.range}><div className={styles.rangeTrack}><i /><b /></div><div><span>Floor <strong>3.1</strong></span><span>Median <strong>6.4</strong></span><span>Ceiling <strong>11.8</strong></span></div></div>
-          <Link href="/dashboard" className={styles.cardLink}>Explore the live model →</Link>
-          <small className={styles.disclaimer}>Example values for illustration. Live output uses the current FPL feed.</small>
+        <aside className={`card ${styles.example}`} aria-label="Illustrative transfer comparison">
+          <div className="row-between">
+            <h2 className={styles.exampleTitle}>What a transfer check looks like</h2>
+            <span className="badge">Illustrative · fictional players</span>
+          </div>
+          <table className="table" style={{ marginTop: 12 }}>
+            <tbody>
+              <tr><td>Sell Jordan Reed</td><td className="r">24.0 pts</td></tr>
+              <tr><td>Buy Evan Mercer</td><td className="r">31.2 pts</td></tr>
+              <tr><td>Gain over 5 Gameweeks</td><td className="r">+7.2</td></tr>
+              <tr><td>Hit (no free transfers)</td><td className="r">−4</td></tr>
+              <tr><td><strong>Net gain</strong></td><td className="r pos"><strong>+3.2</strong></td></tr>
+              <tr><td>Budget left</td><td className="r">£0.0m</td></tr>
+            </tbody>
+          </table>
+          <p className="small muted" style={{ marginTop: 12 }}>
+            &ldquo;The move adds 3.2 projected points over five Gameweeks after the hit, but Mercer has more playing-time uncertainty.&rdquo;
+            Real results use the live FPL feed and your squad.
+          </p>
         </aside>
       </section>
 
-      <section className={styles.proof} aria-label="What FPL Prism measures">
-        <div><span className={styles.proofNumber}>01</span><strong>Expected points plus range</strong><p>See the average and the outcomes around it.</p></div>
-        <div><span className={styles.proofNumber}>02</span><strong>Rank-aware choices</strong><p>Protect, balance or chase with the same projections.</p></div>
-        <div><span className={styles.proofNumber}>03</span><strong>A public record</strong><p>Every committed forecast can be checked in Modelbook.</p></div>
+      <section className={styles.tools} aria-labelledby="tools-heading">
+        <h2 id="tools-heading">What you can do</h2>
+        <div className="grid-2" style={{ marginTop: 12 }}>
+          <Link href="/dashboard?view=team" className={`card ${styles.tool}`}>
+            <h3>See your squad</h3>
+            <p>Starting XI, bench and captain with next-Gameweek projections, availability flags and chip windows.</p>
+          </Link>
+          <Link href="/dashboard?view=transfer" className={`card ${styles.tool}`}>
+            <h3>Compare transfers</h3>
+            <p>Pick players to sell and get the best legal replacements under one budget — or a clear &ldquo;hold&rdquo;.</p>
+          </Link>
+          <Link href="/dashboard?view=market" className={`card ${styles.tool}`}>
+            <h3>Research players</h3>
+            <p>Filter by club, position and price; open any player to see fixtures, playing time and where the points come from.</p>
+          </Link>
+          <Link href="/planner" className={`card ${styles.tool}`}>
+            <h3>Plan eight weeks ahead</h3>
+            <p>Compare transferring now with rolling, and see a week-by-week path with captain and bank.</p>
+          </Link>
+        </div>
       </section>
 
-      <section className={styles.trust}>
-        <div><span className={styles.eyebrow}>MODELBOOK</span><h2>Receipts, not vibes.</h2><p>See how prior projections compared with official FPL points, including the misses and the range.</p><div className={styles.scorecard}><span><b>1.41</b> GW4 mean error</span><span><b>79.5%</b> within 2 points</span><span><b>GW3 + GW4</b> archived</span></div></div>
-        <Link href="/modelbook">Open the Modelbook →</Link>
+      <section className={`grid-2 ${styles.facts}`}>
+        <div>
+          <h2>Good to know</h2>
+          <ul className={styles.list}>
+            <li>FPL Prism only reads public FPL data. It never changes your team, captain or chips.</li>
+            <li>Every number is an estimate with a range. Expected points are an average, not a promise.</li>
+            <li>Public data doesn&apos;t include your selling prices or free transfers, so you set those assumptions.</li>
+          </ul>
+        </div>
+        <div>
+          <h2>Checking the model</h2>
+          <p className="muted" style={{ marginTop: 8 }}>
+            Forecasts are frozen at each deadline and compared with official points afterwards, misses included.
+          </p>
+          <p style={{ marginTop: 8 }}><Link href="/modelbook">Open the Modelbook</Link> · <Link href="/how-it-works">How it works</Link></p>
+        </div>
       </section>
-
-      <section className={styles.guides} aria-label="FPL Prism guides">
-        <div><span className={styles.eyebrow}>FPL DECISION GUIDES</span><p>Plain-language explainers for the choices managers make every Gameweek.</p></div>
-        <nav><Link href="/fpl-captain-picks">Captain picks</Link><Link href="/fpl-transfer-planner">Transfer planner</Link><Link href="/fpl-expected-points">Expected points</Link><Link href="/fpl-team-risk">Team risk</Link></nav>
-      </section>
-      <footer className={styles.footer}><span>FPL Prism · Independent FPL analytics</span><span>Not affiliated with, endorsed by or sponsored by the Premier League.</span></footer>
     </main>
   );
 }

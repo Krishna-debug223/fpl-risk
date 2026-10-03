@@ -22,9 +22,9 @@ export default function FplTeamRiskPage() {
     faqs={[
       { question: "What is FPL squad concentration risk?", answer: "It is the amount of your projected outcome that depends on the same club, fixture or correlated result. Higher concentration can mean a wider team-level range." },
       { question: "Does FPL Prism use my FPL password?", answer: "No. The dashboard reads public FPL data using the numeric Team ID and does not request or store an FPL password." },
-      { question: "Can I use the risk view before choosing a transfer?", answer: "Yes. Load your squad in My Team, inspect the current exposure and then compare legal transfers in Transfer Lab." },
+      { question: "Can I use the risk view before choosing a transfer?", answer: "Yes. Load your squad in My team, check the concentration section, then compare legal transfers in Transfers." },
       { question: "Is a high-risk squad always bad?", answer: "No. A manager chasing rank may intentionally accept more variance. The goal is to make the trade-off explicit, not to force every manager into the same style." },
     ]}
-    related={[{ href: "/dashboard", label: "Open My Team" }, { href: "/fpl-captain-picks", label: "Find captain ranges" }, { href: "/modelbook", label: "Audit the forecasts" }]}
+    related={[{ href: "/dashboard", label: "Open My team" }, { href: "/fpl-captain-picks", label: "Find captain ranges" }, { href: "/modelbook", label: "Audit the forecasts" }]}
   />;
 }

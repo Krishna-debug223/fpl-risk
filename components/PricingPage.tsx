@@ -1,120 +1,88 @@
-"use client";
-
 import Link from "next/link";
-import { useState } from "react";
 import styles from "./PricingPage.module.css";
-import LegalFooter from "./LegalFooter";
 
-type Plan = {
-  name: string;
-  monthly: number;
-  annualMonthly: number;
-  annualBill: number;
-  description: string;
-  features: string[];
-  future?: boolean;
-};
+const included = [
+  "Squad import with next-Gameweek and five-Gameweek projections",
+  "Transfer comparisons with budget, hits and squad rules",
+  "Player research with ranges, fixtures and score breakdowns",
+  "Eight-Gameweek planner with Safe, Balanced and Aggressive plans",
+  "Chip guidance and squad concentration checks",
+  "The Modelbook forecast record",
+  "Optional account to save your Team ID and defaults",
+];
 
-const plans: Plan[] = [
+const roadmap = [
   {
-    name: "FREE",
-    monthly: 0,
-    annualMonthly: 0,
-    annualBill: 0,
-    description: "The complete FPL Prism product during launch.",
-    features: [
-      "Live player projections and confidence",
-      "Transfer Lab + 10,000-path simulations",
-      "8-Gameweek Path Planner",
-      "Chip planning and Player Market",
-      "FPL Prism Modelbook forward-test access",
-      "Optional account to save your Team ID and defaults",
-    ],
+    name: "Pro",
+    proposed: "$5 per month",
+    features: ["Saved transfer scenarios", "Deadline and player-watch alerts", "Model history comparisons", "CSV exports and saved planner paths"],
   },
   {
-    name: "PRO",
-    monthly: 5,
-    annualMonthly: 4,
-    annualBill: 48,
-    description: "For managers who want a deeper weekly workflow.",
-    features: [
-      "Everything in Free",
-      "Unlimited saved transfer scenarios",
-      "Deadline and player-watch alerts",
-      "Advanced model-history comparisons",
-      "CSV exports and saved planner paths",
-      "Early access to new decision tools",
-    ],
-    future: true,
-  },
-  {
-    name: "ELITE",
-    monthly: 9,
-    annualMonthly: 7,
-    annualBill: 84,
-    description: "For power users, creators and multi-team analysis.",
-    features: [
-      "Everything in Pro",
-      "Multiple saved FPL teams",
-      "Advanced scenario workspace",
-      "Custom watchlists and comparison boards",
-      "Priority model/data exports",
-      "Priority product support",
-    ],
-    future: true,
+    name: "Elite",
+    proposed: "$9 per month",
+    features: ["Multiple saved FPL teams", "Scenario comparison boards", "Custom watchlists", "Priority data exports"],
   },
 ];
 
 export default function PricingPage() {
-  const [annual, setAnnual] = useState(false);
-
   return (
-    <main className={styles.shell}>
-      <section className={styles.hero}>
-        <p className={styles.eyebrow}>PRICING</p>
-        <h1>Use the model.<br />Pay only when we earn it.</h1>
-        <p>Every feature currently shipping in FPL Prism stays free during launch. The paid tiers below show where the product can grow once the core model and weekly workflow have earned a subscription.</p>
-        <div className={styles.launchNote}><strong>Launch promise:</strong> Free currently includes the full live product. No paid checkout or automatic renewal is active.</div>
+    <main className="page page-narrow">
+      <div className="page-head">
+        <div>
+          <h1>Pricing</h1>
+          <p className="lead">
+            FPL Prism is free during launch. Every feature that exists today is included, no payment is taken, and you don&apos;t need an account.
+          </p>
+        </div>
+      </div>
+
+      <section className={`card ${styles.free}`}>
+        <div className="row-between">
+          <h2>Free</h2>
+          <span className="badge badge-good">Available now</span>
+        </div>
+        <ul className={styles.list}>
+          {included.map((item) => <li key={item}>{item}</li>)}
+        </ul>
+        <div className="row" style={{ marginTop: 16 }}>
+          <Link href="/dashboard" className="btn btn-primary">Open the dashboard</Link>
+          <span className="small muted">No sign-up, no card.</span>
+        </div>
       </section>
 
-      <section className={styles.billing} aria-label="Billing frequency">
-        <button type="button" className={!annual ? styles.active : ""} onClick={() => setAnnual(false)}>Monthly</button>
-        <button type="button" className={annual ? styles.active : ""} onClick={() => setAnnual(true)}>Annual <span>save 20%+</span></button>
-      </section>
-
-      <section className={styles.grid}>
-        {plans.map((plan) => {
-          const price = annual ? plan.annualMonthly : plan.monthly;
-          return (
-            <article key={plan.name} className={`${styles.card} ${plan.name === "FREE" ? styles.featured : ""}`}>
-              <div className={styles.cardTop}>
-                <span className={styles.planName}>{plan.name}</span>
-                {plan.future && <span className={styles.future}>ROADMAP</span>}
+      <section style={{ marginTop: 32 }}>
+        <h2>Possible paid tiers</h2>
+        <p className="muted" style={{ marginTop: 4 }}>
+          These are roadmap proposals, not products you can buy. None of these features exist yet, and prices may change or never launch.
+          There is no checkout or automatic renewal.
+        </p>
+        <div className="grid-2" style={{ marginTop: 12 }}>
+          {roadmap.map((tier) => (
+            <article key={tier.name} className={`card ${styles.roadmap}`}>
+              <div className="row-between">
+                <h3>{tier.name}</h3>
+                <span className="badge">Roadmap</span>
               </div>
-              <div className={styles.price}>
-                <strong>${price}</strong><span>/ month</span>
-              </div>
-              <small className={styles.billingCopy}>
-                {plan.monthly === 0 ? "free during launch" : annual ? `planned · billed $${plan.annualBill}/year` : "planned monthly price"}
-              </small>
-              <p className={styles.description}>{plan.description}</p>
-              <ul>
-                {plan.features.map((feature) => <li key={feature}><i>✓</i><span>{feature}</span></li>)}
+              <p className="small muted" style={{ marginTop: 2 }}>Proposed: {tier.proposed}. Not available to buy.</p>
+              <ul className={styles.list}>
+                {tier.features.map((feature) => <li key={feature}>{feature}</li>)}
               </ul>
-              <Link className={plan.name === "FREE" ? styles.primary : styles.secondary} href="/">
-                {plan.future ? "See launch access" : "Start free"}
-              </Link>
             </article>
-          );
-        })}
+          ))}
+        </div>
       </section>
 
-      <section className={styles.faq}>
-        <div><span>DO I NEED TO PAY?</span><strong>No.</strong><p>Not for the current product. The projections, Transfer Lab, Monte Carlo, Path Planner, Player Market and Modelbook remain available on Free during launch.</p></div>
-        <div><span>DO I NEED AN ACCOUNT?</span><strong>No.</strong><p>You can keep using FPL Prism as a guest. Sign in only if you want your Team ID and planning defaults attached to an account.</p></div>
-        <div><span>WHEN WOULD PRO START?</span><strong>Only after notice.</strong><p>If paid subscriptions launch later, the product will show the final feature split and checkout terms before anyone is charged.</p></div>
+      <section style={{ marginTop: 32 }}>
+        <h2>Questions</h2>
+        <dl className={styles.faq}>
+          <dt>Do I need to pay?</dt>
+          <dd>No. Everything currently in FPL Prism is free.</dd>
+          <dt>Do I need an account?</dt>
+          <dd>No. An optional account only saves your Team ID, default free transfers and planner style across devices.</dd>
+          <dt>What if paid plans launch?</dt>
+          <dd>Final features, prices and terms would be shown before anyone could be charged.</dd>
+        </dl>
       </section>
-      <LegalFooter />
     </main>
   );
 }

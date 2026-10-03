@@ -62,7 +62,11 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
+#main-content { flex: 1 0 auto; outline: none; }
 
 h1, h2, h3, h4 { margin: 0; color: var(--text); line-height: 1.25; font-weight: 600; letter-spacing: -0.01em; }
 h1 { font-size: 26px; }

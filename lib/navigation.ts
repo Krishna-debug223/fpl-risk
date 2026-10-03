@@ -21,3 +21,10 @@ export function dashboardHref(view: DashboardView, search = ""): string {
   const query = params.toString();
   return `/dashboard${query ? `?${query}` : ""}`;
 }
+
+export const guideLinks = [
+  { href: "/fpl-expected-points", label: "Expected points and ranges" },
+  { href: "/fpl-captain-picks", label: "Choosing a captain" },
+  { href: "/fpl-transfer-planner", label: "Transfers, hits and rolling" },
+  { href: "/fpl-team-risk", label: "Squad concentration risk" },
+];

@@ -18,7 +18,7 @@ export type SeoGuidePageProps = {
   related?: Array<{ href: string; label: string }>;
 };
 
-export default function SeoGuidePage({ eyebrow, title, intro, path, sections, faqs, related = [] }: SeoGuidePageProps) {
+export default function SeoGuidePage({ title, intro, path, sections, faqs, related = [] }: SeoGuidePageProps) {
   const schema = {
     "@context": "https://schema.org",
     "@graph": [
@@ -41,36 +41,43 @@ export default function SeoGuidePage({ eyebrow, title, intro, path, sections, fa
   };
 
   return (
-    <main className={styles.shell}>
+    <main className="page page-narrow">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
-      <section className={styles.hero}>
-        <span className={styles.eyebrow}>{eyebrow}</span>
-        <h1>{title}</h1>
-        <p>{intro}</p>
-        <div className={styles.actions}><Link href="/dashboard" className={styles.primary}>Open the live dashboard →</Link><Link href="/modelbook" className={styles.secondary}>Check the model record</Link></div>
+      <h1 className={styles.title}>{title}</h1>
+      <p className="lead" style={{ marginTop: 10 }}>{intro}</p>
+      <div className="row" style={{ marginTop: 16 }}>
+        <Link href="/dashboard" className="btn btn-primary">Open the dashboard</Link>
+        <Link href="/modelbook" className="btn">See the forecast record</Link>
+      </div>
+
+      <div className={`prose ${styles.body}`}>
+        {sections.map((section) => (
+          <section key={section.title}>
+            <h2>{section.title}</h2>
+            <p>{section.body}</p>
+            {section.bullets && <ul>{section.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}</ul>}
+          </section>
+        ))}
+      </div>
+
+      <section className={styles.faq} aria-labelledby="faq-heading">
+        <h2 id="faq-heading">Questions</h2>
+        <div className="stack-sm" style={{ marginTop: 10 }}>
+          {faqs.map((faq) => (
+            <details key={faq.question} className="disclosure">
+              <summary>{faq.question}</summary>
+              <div className="disclosure-body"><p>{faq.answer}</p></div>
+            </details>
+          ))}
+        </div>
       </section>
 
-      <section className={styles.content}>
-        {sections.map((section) => <article key={section.title} className={styles.card}>
-          {section.eyebrow && <span className={styles.cardEyebrow}>{section.eyebrow}</span>}
-          <h2>{section.title}</h2>
-          <p>{section.body}</p>
-          {section.bullets && <ul>{section.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}</ul>}
-        </article>)}
-      </section>
-
-      <section className={styles.faq}>
-        <span className={styles.eyebrow}>COMMON QUESTIONS</span>
-        <h2>Useful answers before the deadline.</h2>
-        <div className={styles.faqGrid}>{faqs.map((faq) => <details key={faq.question}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}</div>
-      </section>
-
-      {related.length > 0 && <section className={styles.related} aria-label="Related FPL Prism guides">
-        <span className={styles.eyebrow}>KEEP EXPLORING</span>
-        <div>{related.map((link) => <Link href={link.href} key={link.href}>{link.label} →</Link>)}</div>
-      </section>}
-
-      <footer className={styles.footer}><span>FPL Prism · Independent FPL analytics</span><span>Not affiliated with, endorsed by or sponsored by the Premier League.</span></footer>
+      {related.length > 0 && (
+        <nav className={styles.related} aria-label="Related guides">
+          <h2>Related</h2>
+          <ul>{related.map((link) => <li key={link.href}><Link href={link.href}>{link.label}</Link></li>)}</ul>
+        </nav>
+      )}
     </main>
   );
 }

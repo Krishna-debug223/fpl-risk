@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import styles from "./SignInPanel.module.css";
-import LegalFooter from "./LegalFooter";
 
 type Mode = "signin" | "signup" | "reset";
 
@@ -32,7 +31,7 @@ export default function SignInPanel() {
     setMessage("");
 
     if (!configured) {
-      setError("Cloud accounts are not connected to this deployment yet.");
+      setError("Accounts aren't connected on this deployment yet.");
       return;
     }
 
@@ -87,64 +86,65 @@ export default function SignInPanel() {
     }
   }
 
-  const heading = mode === "signin"
-    ? "Continue your FPL Prism setup"
-    : mode === "signup"
-      ? "Save your FPL Prism setup"
-      : "Reset your password";
-  const cardCopy = mode === "signin"
-    ? "Use the email and password you created for FPL Prism."
-    : mode === "signup"
-      ? "Create a free account. No payment details are required."
-      : "We will email a secure recovery link. Your FPL Prism tools remain usable as a guest while you wait.";
+  const heading = mode === "signin" ? "Sign in to FPL Prism" : mode === "signup" ? "Create an FPL Prism account" : "Reset your FPL Prism password";
 
   return (
-    <main className={styles.shell}>
-      <section className={styles.layout}>
-        <div className={styles.copy}>
-          <p className={styles.eyebrow}>WELCOME TO FPL PRISM</p>
-          <h1>Save your setup.<br />Or jump straight in.</h1>
-          <p>Sign in if you want your Team ID and planning defaults saved across sessions. You never need an account to use the live model, Transfer Lab, Player Market or Path Planner.</p>
-          <ul>
-            <li><i>✓</i><span>All current FPL Prism tools remain available without signing in.</span></li>
-            <li><i>✓</i><span>Your account stores only the preferences you choose to save.</span></li>
-            <li><i>✓</i><span>Signing in never requires your official FPL password.</span></li>
+    <main className="page">
+      <div className={styles.layout}>
+        <section className={styles.copy}>
+          <h1>Account</h1>
+          <p className="lead" style={{ marginTop: 8 }}>
+            An account is optional. It saves your Team ID, default free transfers and planner style so they follow you to other devices.
+            Every tool works without one.
+          </p>
+          <ul className={styles.points}>
+            <li>This is a separate FPL Prism login, not your official FPL account.</li>
+            <li>Never use or enter your FPL password here.</li>
+            <li>No payment details are ever requested.</li>
           </ul>
-          <div className={styles.guestActions}>
-            <Link href="/dashboard" className={styles.guest}>Don&apos;t sign in — continue as guest →</Link>
-            <Link href="/pricing" className={styles.secondaryLink}>View pricing</Link>
-          </div>
-        </div>
+          <p style={{ marginTop: 16 }}><Link href="/dashboard">Continue without an account</Link></p>
+        </section>
 
-        <div className={styles.card}>
-          <div className={styles.tabs}>
-            <button className={mode === "signin" ? styles.active : ""} type="button" onClick={() => switchMode("signin")}>Sign in</button>
-            <button className={mode === "signup" ? styles.active : ""} type="button" onClick={() => switchMode("signup")}>Create account</button>
-          </div>
-          <span className={styles.cardEyebrow}>{mode === "signin" ? "WELCOME BACK" : mode === "signup" ? "FREE ACCOUNT" : "ACCOUNT RECOVERY"}</span>
+        <section className="card">
+          {mode !== "reset" && (
+            <div className="segmented" role="tablist" aria-label="Account action" style={{ marginBottom: 16 }}>
+              <button type="button" role="tab" aria-selected={mode === "signin"} onClick={() => switchMode("signin")}>Sign in</button>
+              <button type="button" role="tab" aria-selected={mode === "signup"} onClick={() => switchMode("signup")}>Create account</button>
+            </div>
+          )}
           <h2>{heading}</h2>
-          <p className={styles.cardCopy}>{cardCopy}</p>
+          {mode === "reset" && <p className="muted small" style={{ marginTop: 4 }}>We&apos;ll email you a link to choose a new password.</p>}
 
-          <form onSubmit={submit}>
-            <label htmlFor="auth-email">Email</label>
-            <input id="auth-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required />
-            {mode !== "reset" && <>
-              <label htmlFor="auth-password">Password</label>
-              <input id="auth-password" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8+ characters" minLength={8} required />
-            </>}
-            {mode === "signin" && <button className={styles.resetLink} type="button" onClick={() => switchMode("reset")}>Forgot password?</button>}
-            {mode === "reset" && <button className={styles.resetLink} type="button" onClick={() => switchMode("signin")}>← Back to sign in</button>}
-            <button type="submit" disabled={busy || !configured}>{busy ? "Working…" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create free account" : "Send reset link"}</button>
+          {!configured && (
+            <div className="notice notice-neutral" style={{ marginTop: 14 }}>
+              Accounts aren&apos;t connected on this deployment yet, so sign-in is unavailable. You can still use every tool as a guest.
+            </div>
+          )}
+
+          <form onSubmit={submit} className="stack" style={{ marginTop: 16 }} noValidate>
+            <div className="field">
+              <label htmlFor="auth-email">Email</label>
+              <input id="auth-email" className="input" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required disabled={!configured} />
+            </div>
+            {mode !== "reset" && (
+              <div className="field">
+                <label htmlFor="auth-password">FPL Prism password</label>
+                <input id="auth-password" className="input" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" minLength={8} required disabled={!configured} aria-describedby="auth-password-hint" />
+                <span id="auth-password-hint" className="field-hint">{mode === "signup" ? "Choose a new password. Don't reuse your FPL password." : "The password you created for FPL Prism, not your FPL one."}</span>
+              </div>
+            )}
+            <button type="submit" className="btn btn-primary" disabled={busy || !configured}>
+              {busy ? "Working…" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}
+            </button>
+            {mode === "signin" && <button type="button" className="link-button small" style={{ alignSelf: "flex-start" }} onClick={() => switchMode("reset")}>Forgot password?</button>}
+            {mode === "reset" && <button type="button" className="link-button small" style={{ alignSelf: "flex-start" }} onClick={() => switchMode("signin")}>Back to sign in</button>}
           </form>
 
-          {!configured && <div className={styles.configNotice}><strong>Account backend setup required.</strong><span>The account experience is deployed, but authentication stays disabled until the production Supabase project URL and publishable key are connected.</span></div>}
-          {error && <div className={styles.error}>{error}</div>}
-          {message && <div className={styles.success}>{message}</div>}
-          <div className={styles.legal}>By creating an account, you agree to the <Link href="/terms">Terms</Link> and acknowledge the <Link href="/privacy">Privacy Policy</Link>.</div>
-          <Link href="/dashboard" className={styles.mobileGuest}>Continue without signing in</Link>
-        </div>
-      </section>
-      <LegalFooter />
+          {error && <div className="notice notice-bad" role="alert" style={{ marginTop: 14 }}>{error}</div>}
+          {message && <div className="notice notice-good" role="status" style={{ marginTop: 14 }}>{message}</div>}
+          {mode === "signup" && <p className="small muted" style={{ marginTop: 14 }}>By creating an account you agree to the <Link href="/terms">Terms</Link> and acknowledge the <Link href="/privacy">Privacy Policy</Link>.</p>}
+        </section>
+      </div>
     </main>
   );
 }

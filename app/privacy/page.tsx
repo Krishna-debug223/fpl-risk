@@ -1,4 +1,3 @@
-import Link from "next/link";
 import AnalyticsPrivacyControls from "@/components/AnalyticsPrivacyControls";
 import { pageMetadata } from "@/lib/metadata";
 
@@ -11,12 +10,10 @@ export const metadata = pageMetadata({
 export default function PrivacyPage() {
   const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL;
   return (
-    <main className="legal-shell">
-      <Link href="/" className="legal-back">← Back to FPL Prism</Link>
-      <article className="legal-card">
-        <span className="eyebrow">PRIVACY</span>
+    <main className="page page-narrow">
+      <article className="legal prose">
         <h1>Privacy Policy</h1>
-        <p className="legal-updated">Effective 16 September 2026</p>
+        <p className="effective">Effective 16 September 2026</p>
         <p>FPL Prism is built to work without an account. An optional account can be used to save a small set of planning preferences across sessions and devices.</p>
 
         <h2>Information you provide</h2>
@@ -32,7 +29,7 @@ export default function PrivacyPage() {
         <AnalyticsPrivacyControls />
 
         <h2>AI and automated recommendations</h2>
-        <p>Features labelled “AI” in FPL Prism are currently produced by an explainable statistical recommendation engine, not a general-purpose chatbot. It uses football/FPL statistics, fixture data, squad rules, historical priors and probabilistic simulations. We do not currently send your FPL squad to a third-party generative-AI provider.</p>
+        <p>Projections and recommendations in FPL Prism are produced by an explainable statistical recommendation engine, not a general-purpose chatbot. It uses football/FPL statistics, fixture data, squad rules, historical priors and probabilistic simulations. We do not currently send your FPL squad to a third-party generative-AI provider.</p>
 
         <h2>Third-party services and data sources</h2>
         <p>FPL Prism currently relies on Vercel for hosting, analytics and performance monitoring; Supabase for optional account authentication and saved account preferences when enabled; public Fantasy Premier League endpoints for current game data; the Vaastav Fantasy Premier League historical dataset for completed-season player priors; and optional team-strength research feeds. These services have their own terms and privacy practices.</p>
@@ -54,7 +51,7 @@ export default function PrivacyPage() {
         <h2>Changes</h2>
         <p>We may update this policy as the product changes. The effective date at the top of this page will be updated when material changes are made.</p>
 
-        <div className="legal-notice">FPL Prism is an independent project and is not affiliated with, endorsed by or sponsored by the Premier League.</div>
+        <div className="notice notice-neutral" style={{ marginTop: 28 }}>FPL Prism is an independent project and is not affiliated with, endorsed by or sponsored by the Premier League.</div>
       </article>
     </main>
   );

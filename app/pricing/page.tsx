@@ -2,8 +2,8 @@ import PricingPage from "@/components/PricingPage";
 import { pageMetadata } from "@/lib/metadata";
 
 export const metadata = pageMetadata({
-  title: "FPL Prism — Launch access",
-  description: "Every current FPL Prism feature remains included in the Free plan during launch. Future paid tiers are clearly marked as roadmap plans.",
+  title: "FPL Prism — Pricing",
+  description: "FPL Prism is free during launch. Possible paid tiers are shown as roadmap proposals and cannot be bought.",
   path: "/pricing",
 });
 

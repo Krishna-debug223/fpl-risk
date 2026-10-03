@@ -18,7 +18,7 @@ export default function DashboardPage() {
       <noscript>
         <section className="seo-noscript" aria-label="FPL Prism dashboard overview">
           <h1>Risk-aware FPL decisions for every Gameweek</h1>
-          <p>FPL Prism compares expected points, outcome ranges and transfer risk using 10,000 simulated outcomes. Enable JavaScript to import a Team ID and view the live dashboard.</p>
+          <p>FPL Prism compares expected points, outcome ranges and transfer risk using simulated outcomes. Enable JavaScript to import a Team ID and view the live dashboard.</p>
         </section>
       </noscript>
       <LiveRefreshV12 />

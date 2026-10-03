@@ -3,17 +3,11 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { dashboardHref, dashboardView, type DashboardView } from "@/lib/navigation";
+import { dashboardHref, dashboardView, guideLinks, type DashboardView } from "@/lib/navigation";
 import BrandMark from "./BrandMark";
 import styles from "./SiteHeader.module.css";
 
-const learnLinks = [
-  { href: "/how-it-works", label: "How FPL Prism works" },
-  { href: "/fpl-expected-points", label: "Expected points and ranges" },
-  { href: "/fpl-captain-picks", label: "Choosing a captain" },
-  { href: "/fpl-transfer-planner", label: "Transfers, hits and rolling" },
-  { href: "/fpl-team-risk", label: "Squad concentration risk" },
-];
+const learnLinks = [{ href: "/how-it-works", label: "How FPL Prism works" }, ...guideLinks];
 
 type NavLink = { href: string; label: string; active: boolean };
 
