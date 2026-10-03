@@ -106,3 +106,76 @@
 .playerCell :global(.link-button) { text-align: left; font-weight: 600; }
 
 .warnText { color: var(--warn); }
+
+/* Dashboard view tabs: only where the header nav has collapsed into the menu. */
+.viewTabs { display: none; }
+@media (max-width: 1020px) {
+  .viewTabs {
+    display: flex;
+    gap: 2px;
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: 0 calc(var(--gutter) - 10px);
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-top: 1px solid var(--border);
+  }
+  .viewTabs::-webkit-scrollbar { display: none; }
+  .viewTabs a {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 10px;
+    color: var(--text-2);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s ease, border-color 0.2s ease;
+  }
+  .viewTabs a:hover { color: var(--text); }
+  .viewTabs a[aria-current="page"] { color: var(--accent); border-bottom-color: var(--accent); }
+}
+.tabCount {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Compact transfer summary pinned to the bottom on narrow screens while the
+   result card is scrolled out of view. */
+.resultBar { display: none; }
+@media (max-width: 960px) {
+  .resultBar {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 10px 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.14);
+    font-size: 14px;
+    animation: rise-in 0.22s ease-out;
+  }
+}
+.resultBarText { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

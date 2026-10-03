@@ -1,6 +1,6 @@
 export const dashboardViews = [
   { view: "overview", label: "Overview" },
-  { view: "team", label: "My Team" },
+  { view: "team", label: "My team" },
   { view: "transfer", label: "Transfers" },
   { view: "market", label: "Players" },
 ] as const;

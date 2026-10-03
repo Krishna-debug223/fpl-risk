@@ -148,3 +148,49 @@
   .menuButton { display: inline-flex; align-items: center; }
   .mobile { display: block; }
 }
+
+/* ---------- Motion (disabled globally under prefers-reduced-motion) ---------- */
+
+@keyframes drop-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.primary a,
+.secondary > a,
+.secondary button,
+.dropdown a,
+.mobile a { transition: color 0.15s ease, background-color 0.15s ease, border-color 0.2s ease; }
+
+.caret { transition: transform 0.2s ease; }
+[aria-expanded="true"] > .caret { transform: rotate(180deg); }
+
+.dropdown { transform-origin: top right; animation: drop-in 0.16s ease-out; }
+
+.mobile { animation: drop-in 0.2s ease-out; }
+.mobile > div { animation: drop-in 0.24s ease-out both; }
+.mobile > div:nth-child(2) { animation-delay: 0.03s; }
+.mobile > div:nth-child(3) { animation-delay: 0.06s; }
+
+.menuButton { gap: 8px; }
+.menuIcon {
+  position: relative;
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+}
+.menuIcon span {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 1.5px;
+  border-radius: 1px;
+  background: currentColor;
+  transition: transform 0.2s ease, opacity 0.15s ease, top 0.2s ease;
+}
+.menuIcon span:nth-child(1) { top: 0; }
+.menuIcon span:nth-child(2) { top: 4.25px; }
+.menuIcon span:nth-child(3) { top: 8.5px; }
+[aria-expanded="true"] > .menuIcon span:nth-child(1) { top: 4.25px; transform: rotate(45deg); }
+[aria-expanded="true"] > .menuIcon span:nth-child(2) { opacity: 0; }
+[aria-expanded="true"] > .menuIcon span:nth-child(3) { top: 4.25px; transform: rotate(-45deg); }

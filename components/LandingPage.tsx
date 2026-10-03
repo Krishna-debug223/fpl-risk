@@ -9,10 +9,15 @@ export default function LandingPage() {
   const router = useRouter();
   const [teamId, setTeamId] = useState("");
   const [error, setError] = useState("");
+  const [savedTeam, setSavedTeam] = useState("");
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("fpl-risk-team-id");
-    if (saved && /^\d+$/.test(saved)) setTeamId(saved);
+    try {
+      const saved = window.localStorage.getItem("fpl-risk-team-id");
+      if (saved && /^\d+$/.test(saved)) setSavedTeam(saved);
+    } catch {
+      // Storage can be unavailable (private mode); the form still works.
+    }
   }, []);
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -36,9 +41,19 @@ export default function LandingPage() {
             and compares legal transfers after budget and points hits. Free, and no account needed.
           </p>
 
+          {savedTeam && (
+            <div className={`card ${styles.welcome}`}>
+              <div>
+                <strong>Welcome back</strong>
+                <p className="small muted">Your squad (Team ID {savedTeam}) is saved on this device.</p>
+              </div>
+              <Link href={`/dashboard?team=${encodeURIComponent(savedTeam)}`} className="btn btn-primary">Open my squad</Link>
+            </div>
+          )}
+
           <form className={`card ${styles.form}`} onSubmit={submit} noValidate>
             <div className="field">
-              <label htmlFor="landing-team-id">Your FPL Team ID</label>
+              <label htmlFor="landing-team-id">{savedTeam ? "Open a different team" : "Your FPL Team ID"}</label>
               <div className="inline-form">
                 <input
                   id="landing-team-id"
@@ -51,7 +66,7 @@ export default function LandingPage() {
                   aria-invalid={Boolean(error)}
                   aria-describedby="landing-team-hint"
                 />
-                <button type="submit" className="btn btn-primary">Open my squad</button>
+                <button type="submit" className={savedTeam ? "btn" : "btn btn-primary"}>{savedTeam ? "Open" : "Open my squad"}</button>
               </div>
             </div>
             <p id="landing-team-hint" className="field-hint">

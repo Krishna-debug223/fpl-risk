@@ -117,6 +117,7 @@ function HeaderContent({ search = "" }: { search?: string }) {
           aria-controls="mobile-menu"
           onClick={() => setMenuOpen((open) => !open)}
         >
+          <span className={styles.menuIcon} aria-hidden="true"><span /><span /><span /></span>
           {menuOpen ? "Close" : "Menu"}
         </button>
       </div>

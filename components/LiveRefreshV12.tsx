@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { dashboardHref, dashboardView, type DashboardView as Tab } from "@/lib/navigation";
+import { dashboardHref, dashboardView, dashboardViews, type DashboardView as Tab } from "@/lib/navigation";
 
 import SquadPitch, { type SquadPitchPlayer } from "./SquadPitch";
 import PlayerDetail, { type HorizonEvent } from "./dashboard/PlayerDetail";
@@ -414,6 +414,19 @@ export default function LiveRefreshV12() {
     });
   }, [fixtures, freeTransfers, historicalProfiles, manager, players, selectedOut, sellingPrices, sportsbook, squadPlayers, teams]);
 
+  // On narrow screens the result card sits below the pitch. Track whether it is
+  // on screen so a compact summary bar can stand in for it while it isn't.
+  const resultRef = useRef<HTMLElement | null>(null);
+  const [resultInView, setResultInView] = useState(true);
+  const hasSelection = selectedOut.length > 0;
+  useEffect(() => {
+    const node = resultRef.current;
+    if (tab !== "transfer" || !hasSelection || !node || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => setResultInView(entry.isIntersecting), { threshold: 0.15 });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [tab, hasSelection, manager]);
+
   const singleAlternatives = useMemo(() => {
     if (!manager || selectedOut.length !== 1) return [];
     const outgoing = playerMap.get(selectedOut[0]);
@@ -717,6 +730,15 @@ export default function LiveRefreshV12() {
             {importForm("context-team-id", true)}
           </div>
         )}
+        {/* The header holds these links on wide screens; below that they live here so switching views is one tap. */}
+        <nav className={styles.viewTabs} aria-label="Dashboard views">
+          {dashboardViews.map(({ view, label }) => (
+            <Link key={view} href={dashboardHref(view, searchParams.toString())} aria-current={tab === view ? "page" : undefined} scroll={false}>
+              {label}
+              {view === "transfer" && selectedOut.length > 0 && <span className={styles.tabCount}>{selectedOut.length}</span>}
+            </Link>
+          ))}
+        </nav>
       </div>
 
       <div className="page">
@@ -726,23 +748,24 @@ export default function LiveRefreshV12() {
             Squad refresh failed: {teamError} Still showing {manager.teamName}, fetched at {formatClock(manager.fetchedAt)}.
           </div>
         )}
-        {isSample && manager && squadView && (
+        {manager && squadView && (isSample || manager.freeHitRevert) && (
           <div className="notice notice-neutral" style={{ marginBottom: 16 }}>
-            You are viewing a sample squad (a public FPL team used for demonstration). <button type="button" className="link-button" onClick={() => setShowImport(true)}>Import your own squad</button>
+            {isSample && <>This is a sample squad, a public FPL team used for demonstration. </>}
+            {manager.freeHitRevert && (
+              <>Free Hit was played in GW{manager.freeHitRevert.freeHitEvent}, so this is the GW{manager.freeHitRevert.squadEvent} squad FPL restores for the next deadline. </>
+            )}
+            {isSample && <button type="button" className="link-button" onClick={() => setShowImport(true)}>Import your own squad</button>}
           </div>
         )}
 
-        {manager?.activeChip === "freehit" && squadView && (manager.freeHitRevert ? (
-          <div className="notice notice-neutral" style={{ marginBottom: 16 }}>
-            Free Hit was played in GW{manager.freeHitRevert.freeHitEvent}, so this is the GW{manager.freeHitRevert.squadEvent} squad that FPL restores for the next deadline.
-          </div>
-        ) : (
+        {manager?.activeChip === "freehit" && squadView && (manager.freeHitRevert ? null : (
           <div className="notice notice-warn" style={{ marginBottom: 16 }}>
             <strong>These are Free Hit picks.</strong> The squad FPL restores after GW{manager.eventId} couldn&apos;t be loaded, so projections
             here describe the temporary Free Hit team.
           </div>
         ))}
 
+        <div key={tab} className="view-enter">
         {/* ============ OVERVIEW ============ */}
         {tab === "overview" && (
           <div className="stack-lg">
@@ -1082,7 +1105,7 @@ export default function LiveRefreshV12() {
                   <p className="muted small">Numbers are projected points over {horizonSpan(TRANSFER_HORIZON)}.</p>
                 </section>
 
-                <section className="card" aria-live="polite">
+                <section className="card" aria-live="polite" ref={resultRef} id="transfer-result">
                   {!selectedOut.length ? (
                     <>
                       <h2>Nothing selected</h2>
@@ -1118,6 +1141,30 @@ export default function LiveRefreshV12() {
                   )}
                 </section>
               </div>
+
+              {hasSelection && !resultInView && (
+                <div className={styles.resultBar} role="status">
+                  <div className={styles.resultBarText}>
+                    {jointPlan ? (
+                      <>
+                        <strong className={jointPlan.expectedGain > 0 ? "pos" : undefined}>
+                          {jointPlan.expectedGain > 0 ? `${signed(jointPlan.expectedGain)} pts` : "Hold"}
+                        </strong>
+                        <span className="muted"> · {jointPlan.moves.map((move) => `${playerMap.get(move.outgoingId)?.web_name} → ${playerMap.get(move.incomingId)?.web_name}`).join(", ")}</span>
+                      </>
+                    ) : (
+                      <span className="muted">No legal replacement found</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  >
+                    See result
+                  </button>
+                </div>
+              )}
 
               {selectedOut.length === 1 && singleAlternatives.length > 0 && (
                 <section className="card">
@@ -1383,6 +1430,7 @@ export default function LiveRefreshV12() {
             <p>Forecasts are preserved at each deadline and compared with official points, including the misses, in the <Link href="/modelbook">Modelbook</Link>.</p>
           </article>
         )}
+        </div>
       </div>
 
       {detail && (

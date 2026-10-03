@@ -51,7 +51,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 72px; }
 
 body {
   margin: 0;
@@ -335,6 +335,29 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+/* ---------- Motion ----------
+   Small and quick: things appear in place rather than travel. All of it is
+   switched off by the prefers-reduced-motion rule above. */
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes open-down { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+.btn, .link-button, .input, .select,
+.segmented button, .segmented a,
+.disclosure > summary {
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+
+.disclosure[open] > .disclosure-body { animation: open-down 0.2s ease-out; }
+
+.dialog-backdrop { animation: fade-in 0.18s ease-out; }
+.dialog { animation: rise-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* Re-keyed on view change so switching dashboard views or Modelbook weeks settles in gently. */
+.view-enter { animation: fade-in 0.22s ease-out; }
 
 /* ---------- Touch screens: larger tap targets, same layout ---------- */
 
