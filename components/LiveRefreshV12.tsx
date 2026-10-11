@@ -1103,12 +1103,56 @@ export default function LiveRefreshV12() {
               <div className={styles.transferLayout}>
                 <section className="stack-sm">
                   <div className="row-between">
-                    <h2>Your squad</h2>
+                    <div>
+                      <h2>Your squad</h2>
+                      <p className="muted small">Select the players you would move on from.</p>
+                    </div>
                     <span className="small muted">
                       {selectedOut.length ? `${selectedOut.length} selected to sell` : "Tap players to sell"}
                       {selectedOut.length > 0 && <> · <button type="button" className="link-button" onClick={() => setSelectedOut([])}>Clear</button></>}
                     </span>
                   </div>
+                  <section className={styles.selectionTray} aria-labelledby="transfer-selection-heading">
+                    <div className={styles.selectionTrayHead}>
+                      <div>
+                        <span className="label">YOUR TRANSFER TARGETS</span>
+                        <h3 id="transfer-selection-heading">
+                          {selectedOut.length ? `${selectedOut.length} player${selectedOut.length === 1 ? "" : "s"} selected` : "Who are you considering selling?"}
+                        </h3>
+                      </div>
+                      <span className={styles.selectionHint}>
+                        {selectedOut.length ? "The model will find replacements for these players." : "Tap a squad tile to start."}
+                      </span>
+                    </div>
+                    {selectedOut.length ? (
+                      <div className={styles.selectionChips} aria-live="polite">
+                        {selectedOut.map((playerId) => {
+                          const player = playerMap.get(playerId);
+                          if (!player) return null;
+                          return (
+                            <span className={styles.selectionChip} key={player.id}>
+                              <span className={styles.selectionChipText}>
+                                <strong>{player.web_name}</strong>
+                                <small>{positionShort(player.element_type)} · {money(player.now_cost)}</small>
+                              </span>
+                              <button
+                                type="button"
+                                className={styles.removeSelection}
+                                onClick={() => toggleOutgoing(player.id)}
+                                aria-label={`Remove ${player.web_name} from transfer targets`}
+                              >
+                                ×
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className={styles.selectionEmpty}>
+                        Choose one or more players from your squad. The optimizer will only rank replacements for the players you pick.
+                      </p>
+                    )}
+                  </section>
                   <SquadPitch
                     players={squad}
                     teams={teams}
@@ -1129,8 +1173,9 @@ export default function LiveRefreshV12() {
                         Select one or more players on the pitch. Multiple sales are solved together, so two moves can&apos;t spend the same money or buy the same player.
                       </p>
                       {autoRecommendation && (
-                        <p style={{ marginTop: 12 }}>
-                          Suggested starting point:{" "}
+                        <p className={styles.modelSuggestion}>
+                          <strong>Optional model starting point.</strong>{" "}
+                          Prefer to choose yourself? Select players above. Or start with:{" "}
                           <button type="button" className="link-button" onClick={() => setSelectedOut([autoRecommendation.outgoingId])}>
                             sell {playerMap.get(autoRecommendation.outgoingId)?.web_name}
                           </button>

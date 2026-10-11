@@ -90,6 +90,104 @@
   .transferLayout > :global(.card) { position: static; }
 }
 
+/* Make the manager's choice explicit before the model's result. The tray is
+   intentionally separate from the pitch so selected players stay visible on
+   small screens while the user reviews the replacement plan. */
+.selectionTray {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+}
+.selectionTrayHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.selectionTrayHead h3 {
+  margin-top: 2px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.selectionHint {
+  max-width: 250px;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: right;
+}
+.selectionChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.selectionChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 8px 7px 11px;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  border-radius: 999px;
+}
+.selectionChipText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+.selectionChipText strong {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.selectionChipText small {
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.removeSelection {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+}
+.removeSelection:hover { background: rgba(91, 42, 126, 0.12); }
+.selectionEmpty {
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.modelSuggestion {
+  margin-top: 12px;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.modelSuggestion strong { color: var(--text); font-weight: 600; }
+@media (max-width: 560px) {
+  .selectionTrayHead { flex-direction: column; gap: 5px; }
+  .selectionHint { max-width: none; text-align: left; }
+  .selectionChip { max-width: 100%; }
+  .selectionChipText strong,
+  .selectionChipText small { overflow: hidden; text-overflow: ellipsis; }
+}
+
 /* Players */
 .filters {
   display: grid;
