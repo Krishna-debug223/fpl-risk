@@ -1,0 +1,191 @@
+{
+  "gameweek": 6,
+  "modelVersion": "1.3.0",
+  "final": true,
+  "generatedAt": "2026-10-13T15:16:03.582Z",
+  "snapshotHash": "bc3494505fafc078c3244d374a8852e1377cf760de20af539f3b10b3098c5945",
+  "actualsFetchedAt": "2026-10-13T15:12:34.385Z",
+  "actualsSource": "Official FPL event 6 live and fixtures feeds",
+  "actualsFinality": {
+    "fixtureCount": 10,
+    "started": 10,
+    "finished": 10,
+    "finishedProvisional": 10,
+    "ninetyMinutes": 10
+  },
+  "forecastProvenance": "predeadline-published",
+  "provenanceNote": "Scored against official GW6 results using the published pre-deadline projection export generated 23 Sep 2026. This forecast is preserved as a historical record and cannot be rewritten by later model updates.",
+  "overall": {
+    "count": 667,
+    "mae": 1.2265924074104286,
+    "rmse": 2.1175940455392612,
+    "bias": -0.038672498196742094,
+    "within1": 56.37181409295352,
+    "within2": 82.6086956521739,
+    "within3": 90.4047976011994
+  },
+  "activeCohort": {
+    "count": 315,
+    "mae": 1.8750322882389112,
+    "rmse": 2.885978500954911,
+    "bias": 0.6403409798421332,
+    "within1": 47.61904761904761,
+    "within2": 68.88888888888889,
+    "within3": 81.9047619047619
+  },
+  "byPosition": {
+    "GKP": {
+      "count": 20,
+      "mae": 1.927222566421311,
+      "rmse": 2.492333035226464,
+      "bias": -0.3619463398534416,
+      "within1": 35.0,
+      "within2": 65.0,
+      "within3": 85.0
+    },
+    "DEF": {
+      "count": 107,
+      "mae": 1.8672955023303248,
+      "rmse": 2.73633504310534,
+      "bias": 0.3883944884682571,
+      "within1": 43.925233644859816,
+      "within2": 64.48598130841121,
+      "within3": 79.43925233644859
+    },
+    "MID": {
+      "count": 149,
+      "mae": 1.8947537168225494,
+      "rmse": 3.0076614281577667,
+      "bias": 0.8753053042883054,
+      "within1": 49.664429530201346,
+      "within2": 71.14093959731544,
+      "within3": 83.22147651006712
+    },
+    "FWD": {
+      "count": 39,
+      "mae": 1.7941486387416983,
+      "rmse": 2.9971630006873724,
+      "bias": 0.9478880728789688,
+      "within1": 56.41025641025641,
+      "within2": 74.35897435897436,
+      "within3": 82.05128205128204
+    }
+  },
+  "largestMisses": [
+    {
+      "name": "Henderson",
+      "position": "MID",
+      "projected": 1.29,
+      "actual": 18,
+      "error": 16.71,
+      "absoluteError": 16.71,
+      "minutes": 90
+    },
+    {
+      "name": "De Cuyper",
+      "position": "DEF",
+      "projected": 3.314,
+      "actual": 15,
+      "error": 11.686,
+      "absoluteError": 11.686,
+      "minutes": 67
+    },
+    {
+      "name": "Cherif",
+      "position": "FWD",
+      "projected": 1.153,
+      "actual": 12,
+      "error": 10.847,
+      "absoluteError": 10.847,
+      "minutes": 77
+    },
+    {
+      "name": "Doku",
+      "position": "MID",
+      "projected": 1.265,
+      "actual": 12,
+      "error": 10.735,
+      "absoluteError": 10.735,
+      "minutes": 34
+    },
+    {
+      "name": "Dewsbury-Hall",
+      "position": "MID",
+      "projected": 3.557,
+      "actual": 13,
+      "error": 9.443,
+      "absoluteError": 9.443,
+      "minutes": 90
+    },
+    {
+      "name": "Jo\u00e3o Pedro",
+      "position": "FWD",
+      "projected": 2.958,
+      "actual": 12,
+      "error": 9.042,
+      "absoluteError": 9.042,
+      "minutes": 71
+    },
+    {
+      "name": "Ouattara",
+      "position": "DEF",
+      "projected": 1.513,
+      "actual": 10,
+      "error": 8.487,
+      "absoluteError": 8.487,
+      "minutes": 90
+    },
+    {
+      "name": "O'Shea",
+      "position": "DEF",
+      "projected": 3.057,
+      "actual": 11,
+      "error": 7.943,
+      "absoluteError": 7.943,
+      "minutes": 90
+    },
+    {
+      "name": "Lerma",
+      "position": "MID",
+      "projected": 0.949,
+      "actual": 8,
+      "error": 7.051,
+      "absoluteError": 7.051,
+      "minutes": 71
+    },
+    {
+      "name": "McGinn",
+      "position": "MID",
+      "projected": 3.007,
+      "actual": 10,
+      "error": 6.993,
+      "absoluteError": 6.993,
+      "minutes": 90
+    },
+    {
+      "name": "Bruno G.",
+      "position": "MID",
+      "projected": 2.053,
+      "actual": 9,
+      "error": 6.947,
+      "absoluteError": 6.947,
+      "minutes": 27
+    },
+    {
+      "name": "Gelhardt",
+      "position": "MID",
+      "projected": 1.182,
+      "actual": 8,
+      "error": 6.818,
+      "absoluteError": 6.818,
+      "minutes": 64
+    }
+  ],
+  "training": {
+    "trainedThroughGameweek": 5,
+    "targetGameweek": 6,
+    "method": "Walk-forward, minutes-weighted current-season blending",
+    "validation": "GW4\u2013GW5 walk-forward validation",
+    "source": "FPL Prism GW6 pre-deadline export"
+  }
+}

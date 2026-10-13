@@ -9,6 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${siteUrl}/dashboard`, lastModified, changeFrequency: "daily", priority: 0.95 },
     { url: `${siteUrl}/planner`, lastModified, changeFrequency: "daily", priority: 0.9 },
     { url: `${siteUrl}/modelbook`, lastModified, changeFrequency: "daily", priority: 0.9 },
+    { url: `${siteUrl}/modelbook/reports/gw6`, lastModified, changeFrequency: "monthly", priority: 0.85 },
     { url: `${siteUrl}/modelbook/reports/gw5`, lastModified, changeFrequency: "monthly", priority: 0.85 },
     { url: `${siteUrl}/modelbook/reports/gw4`, lastModified, changeFrequency: "monthly", priority: 0.75 },
     { url: `${siteUrl}/modelbook/reports/gw3`, lastModified, changeFrequency: "monthly", priority: 0.75 },

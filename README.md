@@ -19,7 +19,7 @@ The product is live at **[fplprism.com](https://fplprism.com/dashboard)**. It us
 | **Account / sign in** | Optional Supabase-backed settings for saving a public Team ID, free-transfer default and planner style. An FPL password is never requested. |
 | [FPL Prism Modelbook](https://fplprism.com/modelbook) | Public, timestamped forward-test workspace linked from the dashboard. |
 
-The production dashboard reports the current Gameweek and model version from the live feed. The active production model is **`1.4.0`**; the live Modelbook follows the next scheduled **Gameweek 6** projection window, with GW3–GW5 preserved as immutable forward-test archives. Both surfaces show the same training status: the live target is trained through the latest completed Gameweek and uses minutes-weighted current-season evidence blended with historical priors.
+The production dashboard reports the current Gameweek and model version from the live feed. The active production model is **`1.4.0`**; the live Modelbook follows the next scheduled **Gameweek 7** projection window, with GW3–GW6 preserved as immutable forward-test archives. Both surfaces show the same training status: the live target is trained through the latest completed Gameweek and uses minutes-weighted current-season evidence blended with historical priors.
 
 ## Model overview
 
@@ -39,7 +39,7 @@ The optional sportsbook integration is present behind a server-side flag and is 
 
 The model version is defined in [`lib/risk-v12.ts`](lib/risk-v12.ts). A version change is required for material changes to weights, priors, thresholds, simulation logic or data sources.
 
-The latest current-season walk-forward validation through GW5 is recorded in [`reports/backtest-1.3.0-2025-26.json`](reports/backtest-1.3.0-2025-26.json). Each target Gameweek is evaluated using only earlier Gameweek rows, so the GW6 live projection remains a forward test rather than a retrospective rewrite.
+The latest current-season walk-forward validation through GW5 is recorded in [`reports/backtest-1.3.0-2025-26.json`](reports/backtest-1.3.0-2025-26.json). Each target Gameweek is evaluated using only earlier Gameweek rows, so the published GW6 archive remains a forward test rather than a retrospective rewrite.
 
 ### Weekly learning loop
 

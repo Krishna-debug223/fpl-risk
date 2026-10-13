@@ -2,11 +2,13 @@ import gw3Report from "@/public/modelbook/data/gw3-report.json";
 import gw3Meta from "@/public/modelbook/data/gw3-snapshot-meta.json";
 import gw4Report from "@/public/modelbook/data/gw4-report.json";
 import gw5Report from "@/public/modelbook/data/gw5-report.json";
+import gw6Report from "@/public/modelbook/data/gw6-report.json";
+import gw6Meta from "@/public/modelbook/data/gw6-snapshot-meta.json";
 
 // Advance this only when the previous Gameweek is archived. The live Modelbook
 // follows this event until its deadline snapshot is frozen and published as a
 // report (add the report JSON to ARCHIVE below at the same time).
-export const CURRENT_GAMEWEEK = 6;
+export const CURRENT_GAMEWEEK = 7;
 export const SNAPSHOT_URL = `/api/ledger/snapshot?event=${CURRENT_GAMEWEEK}`;
 export const LOCKED_URL = `/modelbook/data/gw${CURRENT_GAMEWEEK}-locked.json`;
 export const LIVE_POINTS_URL = `/api/fpl/live/${CURRENT_GAMEWEEK}`;
@@ -30,6 +32,9 @@ export type ModelbookReport = {
   actualsFetchedAt?: string;
   actualsSource?: string;
   actualsFinality?: { fixtureCount: number; started: number; finished: number; finishedProvisional: number; ninetyMinutes: number };
+  forecastProvenance?: "deadline-frozen" | "predeadline-published" | "reconstructed-after-deadline";
+  provenanceNote?: string;
+  training?: { trainedThroughGameweek: number; targetGameweek: number; method: string; validation: string; source?: string };
   overall: ErrorMetrics;
   activeCohort: ErrorMetrics;
   byPosition: Record<string, ErrorMetrics>;
@@ -45,6 +50,7 @@ export type SnapshotMeta = {
 };
 
 const ARCHIVE: Record<number, { report: ModelbookReport; meta?: SnapshotMeta }> = {
+  6: { report: gw6Report as ModelbookReport, meta: gw6Meta as SnapshotMeta },
   5: { report: gw5Report as ModelbookReport },
   4: { report: gw4Report as ModelbookReport },
   3: { report: gw3Report as ModelbookReport, meta: gw3Meta as SnapshotMeta },

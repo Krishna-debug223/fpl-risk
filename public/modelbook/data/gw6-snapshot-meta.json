@@ -1,0 +1,97 @@
+{
+  "season": "2026/27",
+  "gameweek": 6,
+  "lockedAt": "2026-09-23T01:49:19.632Z",
+  "deadline": "2026-10-10T10:00:00Z",
+  "modelVersion": "1.3.0",
+  "sourceModelVersion": "1.3.0",
+  "lockedBeforeDeadline": true,
+  "contentHash": "bc3494505fafc078c3244d374a8852e1377cf760de20af539f3b10b3098c5945",
+  "feeds": {
+    "history": true,
+    "teamIntelligence": false,
+    "liveUnderlying": true,
+    "fplStrengthFallback": true,
+    "recentGameweeks": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  "sampleProjections": [
+    {
+      "name": "B.Fernandes",
+      "team": "MUN",
+      "position": "MID",
+      "fixture": "TOT (H)",
+      "xPts": 5.436,
+      "confidence": "Medium",
+      "dataQuality": 61
+    },
+    {
+      "name": "Haaland",
+      "team": "MCI",
+      "position": "FWD",
+      "fixture": "LIV (A)",
+      "xPts": 5.432,
+      "confidence": "Medium",
+      "dataQuality": 61
+    },
+    {
+      "name": "Mbeumo",
+      "team": "MUN",
+      "position": "MID",
+      "fixture": "TOT (H)",
+      "xPts": 5.028,
+      "confidence": "Medium",
+      "dataQuality": 61
+    },
+    {
+      "name": "Saka",
+      "team": "ARS",
+      "position": "MID",
+      "fixture": "LEE (H)",
+      "xPts": 4.959,
+      "confidence": "Medium",
+      "dataQuality": 60
+    },
+    {
+      "name": "Gibbs-White",
+      "team": "NFO",
+      "position": "MID",
+      "fixture": "CRY (A)",
+      "xPts": 4.349,
+      "confidence": "Medium",
+      "dataQuality": 61
+    },
+    {
+      "name": "Rogers",
+      "team": "CHE",
+      "position": "MID",
+      "fixture": "BOU (H)",
+      "xPts": 4.225,
+      "confidence": "Medium",
+      "dataQuality": 61
+    },
+    {
+      "name": "Isak",
+      "team": "LIV",
+      "position": "FWD",
+      "fixture": "MCI (H)",
+      "xPts": 4.213,
+      "confidence": "Medium",
+      "dataQuality": 60
+    },
+    {
+      "name": "E.Le F\u00e9e",
+      "team": "SUN",
+      "position": "MID",
+      "fixture": "BHA (H)",
+      "xPts": 4.099,
+      "confidence": "Low",
+      "dataQuality": 47
+    }
+  ]
+}

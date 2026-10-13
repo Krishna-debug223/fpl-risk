@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Params) {
   const gw = parseGameweek((await params).gw);
   return pageMetadata({
     title: `FPL Prism Modelbook — GW${gw} report`,
-    description: `How FPL Prism's frozen GW${gw} forecasts compared with official FPL points: average error, bias by position and the largest misses.`,
+    description: `How FPL Prism's published GW${gw} forecasts compared with official FPL points: average error, bias by position and the largest misses.`,
     path: `/modelbook/reports/gw${gw}`,
   });
 }
@@ -42,6 +42,8 @@ export default async function ModelbookReportPage({ params }: Params) {
   const active = report.activeCohort;
   const positions = POSITION_ORDER.filter((position) => report.byPosition[position]);
   const hash = report.snapshotHash ?? meta?.contentHash;
+  const isReconstructed = report.forecastProvenance === "reconstructed-after-deadline";
+  const isPredeadlinePublished = report.forecastProvenance === "predeadline-published";
 
   return (
     <main className="page">
@@ -51,11 +53,15 @@ export default async function ModelbookReportPage({ params }: Params) {
         <div>
           <h1>GW{report.gameweek} forecast report</h1>
           <p className="lead">
-            The forecasts frozen at the GW{report.gameweek} deadline, scored against official FPL points. This report doesn&apos;t
-            change when the model is updated later.
+            {isReconstructed
+              ? `A reconstructed GW${report.gameweek} forecast scored against official FPL points.`
+              : isPredeadlinePublished
+                ? `The GW${report.gameweek} forecast published before the deadline, scored against official FPL points.`
+                : `The forecasts frozen at the GW${report.gameweek} deadline, scored against official FPL points.`} This report doesn&apos;t change when the model is updated later.
           </p>
+          {report.provenanceNote && <p className="small muted" style={{ marginTop: 10 }}>{report.provenanceNote}</p>}
         </div>
-        <span className="badge badge-good">Final</span>
+        <span className="badge badge-good">{isReconstructed ? "Audit" : isPredeadlinePublished ? "Published" : "Final"}</span>
       </div>
 
       <section className="stats" aria-label="Headline accuracy for players who played">
@@ -158,7 +164,9 @@ export default async function ModelbookReportPage({ params }: Params) {
         <div className="disclosure-body">
           <dl className="kv">
             <dt>Model version</dt><dd>{report.modelVersion}</dd>
-            {meta && <><dt>Frozen</dt><dd>{formatDate(meta.lockedAt)}{meta.lockedBeforeDeadline ? ", before the deadline" : ""}</dd></>}
+            {report.forecastProvenance && <><dt>Forecast source</dt><dd>{report.forecastProvenance === "reconstructed-after-deadline" ? "Reconstructed after the deadline" : report.forecastProvenance === "predeadline-published" ? "Published pre-deadline export" : "Frozen deadline export"}</dd></>}
+            {report.training && <><dt>Training window</dt><dd>Results through GW{report.training.trainedThroughGameweek}; {report.training.validation}.</dd></>}
+            {meta && <><dt>{isPredeadlinePublished ? "Published" : "Frozen"}</dt><dd>{formatDate(meta.lockedAt)}{meta.lockedBeforeDeadline ? ", before the deadline" : ""}</dd></>}
             <dt>Report generated</dt><dd>{formatDate(report.generatedAt)}</dd>
             {report.actualsSource && <><dt>Points source</dt><dd>{report.actualsSource}</dd></>}
             {report.actualsFinality && (
