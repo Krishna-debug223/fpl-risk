@@ -21,6 +21,10 @@ The product is live at **[fplprism.com](https://fplprism.com/dashboard)**. It us
 
 The production dashboard reports the current Gameweek and model version from the live feed. The active production model is **`1.4.0`**; the live Modelbook follows the next scheduled **Gameweek 7** projection window, with GW3–GW6 preserved as immutable forward-test archives. Both surfaces show the same training status: the live target is trained through the latest completed Gameweek and uses minutes-weighted current-season evidence blended with historical priors.
 
+### Advertising
+
+Responsive AdSense placements are reserved above and below the main content, with the required [`ads.txt`](public/ads.txt) declaration. The publisher client is `ca-pub-1252559919094271`. After creating responsive display units in AdSense, add their slot IDs as `NEXT_PUBLIC_ADSENSE_SLOT_TOP` and `NEXT_PUBLIC_ADSENSE_SLOT_BOTTOM` in Vercel; until then the layout keeps a quiet reserved band and the rest of the product remains usable.
+
 ## Model overview
 
 The active model is component-based and fixture-aware. It combines:

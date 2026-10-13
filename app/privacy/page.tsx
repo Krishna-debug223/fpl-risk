@@ -28,6 +28,9 @@ export default function PrivacyPage() {
         <p>We also record a small allow-listed set of product events, such as a successful team import, selecting a model recommendation or running a simulation, through Vercel Web Analytics. Event properties are deliberately limited to coarse product context such as horizon, gameweek, recommendation rank or whether a transfer hit was applied. We do not intentionally add FPL Team IDs, manager/team names, player names, email addresses or free-form text to product analytics.</p>
         <AnalyticsPrivacyControls />
 
+        <h2>Advertising</h2>
+        <p>FPL Prism may display responsive advertisements through Google AdSense. If ads are served, Google and its partners may use cookies or similar device information to measure, limit or personalise advertising under their own policies. Advertising is disabled on account and authentication screens. You can manage Google&apos;s advertising preferences through <a href="https://adssettings.google.com" rel="noreferrer">Google Ads Settings</a>; where applicable, your browser or regional consent choices also control personalised advertising.</p>
+
         <h2>AI and automated recommendations</h2>
         <p>Projections and recommendations in FPL Prism are produced by an explainable statistical recommendation engine, not a general-purpose chatbot. It uses football/FPL statistics, fixture data, squad rules, historical priors and probabilistic simulations. We do not currently send your FPL squad to a third-party generative-AI provider.</p>
 

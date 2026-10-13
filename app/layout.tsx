@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
+import AdSlot from "@/components/AdSlot";
 import SiteAnalytics from "@/components/SiteAnalytics";
 import SlidingIndicators from "@/components/SlidingIndicators";
 import SiteHeader from "@/components/SiteHeader";
@@ -14,6 +16,7 @@ const inter = Inter({
 });
 
 const siteUrl = getSiteUrl();
+const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT || "ca-pub-1252559919094271";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -58,10 +61,19 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en-GB" className={inter.variable}>
       <body>
         <SiteHeader />
+        <AdSlot placement="top" />
         <div id="main-content" tabIndex={-1}>{children}</div>
+        <AdSlot placement="bottom" />
         <SiteFooter />
         <SiteAnalytics />
         <SlidingIndicators />
+        <Script
+          id="google-adsense"
+          async
+          strategy="afterInteractive"
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}`}
+          crossOrigin="anonymous"
+        />
       </body>
     </html>
   );
