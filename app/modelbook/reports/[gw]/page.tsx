@@ -122,6 +122,32 @@ export default async function ModelbookReportPage({ params }: Params) {
               {POSITION_ORDER.filter((p) => report.adjustmentsForNextGw?.[p] != null).map((p) => `${p} ${signed(report.adjustmentsForNextGw![p])}`).join(" · ")} pts.
             </p>
           )}
+          {report.bestPredictions?.length ? (
+            <div style={{ marginTop: 24 }}>
+              <h2>Best calls</h2>
+              <p className="small muted" style={{ marginTop: 4 }}>
+                {report.bestPredictionsNote ?? "High-output scores where the forecast stayed close to the official result."}
+              </p>
+              <div className="table-wrap" style={{ marginTop: 10 }}>
+                <table className="table">
+                  <thead>
+                    <tr><th>Player</th><th>Pos</th><th className="r">Forecast</th><th className="r">Actual</th><th className="r">Gap</th></tr>
+                  </thead>
+                  <tbody>
+                    {report.bestPredictions.map((row) => (
+                      <tr key={`${row.name}-${row.position}`}>
+                        <td>{row.name}</td>
+                        <td>{row.position}</td>
+                        <td className="r">{row.projected.toFixed(1)}</td>
+                        <td className="r"><strong>{row.actual}</strong></td>
+                        <td className="r">{row.error > 0 ? "+" : ""}{row.error.toFixed(1)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <section>

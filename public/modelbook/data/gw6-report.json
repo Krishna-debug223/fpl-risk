@@ -187,5 +187,98 @@
     "method": "Walk-forward, minutes-weighted current-season blending",
     "validation": "GW4\u2013GW5 walk-forward validation",
     "source": "FPL Prism GW6 pre-deadline export"
-  }
+  },
+  "bestPredictions": [
+    {
+      "name": "Haaland",
+      "position": "FWD",
+      "projected": 5.432,
+      "actual": 6,
+      "error": 0.568,
+      "absoluteError": 0.568,
+      "minutes": 79
+    },
+    {
+      "name": "Thiago",
+      "position": "FWD",
+      "projected": 3.861,
+      "actual": 4,
+      "error": 0.139,
+      "absoluteError": 0.139,
+      "minutes": 90
+    },
+    {
+      "name": "Thomas",
+      "position": "DEF",
+      "projected": 3.632,
+      "actual": 4,
+      "error": 0.368,
+      "absoluteError": 0.368,
+      "minutes": 90
+    },
+    {
+      "name": "Mitchell",
+      "position": "DEF",
+      "projected": 3.583,
+      "actual": 4,
+      "error": 0.417,
+      "absoluteError": 0.417,
+      "minutes": 90
+    },
+    {
+      "name": "Richards",
+      "position": "DEF",
+      "projected": 3.352,
+      "actual": 4,
+      "error": 0.648,
+      "absoluteError": 0.648,
+      "minutes": 90
+    },
+    {
+      "name": "Iwobi",
+      "position": "MID",
+      "projected": 3.259,
+      "actual": 4,
+      "error": 0.741,
+      "absoluteError": 0.741,
+      "minutes": 86
+    },
+    {
+      "name": "Buend\u00eda",
+      "position": "MID",
+      "projected": 3.119,
+      "actual": 4,
+      "error": 0.881,
+      "absoluteError": 0.881,
+      "minutes": 63
+    },
+    {
+      "name": "Gvardiol",
+      "position": "DEF",
+      "projected": 3.026,
+      "actual": 4,
+      "error": 0.974,
+      "absoluteError": 0.974,
+      "minutes": 24
+    },
+    {
+      "name": "Canvot",
+      "position": "DEF",
+      "projected": 2.876,
+      "actual": 4,
+      "error": 1.124,
+      "absoluteError": 1.124,
+      "minutes": 90
+    },
+    {
+      "name": "Garner",
+      "position": "MID",
+      "projected": 2.528,
+      "actual": 4,
+      "error": 1.472,
+      "absoluteError": 1.472,
+      "minutes": 90
+    }
+  ],
+  "bestPredictionsNote": "High-output players scoring at least 4 points where the forecast was within 1.5 points of the official result."
 }

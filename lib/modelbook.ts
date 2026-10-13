@@ -40,6 +40,8 @@ export type ModelbookReport = {
   byPosition: Record<string, ErrorMetrics>;
   adjustmentsForNextGw?: Record<string, number>;
   largestMisses: Array<{ name: string; position: string; projected: number; actual: number; error: number; absoluteError?: number; minutes?: number }>;
+  bestPredictions?: Array<{ name: string; position: string; projected: number; actual: number; error: number; absoluteError?: number; minutes?: number }>;
+  bestPredictionsNote?: string;
 };
 
 export type SnapshotMeta = {
