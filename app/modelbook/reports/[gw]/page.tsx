@@ -124,7 +124,7 @@ export default async function ModelbookReportPage({ params }: Params) {
           )}
           {report.bestPredictions?.length ? (
             <div style={{ marginTop: 24 }}>
-              <h2>Best calls</h2>
+              <h2>{report.bestPredictionsTitle ?? "Best calls"}</h2>
               <p className="small muted" style={{ marginTop: 4 }}>
                 {report.bestPredictionsNote ?? "High-output scores where the forecast stayed close to the official result."}
               </p>

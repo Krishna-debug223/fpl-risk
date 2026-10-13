@@ -41,6 +41,7 @@ export type ModelbookReport = {
   adjustmentsForNextGw?: Record<string, number>;
   largestMisses: Array<{ name: string; position: string; projected: number; actual: number; error: number; absoluteError?: number; minutes?: number }>;
   bestPredictions?: Array<{ name: string; position: string; projected: number; actual: number; error: number; absoluteError?: number; minutes?: number }>;
+  bestPredictionsTitle?: string;
   bestPredictionsNote?: string;
 };
 
